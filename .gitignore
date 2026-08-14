@@ -1,0 +1,9 @@
+/.clinerules
+/.cursor
+/.github
+/.opencode
+/.windsurf
+AGENTS.md
+
+# Ignore files for a React Project
+/node_modules
