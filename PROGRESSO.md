@@ -3,7 +3,7 @@
 Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança após validação explícita do cliente.
 
 - [x] Fase 0 — Fundação técnica (setup, tipos, serviços, roteamento, sessão simulada, reset)
-- [ ] Fase 1 — M1 Configuração Base + M4 Professoras e Categorias
+- [x] Fase 1 — M1 Configuração Base + M4 Professoras e Categorias
 - [ ] Fase 2 — M5 Grade de Horários + M6 Calendário de Exceções
 - [ ] Fase 3 — M2 Cadastro de Alunas + M3 Pacotes e Contratos
 - [ ] Fase 4 — M7 Agendamento de Aulas + M8 Cancelamento e Justificativa
@@ -43,4 +43,32 @@ Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança 
 6. Testar "Resetar protótipo" no topo (com qualquer perfil ativo) — apaga e recria o backfill original e leva de volta ao login.
 7. Recarregar a página com uma sessão ativa — deve manter o perfil logado (sessão persistida).
 
-Próxima fase (Fase 1) começa as telas reais: modalidades, espaços, horário de funcionamento, parâmetros operacionais, professoras e categorias — tudo no perfil Administração.
+## Fase 1 — o que foi entregue
+
+**Perfil Administração ganha telas reais de configuração (M1 + M4).**
+
+- Casca de navegação do perfil Administração agora abre em `/administracao`, com abas: Visão geral, Modalidades, Espaços, Studio e horário, Parâmetros, Professoras, Categorias.
+- **Modalidades** (RF-CFG-01/02): CRUD completo. Nome normalizado em maiúsculas ao salvar, duplicidade bloqueada, capacidade máxima por modalidade, ativar/inativar, exclusão bloqueada se houver sessão ativa vinculada (checagem já pronta para a Fase 2).
+- **Espaços** (RF-CFG-03): CRUD simples, cadastro opcional.
+- **Studio e horário** (RF-CFG-04/06): formulário com dados do studio (nome, contato, endereço) e horário de funcionamento configurável por dia, com múltiplos intervalos por dia (ex.: segunda 08h-11h e 15h-18h) — cada dia sem intervalo fica marcado como fechado.
+- **Parâmetros operacionais** (RF-CFG-05): os 13 parâmetros do escopo, cada um editável inline com a frase de efeito prático atualizada em tempo real (ex.: "A aluna matriculada enxerga e agenda a grade até 30 dias à frente").
+- **Categorias de professora** (RF-PRO-02): CRUD com nome e valor por aula; exclusão bloqueada se houver professora vinculada.
+- **Professoras** (RF-PRO-01/03/05): cadastro (cria usuária + vínculo de categoria), edição de dados cadastrais, e-mail/CPF únicos, troca de categoria com registro automático em histórico (sem efeito retroativo), consulta ao histórico de categoria, inativação bloqueada se houver sessão futura atribuída (checagem pronta para a Fase 2).
+- Kit de UI reutilizável (`src/components/ui/`: Button, Field, Modal, Badge) que vai sustentar todas as próximas telas de CRUD.
+- Backfill expandido: 5 modalidades, 1 espaço, 13 parâmetros, 3 categorias de professora, 2 professoras (Camila com Categoria III, Beatriz com Categoria I) com histórico inicial.
+
+Deixado de fora intencionalmente nesta fase: RF-PRO-04 (termo de aceite da professora) — depende do mecanismo de aceite/versionamento de termo que será construído junto com o M2 (Fase 3), aplicado a alunas e professoras juntas.
+
+### Como testar
+
+1. `npm run dev`.
+2. Entrar como "Camila Duarte" → perfil Administração.
+3. **Modalidades**: criar uma nova, tentar repetir um nome existente (deve bloquear), editar capacidade, inativar/ativar, tentar excluir (funciona — ainda não há sessões na Fase 2 para bloquear).
+4. **Espaços**: criar/editar/excluir.
+5. **Studio e horário**: alterar dias de funcionamento e horários, salvar, recarregar a página e conferir que persistiu.
+6. **Parâmetros**: mudar o valor da "Janela de agendamento — alunas matriculadas" e ver a frase de efeito mudar em tempo real; sair do campo (blur) para salvar.
+7. **Categorias**: criar uma categoria, tentar excluir uma que já tem professora vinculada (deve bloquear com mensagem).
+8. **Professoras**: cadastrar uma nova professora, trocar a categoria de uma existente e conferir em "Ver histórico" que a troca ficou registrada, tentar cadastrar com e-mail já usado (deve bloquear).
+9. "Resetar protótipo" continua funcionando e agora restaura todos esses recursos também.
+
+Próxima fase (Fase 2) usa essas modalidades, espaços, professoras e horário de funcionamento para construir a grade de horários (M5) e o calendário de exceções (M6).

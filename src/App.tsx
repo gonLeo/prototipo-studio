@@ -4,6 +4,14 @@ import { SessaoProvider, useSessao } from './hooks/useSessao';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { PainelPlaceholder } from './pages/PainelPlaceholder';
+import { AdministracaoLayout } from './pages/administracao/AdministracaoLayout';
+import { AdministracaoHome } from './pages/administracao/AdministracaoHome';
+import { ModalidadesPage } from './pages/administracao/ModalidadesPage';
+import { EspacosPage } from './pages/administracao/EspacosPage';
+import { StudioPage } from './pages/administracao/StudioPage';
+import { ParametrosPage } from './pages/administracao/ParametrosPage';
+import { ProfessorasPage } from './pages/administracao/ProfessorasPage';
+import { CategoriasProfessoraPage } from './pages/administracao/CategoriasProfessoraPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -38,18 +46,18 @@ function App() {
             path="/administracao"
             element={
               <RotaComPerfil perfilExigido="administracao">
-                <PainelPlaceholder
-                  titulo="Painel da Administração"
-                  proximasFases={[
-                    'Fase 1 — modalidades, espaços, horário de funcionamento, parâmetros e professoras/categorias',
-                    'Fase 2 — grade de horários e calendário de exceções',
-                    'Fase 3 — cadastro de alunas, pacotes, contratos, bolsa, trancamento e suspensão',
-                    'Fases seguintes — agendamento, presença, comissão, financeiro, experimental, convênios e painéis',
-                  ]}
-                />
+                <AdministracaoLayout />
               </RotaComPerfil>
             }
-          />
+          >
+            <Route index element={<AdministracaoHome />} />
+            <Route path="modalidades" element={<ModalidadesPage />} />
+            <Route path="espacos" element={<EspacosPage />} />
+            <Route path="studio" element={<StudioPage />} />
+            <Route path="parametros" element={<ParametrosPage />} />
+            <Route path="professoras" element={<ProfessorasPage />} />
+            <Route path="categorias" element={<CategoriasProfessoraPage />} />
+          </Route>
           <Route
             path="/professora"
             element={

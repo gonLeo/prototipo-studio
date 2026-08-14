@@ -5,9 +5,15 @@
       "nome": "Studio MUV",
       "contato": "(11) 91234-5678",
       "endereco": "Rua das Aulas, 123 - São Paulo/SP",
-      "diasFuncionamento": ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"],
-      "horarioInicio": "07:00",
-      "horarioFim": "21:00"
+      "horarioFuncionamento": {
+        "segunda": [{ "inicio": "08:00", "fim": "11:00" }, { "inicio": "15:00", "fim": "18:00" }],
+        "terca": [{ "inicio": "08:00", "fim": "12:00" }, { "inicio": "15:00", "fim": "16:00" }],
+        "quarta": [{ "inicio": "08:00", "fim": "11:00" }, { "inicio": "15:00", "fim": "18:00" }],
+        "quinta": [{ "inicio": "08:00", "fim": "12:00" }, { "inicio": "15:00", "fim": "16:00" }],
+        "sexta": [{ "inicio": "08:00", "fim": "11:00" }, { "inicio": "15:00", "fim": "19:00" }],
+        "sabado": [{ "inicio": "09:00", "fim": "13:00" }],
+        "domingo": []
+      }
     }
   ],
   "usuarios": [
@@ -43,5 +49,43 @@
       "situacao": "aguardando_aceite",
       "perfis": ["aluna"]
     }
+  ],
+  "modalidades": [
+    { "id": "mod-pole-iniciante", "nome": "POLE INICIANTE", "capacidadeMaxima": 6, "situacao": "ativo" },
+    { "id": "mod-pole-intermediario", "nome": "POLE INTERMEDIÁRIO", "capacidadeMaxima": 6, "situacao": "ativo" },
+    { "id": "mod-pole-avancado", "nome": "POLE AVANÇADO", "capacidadeMaxima": 5, "situacao": "ativo" },
+    { "id": "mod-danca", "nome": "DANÇA", "capacidadeMaxima": 12, "situacao": "ativo" },
+    { "id": "mod-alongamento", "nome": "ALONGAMENTO E FLEXIBILIDADE", "capacidadeMaxima": 14, "situacao": "ativo" }
+  ],
+  "espacos": [
+    { "id": "esp-sala-principal", "nome": "Sala Principal", "situacao": "ativo" }
+  ],
+  "parametros": [
+    { "id": "param-janela-matriculadas", "chave": "janela_agendamento_matriculadas_dias", "valor": 30, "descricao": "Janela de agendamento — alunas matriculadas" },
+    { "id": "param-janela-convenio", "chave": "janela_agendamento_convenio_dias", "valor": 7, "descricao": "Janela de agendamento — alunas de convênio" },
+    { "id": "param-antecedencia-cancelamento", "chave": "antecedencia_cancelamento_horas", "valor": 4, "descricao": "Antecedência mínima de cancelamento" },
+    { "id": "param-prazo-inadimplencia", "chave": "prazo_bloqueio_inadimplencia_dias", "valor": 5, "descricao": "Prazo para bloqueio por inadimplência" },
+    { "id": "param-prazo-correcao-chamada", "chave": "prazo_correcao_chamada_dias", "valor": 3, "descricao": "Prazo para correção de chamada" },
+    { "id": "param-dias-adicionais-cancelamento-studio", "chave": "dias_adicionais_cancelamento_studio", "valor": 7, "descricao": "Dias adicionais de vigência por cancelamento do studio" },
+    { "id": "param-limite-experimental", "chave": "limite_aulas_experimentais_por_modalidade", "valor": 1, "descricao": "Limite de aulas experimentais por modalidade (por CPF)" },
+    { "id": "param-valor-experimental", "chave": "valor_aula_experimental", "valor": 30, "descricao": "Valor da aula experimental (R$)" },
+    { "id": "param-prazo-justificativa", "chave": "prazo_justificativa_dias", "valor": 7, "descricao": "Prazo para envio de justificativa de falta" },
+    { "id": "param-percentual-multa", "chave": "percentual_multa", "valor": 2, "descricao": "Percentual de multa sobre cobrança em atraso" },
+    { "id": "param-percentual-juros", "chave": "percentual_juros_mes", "valor": 1, "descricao": "Percentual de juros de mora ao mês" },
+    { "id": "param-aviso-vencimento-1", "chave": "antecedencia_aviso_vencimento_dias_1", "valor": 15, "descricao": "Antecedência do 1º aviso de término de contrato" },
+    { "id": "param-aviso-vencimento-2", "chave": "antecedencia_aviso_vencimento_dias_2", "valor": 3, "descricao": "Antecedência do 2º aviso de término de contrato" }
+  ],
+  "categoriasProfessora": [
+    { "id": "cat-1", "nome": "Categoria I", "valorPorAula": 35, "situacao": "ativo" },
+    { "id": "cat-2", "nome": "Categoria II", "valorPorAula": 45, "situacao": "ativo" },
+    { "id": "cat-3", "nome": "Categoria III", "valorPorAula": 55, "situacao": "ativo" }
+  ],
+  "professoras": [
+    { "id": "prof-admin", "usuarioId": "usr-admin", "categoriaId": "cat-3", "situacao": "ativa" },
+    { "id": "prof-2", "usuarioId": "usr-prof-2", "categoriaId": "cat-1", "situacao": "ativa" }
+  ],
+  "historicoCategorias": [
+    { "id": "hist-cat-1", "professoraId": "prof-admin", "categoriaId": "cat-3", "dataInicioVigencia": "2026-01-05", "autorId": "usr-admin" },
+    { "id": "hist-cat-2", "professoraId": "prof-2", "categoriaId": "cat-1", "dataInicioVigencia": "2026-03-10", "autorId": "usr-admin" }
   ]
 }

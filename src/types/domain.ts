@@ -15,14 +15,19 @@ export type DiaSemana =
 
 export type SituacaoAtivoInativo = 'ativo' | 'inativo';
 
+export interface BlocoHorario {
+  inicio: string;
+  fim: string;
+}
+
+export type HorarioFuncionamento = Record<DiaSemana, BlocoHorario[]>;
+
 export interface Studio {
   id: ID;
   nome: string;
   contato: string;
   endereco: string;
-  diasFuncionamento: DiaSemana[];
-  horarioInicio: string;
-  horarioFim: string;
+  horarioFuncionamento: HorarioFuncionamento;
 }
 
 export interface Parametro {

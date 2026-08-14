@@ -9,7 +9,21 @@
       "Bash(curl -s http://localhost:4000/usuarios)",
       "Bash(curl -s http://localhost:5173/ -o /dev/null -w \"vite status: %{http_code}\\\\n\")",
       "Bash(curl -s http://localhost:5173/api/usuarios -o /dev/null -w \"proxy /api/usuarios status: %{http_code}\\\\n\")",
-      "Bash(curl -s http://localhost:5173/api/studio -w \"\\\\nstatus: %{http_code}\\\\n\")"
+      "Bash(curl -s http://localhost:5173/api/studio -w \"\\\\nstatus: %{http_code}\\\\n\")",
+      "Bash(npx tsc *)",
+      "Bash(curl -s http://localhost:5173/api/modalidades)",
+      "Bash(curl -s http://localhost:5173/api/professoras)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 16420 //F)",
+      "Bash(taskkill //PID 15976 //F)",
+      "Bash(curl -s http://localhost:5173/api/modalidades -o /dev/null -w \"modalidades: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:5173/api/professoras -o /dev/null -w \"professoras: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:5173/api/parametros -o /dev/null -w \"parametros: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:5173/ -o /dev/null -w \"web: %{http_code}\\\\n\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>console.log\\(JSON.parse\\(d\\).length\\)\\)\")",
+      "Bash(taskkill //PID 11488 //F)",
+      "Bash(taskkill //PID 14088 //F)",
+      "Bash(curl -s http://localhost:5173/api/studio)"
     ]
   }
 }
