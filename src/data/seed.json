@@ -1,0 +1,47 @@
+{
+  "studio": [
+    {
+      "id": "studio-1",
+      "nome": "Studio MUV",
+      "contato": "(11) 91234-5678",
+      "endereco": "Rua das Aulas, 123 - São Paulo/SP",
+      "diasFuncionamento": ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"],
+      "horarioInicio": "07:00",
+      "horarioFim": "21:00"
+    }
+  ],
+  "usuarios": [
+    {
+      "id": "usr-admin",
+      "nome": "Camila Duarte",
+      "email": "camila@studiomuv.com.br",
+      "cpf": "111.111.111-11",
+      "situacao": "ativo",
+      "perfis": ["administracao", "professora"]
+    },
+    {
+      "id": "usr-prof-2",
+      "nome": "Beatriz Nogueira",
+      "email": "beatriz@studiomuv.com.br",
+      "cpf": "222.222.222-22",
+      "situacao": "ativo",
+      "perfis": ["professora"]
+    },
+    {
+      "id": "usr-aluna-1",
+      "nome": "Larissa Prado",
+      "email": "larissa@example.com",
+      "cpf": "333.333.333-33",
+      "situacao": "ativo",
+      "perfis": ["aluna"]
+    },
+    {
+      "id": "usr-aluna-2",
+      "nome": "Fernanda Alves",
+      "email": "fernanda@example.com",
+      "cpf": "444.444.444-44",
+      "situacao": "aguardando_aceite",
+      "perfis": ["aluna"]
+    }
+  ]
+}

@@ -7,3 +7,15 @@ AGENTS.md
 
 # Ignore files for a React Project
 /node_modules
+/dist
+/dist-ssr
+*.local
+.env
+.env.*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+
+# json-server working copy (db.seed.json is the versioned backfill)
+/db.json
