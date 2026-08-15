@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { usePacotes } from '../hooks/usePacotes';
-import { useTermos, registrarAceiteEAnamnese } from '../hooks/useTermos';
-import { matricularAlunaPeloSite } from '../hooks/contratosDeAluna';
+import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../hooks/useTermos';
+import { matricularAlunaPeloSite, registrarPagamentoDaPrimeiraCobranca } from '../hooks/contratosDeAluna';
 import type { DadosCadastraisAluna } from '../hooks/contratosDeAluna';
 import type { TipoContrato } from '../types/domain';
 import { Button } from '../components/ui/Button';
@@ -99,7 +99,7 @@ export function MatriculaPage() {
     setErro(undefined);
     setProcessando(true);
     try {
-      const { aluna, usuario } = await matricularAlunaPeloSite({
+      const { aluna, usuario, contrato } = await matricularAlunaPeloSite({
         dados,
         contratacao: { pacoteId, tipo, dataPrimeiraCobranca: hojeISO() },
       });
@@ -109,6 +109,8 @@ export function MatriculaPage() {
         termo: termoVigente,
         respostasAnamnese: respostas,
       });
+      await registrarPagamentoDaPrimeiraCobranca(contrato);
+      await liberarAcessoDaAluna({ usuarioId: usuario.id, alunaId: aluna.id });
       setPasso('concluido');
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');

@@ -1,5 +1,6 @@
 import {
   alunaRepositorio,
+  cobrancaRepositorio,
   contratoRepositorio,
   historicoBolsaRepositorio,
   historicoPlanoRepositorio,
@@ -9,7 +10,7 @@ import {
   registroAuditoriaRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
-import type { Aluna, Contrato, Pacote, TipoContrato, TipoPausa, Usuario } from '../types/domain';
+import type { Aluna, Cobranca, Contrato, Pacote, TipoContrato, TipoPausa, Usuario } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO, somarDias, somarMeses } from '../utils/data';
 import {
   calcularDatasDoContrato,
@@ -231,6 +232,56 @@ export async function matricularAlunaPeloSite(params: {
   });
 
   return { aluna, usuario, contrato };
+}
+
+/**
+ * Registra o pagamento da primeira cobrança do contrato, feito pela aluna
+ * no primeiro acesso.
+ *
+ * Bolsista com isenção total não gera cobrança nenhuma (RF-BOL-03): nesse
+ * caso nada é criado e a função devolve `undefined` — é o que faz o passo
+ * de pagamento ser pulado no primeiro acesso.
+ *
+ * O gateway real entra no M11 (Fase 6); aqui a cobrança já nasce quitada,
+ * com a marcação de que a transação foi simulada.
+ */
+export async function registrarPagamentoDaPrimeiraCobranca(contrato: Contrato): Promise<Cobranca | undefined> {
+  const percentual = contrato.percentualBolsa ?? 0;
+  if (ehIsencaoTotal(percentual)) return undefined;
+
+  const pacotes = await pacoteRepositorio.listar();
+  const pacote = pacotes.find((p) => p.id === contrato.pacoteId);
+  if (!pacote) throw new RegraNegocioError('O pacote deste contrato não existe mais.');
+
+  const cobrancas = await cobrancaRepositorio.listar();
+  const jaPaga = cobrancas.find(
+    (c) => c.contratoId === contrato.id && c.dataVencimento === contrato.dataInicio && c.situacao === 'paga',
+  );
+  if (jaPaga) return jaPaga;
+
+  const cobranca = await cobrancaRepositorio.criar({
+    contratoId: contrato.id,
+    valorBruto: pacote.valorMensal,
+    percentualBolsa: percentual,
+    valorLiquido: valorComBolsa(pacote.valorMensal, percentual),
+    multa: 0,
+    juros: 0,
+    dataVencimento: contrato.dataInicio,
+    situacao: 'paga',
+    dataQuitacao: hojeISO(),
+    identificadorGateway: 'simulado-no-prototipo',
+  });
+
+  await notificacaoRepositorio.criar({
+    destinatarioId: contrato.alunaId,
+    evento: 'pagamento_confirmado',
+    canal: 'email',
+    conteudo: `Recebemos o pagamento de ${formatarMoeda(cobranca.valorLiquido)} referente ao seu pacote. Seu acesso ao agendamento está liberado.`,
+    dataEnvio: new Date().toISOString(),
+    situacaoEnvio: 'enviada',
+  });
+
+  return cobranca;
 }
 
 /**

@@ -67,8 +67,12 @@ export function useTermos() {
 }
 
 /**
- * Registra o aceite do termo e a anamnese de uma usuária, liberando o
- * acesso ao agendamento (RF-ALU-05/07/08).
+ * Registra o aceite do termo e a anamnese de uma usuária (RF-ALU-05/07).
+ *
+ * Registrar **não** libera o acesso: no cadastro administrativo ainda
+ * falta a primeira cobrança ser paga. Quem libera é
+ * `liberarAcessoDaAluna`, chamada quando todas as pendências do primeiro
+ * acesso terminam.
  *
  * O endereço de IP é exigido pelo escopo como parte do registro. No
  * protótipo não há servidor que o informe, então gravamos um valor
@@ -99,8 +103,14 @@ export async function registrarAceiteEAnamnese(params: {
       dataPreenchimento: new Date().toISOString(),
       versaoQuestionario: 1,
     });
+  }
+}
+
+/** Libera o agendamento depois de cumpridas as pendências do primeiro acesso (RF-ALU-08). */
+export async function liberarAcessoDaAluna(params: { usuarioId: string; alunaId?: string }): Promise<void> {
+  const { usuarioId, alunaId } = params;
+  if (alunaId) {
     await alunaRepositorio.atualizar(alunaId, { situacao: 'ativa' });
   }
-
   await usuarioRepositorio.atualizar(usuarioId, { situacao: 'ativo' });
 }
