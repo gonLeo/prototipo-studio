@@ -43,7 +43,8 @@
       "Bash(curl -s http://localhost:4000/espacos)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4000/db)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://localhost:4000/db -H \"Content-Type: application/json\" -d '{\"espacos\":[]}')",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X PUT http://localhost:4000/db -H \"Content-Type: application/json\" -d '{\"espacos\":[]}')"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X PUT http://localhost:4000/db -H \"Content-Type: application/json\" -d '{\"espacos\":[]}')",
+      "Bash(npx vite *)"
     ]
   }
 }

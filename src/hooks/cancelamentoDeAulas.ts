@@ -153,6 +153,80 @@ export async function cancelarOcorrenciasFuturasDaSessao(
 }
 
 /**
+ * Cancela os agendamentos de uma aluna dentro de um período, devolvendo o
+ * crédito ao saldo. Usado quando o contrato é pausado ou encerrado
+ * (RF-CTR-04/07): a aluna não pode ocupar vaga em datas que não poderá
+ * frequentar, e as aulas já agendadas voltam para o saldo dela.
+ *
+ * `dataFim` em branco significa "daqui para a frente, sem limite".
+ */
+export async function cancelarAgendamentosDaAlunaNoPeriodo(params: {
+  alunaId: string;
+  dataInicio: string;
+  dataFim?: string;
+  motivo: string;
+}): Promise<number> {
+  const { alunaId, dataInicio, dataFim, motivo } = params;
+  const [agendamentos, ocorrencias, contratos] = await Promise.all([
+    agendamentoRepositorio.listar(),
+    ocorrenciaSessaoRepositorio.listar(),
+    contratoRepositorio.listar(),
+  ]);
+
+  const noPeriodo = agendamentos.filter((agendamento) => {
+    if (agendamento.alunaId !== alunaId || agendamento.situacao !== 'ativo') return false;
+    const ocorrencia = ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId);
+    if (!ocorrencia) return false;
+    return ocorrencia.data >= dataInicio && (!dataFim || ocorrencia.data <= dataFim);
+  });
+
+  const contrato = contratos.find((c) => c.alunaId === alunaId && c.situacao !== 'encerrado');
+
+  for (const agendamento of noPeriodo) {
+    await agendamentoRepositorio.atualizar(agendamento.id, {
+      situacao: 'cancelado',
+      origemCancelamento: 'administracao',
+    });
+    if (contrato && !agendamento.experimental) {
+      await contratoRepositorio.atualizar(contrato.id, {
+        saldoAulas: contrato.saldoAulas + 1,
+      });
+    }
+    await notificacaoRepositorio.criar({
+      destinatarioId: alunaId,
+      evento: 'agendamento_cancelado_pela_administracao',
+      canal: 'email',
+      conteudo: `Seu agendamento foi cancelado. Motivo: ${motivo}. A aula voltou para o seu saldo.`,
+      dataEnvio: new Date().toISOString(),
+      situacaoEnvio: 'enviada',
+    });
+  }
+
+  return noPeriodo.length;
+}
+
+/**
+ * Aulas efetivamente realizadas por uma aluna dentro de um intervalo —
+ * base do recálculo de saldo na alteração de plano (RF-PLN-04).
+ */
+export async function contarAulasRealizadasNoPeriodo(
+  alunaId: string,
+  dataInicio: string,
+  dataFim: string,
+): Promise<number> {
+  const [agendamentos, ocorrencias] = await Promise.all([
+    agendamentoRepositorio.listar(),
+    ocorrenciaSessaoRepositorio.listar(),
+  ]);
+
+  return agendamentos.filter((agendamento) => {
+    if (agendamento.alunaId !== alunaId || agendamento.situacao !== 'realizado') return false;
+    const ocorrencia = ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId);
+    return ocorrencia !== undefined && ocorrencia.data >= dataInicio && ocorrencia.data <= dataFim;
+  }).length;
+}
+
+/**
  * Prévia de impacto de uma data de exceção (RF-EXC-03): quais sessões
  * ocorrem naquela data e quantas alunas seriam afetadas.
  */

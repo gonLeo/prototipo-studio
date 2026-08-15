@@ -16,6 +16,12 @@ import { ProfessorasPage } from './pages/administracao/ProfessorasPage';
 import { CategoriasProfessoraPage } from './pages/administracao/CategoriasProfessoraPage';
 import { GradePage } from './pages/administracao/GradePage';
 import { ExcecoesPage } from './pages/administracao/ExcecoesPage';
+import { PacotesPage } from './pages/administracao/PacotesPage';
+import { AlunasPage } from './pages/administracao/AlunasPage';
+import { AlunaFichaPage } from './pages/administracao/AlunaFichaPage';
+import { TermosPage } from './pages/administracao/TermosPage';
+import { MatriculaPage } from './pages/MatriculaPage';
+import { PainelAlunaPage } from './pages/aluna/PainelAlunaPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -65,6 +71,10 @@ function App() {
                 <Route path="categorias" element={<CategoriasProfessoraPage />} />
                 <Route path="grade" element={<GradePage />} />
                 <Route path="excecoes" element={<ExcecoesPage />} />
+                <Route path="alunas" element={<AlunasPage />} />
+                <Route path="alunas/:alunaId" element={<AlunaFichaPage />} />
+                <Route path="pacotes" element={<PacotesPage />} />
+                <Route path="termos" element={<TermosPage />} />
               </Route>
               <Route
                 path="/professora"
@@ -84,16 +94,12 @@ function App() {
                 path="/aluna"
                 element={
                   <RotaComPerfil perfilExigido="aluna">
-                    <PainelPlaceholder
-                      titulo="Painel da Aluna"
-                      proximasFases={[
-                        'Fase 3 — ficha da aluna, pacote e situação financeira',
-                        'Fase 4 — agendamento, cancelamento e justificativa de falta',
-                      ]}
-                    />
+                    <PainelAlunaPage />
                   </RotaComPerfil>
                 }
               />
+              {/* Link público de auto-matrícula (RF-ALU-04): fora da casca do sistema e sem sessão. */}
+              <Route path="/matricula" element={<MatriculaPage />} />
               <Route path="/" element={<RotaInicial />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

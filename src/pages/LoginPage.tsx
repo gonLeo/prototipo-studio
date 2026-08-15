@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usuarioRepositorio } from '../services/repositorios';
 import { useSessao } from '../hooks/useSessao';
 import type { PerfilAcesso, Usuario } from '../types/domain';
@@ -48,6 +48,13 @@ export function LoginPage() {
         </div>
 
         {carregando && <p className="text-center text-sm text-neutral-500">Carregando usuárias de exemplo…</p>}
+
+        <p className="mb-4 rounded-lg border border-neutral-200 bg-white p-3 text-center text-sm text-neutral-600 shadow-sm">
+          Quer simular uma matrícula pelo site?{' '}
+          <Link to="/matricula" className="font-medium text-primary-700 hover:text-primary-800">
+            Abrir a matrícula pública
+          </Link>
+        </p>
 
         <ul className="flex flex-col gap-3">
           {usuarios.map((usuario) => (

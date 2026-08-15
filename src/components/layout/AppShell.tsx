@@ -29,6 +29,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
     {
       titulo: 'Operação',
       itens: [
+        { to: '/administracao/alunas', label: 'Alunas' },
         { to: '/administracao/grade', label: 'Grade de horários' },
         { to: '/administracao/excecoes', label: 'Exceções' },
       ],
@@ -36,12 +37,14 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
     {
       titulo: 'Configuração',
       itens: [
+        { to: '/administracao/pacotes', label: 'Pacotes' },
         { to: '/administracao/modalidades', label: 'Modalidades' },
         { to: '/administracao/espacos', label: 'Espaços' },
         { to: '/administracao/studio', label: 'Studio e horário' },
         { to: '/administracao/parametros', label: 'Parâmetros' },
         { to: '/administracao/professoras', label: 'Professoras' },
         { to: '/administracao/categorias', label: 'Categorias' },
+        { to: '/administracao/termos', label: 'Termo de aceite' },
       ],
     },
   ],

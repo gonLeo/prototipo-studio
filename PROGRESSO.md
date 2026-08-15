@@ -5,7 +5,7 @@ Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança 
 - [x] Fase 0 — Fundação técnica (setup, tipos, serviços, roteamento, sessão simulada, reset)
 - [x] Fase 1 — M1 Configuração Base + M4 Professoras e Categorias
 - [x] Fase 2 — M5 Grade de Horários + M6 Calendário de Exceções
-- [ ] Fase 3 — M2 Cadastro de Alunas + M3 Pacotes e Contratos
+- [x] Fase 3 — M2 Cadastro de Alunas + M3 Pacotes e Contratos
 - [ ] Fase 4 — M7 Agendamento de Aulas + M8 Cancelamento e Justificativa
 - [ ] Fase 5 — M9 Presença e Chamada + M10 Comissão e Fechamento
 - [ ] Fase 6 — M11 Cobranças e Financeiro
@@ -127,3 +127,57 @@ A navegação da Administração passou a ter dois grupos: **Operação** (Grade
 - Corrigido bug real e pré-existente no **"Resetar protótipo"**: o reset recria os registros via POST, e o json-server **ignora o `id` enviado** e gera um novo — então todas as chaves estrangeiras do backfill ficavam órfãs depois de um reset (a grade mostrava "Modalidade removida"/"Professora removida", e o mesmo valia para as professoras da Fase 1). O reset agora recria os recursos em ordem de dependência e traduz cada FK do id original para o id realmente gravado, com o mapa de chaves estrangeiras declarado em `src/services/reset.ts`. **Toda entidade nova que referencie outra precisa ser registrada nesse mapa.**
 
 Próxima fase (Fase 3) usa esta grade para o cadastro de alunas (M2) e os pacotes e contratos (M3) — é ela que passa a preencher `alunas`, `contratos` e `agendamentos`, dando efeito visível às regras de ocupação e devolução de crédito que já estão implementadas aqui.
+
+## Fase 3 — o que foi entregue
+
+**Cadastro de alunas (M2) e pacotes/contratos (M3), com o perfil Aluna ganhando tela real.**
+
+Novas telas na Administração: **Alunas** e **Pacotes** (mais **Termo de aceite**, em Configuração), além da **ficha da aluna**. Fora do sistema, o link público de **auto-matrícula** em `/matricula`.
+
+### M2 — Cadastro de Alunas
+
+- **Cadastro administrativo** (RF-ALU-01/02): dados pessoais + pacote + duração + data da primeira cobrança + bolsa, tudo na mesma tela. E-mail e CPF são únicos, e a mensagem de erro **aponta de quem é o cadastro existente** em vez de só recusar.
+- **Envio de acesso** (RF-ALU-03): ao concluir, é registrada a notificação com o saldo creditado e a orientação de assinar o termo.
+- **Auto-matrícula pelo site** (RF-ALU-04): fluxo público em quatro passos — dados, pacote, termo + anamnese, pagamento — com acesso liberado automaticamente ao final, sem aprovação manual.
+- **Termo de aceite versionado** (RF-ALU-05/06): tela de publicação de versões; a versão vigente é a última publicada e as anteriores ficam preservadas. O aceite grava usuária, data, hora, IP e **o conteúdo integral** do texto aceito — se o termo mudar depois, o registro continua íntegro.
+- **Anamnese** (RF-ALU-07): preenchida pela própria aluna junto do aceite, respostas autodeclaradas, sem validação da administração.
+- **Bloqueio até o aceite** (RF-ALU-08): a aluna cadastrada pela administração nasce "aguardando aceite" e, ao entrar, só vê a tela de termo + anamnese. Depois de aceitar, o painel normal aparece.
+- **Ficha da aluna** (RF-ALU-09): dados cadastrais, anamnese, pacote, saldo, validade, mensalidade com bolsa, e os históricos de contratos, alterações de plano, bolsas, pausas, frequência e pagamentos.
+- **Lista com busca e filtros** (RF-ALU-10, RF-BOL-09): busca por nome, e-mail ou CPF e filtros por situação, "pacote a vencer" e "bolsistas".
+
+### M3 — Pacotes e Contratos
+
+- **Pacotes** (RF-PAC-01/02/06): CRUD com aulas por ciclo, aulas por semana, valor mensal, duração, validade do ciclo e limite de dias de pausa. Inativar tira o pacote das novas contratações sem afetar contratos vigentes; excluir é bloqueado se o pacote já foi contratado.
+- **Vencimento e vigência** (RF-PAC-04/05): o ciclo vence sempre no dia de entrada da aluna, e o término do contrato sai da duração contratada (semestral = 6 meses).
+- **Renovação de ciclo** (RF-PAC-07/08): credita as aulas do pacote **somando as não realizadas** do ciclo anterior e avança o vencimento em um mês.
+- **Alteração de plano** (RF-PLN-01 a 07): comparativo lado a lado do plano atual e do novo, com o proporcional já consumido, o crédito da sobra, o custo do novo plano pelos dias restantes, a diferença a cobrar (ou creditar), o saldo resultante e a data de término — que **não se move**. Tudo registrado no histórico com autor e valores.
+- **Bolsa** (RF-BOL-01 a 09): percentual de 0 a 100% exclusivo do cadastro administrativo, com o valor cobrado calculado e exibido na hora (valor cheio riscado ao lado) e "Isenta — nenhuma cobrança será gerada" em 100%. Alterações valem a partir do próximo ciclo e vão para o histórico com motivo.
+- **Trancamento, suspensão, encerramento e reativação** (RF-CTR-01 a 09): o mecanismo é escolhido pela duração do contrato (semestral tranca, mensal suspende), com prévia do efeito na validade antes de confirmar, cancelamento das aulas do período com devolução de crédito, motivo estruturado no encerramento e reativação por novo pacote preservando o histórico.
+
+### Decisões de arquitetura desta fase
+
+- **`Aluna.percentualBolsa` e `Contrato.percentualBolsa` não são redundância acidental**: o da aluna é o percentual **vigente** (vale do próximo ciclo em diante) e o do contrato é o **aplicado no ciclo corrente**. É exatamente o que RF-BOL-07 pede ao dizer que a alteração não tem efeito retroativo.
+- Cálculos de contrato (proporcional, saldo, bolsa, projeção de validade) ficam puros em `src/utils/contrato.ts`, separados das regras que gravam, em `src/hooks/contratosDeAluna.ts`. As duas fórmulas exemplificadas no escopo (RF-PLN-04 e RF-PAC-08) foram conferidas contra os números do próprio documento.
+- **Aulas realizadas são contadas dos agendamentos**, não deduzidas do saldo — o número fica correto quando o M7/M9 existirem, e hoje resulta em zero sem inventar dado.
+- A renovação de ciclo é disparada pela administração na ficha. No sistema final ela é automática na data de vencimento (RF-PAC-07); a regra aplicada é a mesma, só muda o gatilho, que aqui não tem agendador.
+- **RF-ALU-11 (conteúdo da anamnese) está "Em definição" no escopo**: as perguntas em `src/data/anamnese.ts` são uma referência de exemplo, sinalizada como tal, no mesmo tratamento dado aos pontos em aberto PA-01 a PA-06.
+- O pagamento da auto-matrícula é simulado — o gateway entra no M11 (Fase 6). O agendamento da primeira aula, previsto no mesmo fluxo pelo escopo, depende do M7 e entra na Fase 4.
+- Backfill expandido: 4 pacotes, 1 versão do termo, e as duas alunas de exemplo que já existiam como usuárias agora têm cadastro completo — Larissa ativa (pacote 8 aulas, saldo 6, anamnese preenchida e aceite registrado) e Fernanda aguardando aceite (pacote 4 aulas, bolsista de 50%).
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"** para carregar os pacotes e alunas novos.
+2. **Pacotes**: criar, editar, inativar; tentar excluir o "Pacote 8 aulas" (bloqueia, porque a Larissa já o contratou).
+3. **Alunas** → **Nova aluna**: cadastrar com o e-mail `larissa@example.com` (deve bloquear apontando o cadastro existente). Cadastrar uma nova válida com bolsa de 50% e conferir o valor calculado com o cheio riscado; com 100%, vira "Isenta".
+4. Usar os filtros da lista (Aguardando aceite, Bolsistas, Pacote a vencer) e a busca por nome/e-mail/CPF.
+5. **Abrir ficha** da Larissa: conferir dados, anamnese, contrato, saldo e validade.
+   - **Alterar plano** para o de 12 aulas: confira o comparativo, a diferença proporcional e o saldo resultante; confirme e veja o histórico de alterações preenchido.
+   - **Bolsa**: conceder 30% com motivo e conferir o histórico de bolsa.
+   - **Renovar ciclo**: o saldo do ciclo atual é somado às aulas do novo e o vencimento avança um mês.
+   - **Suspender** (contrato mensal): informar período e ver a prévia da validade projetada antes de confirmar; depois **Registrar retorno**.
+   - **Encerrar** com motivo e, na sequência, **Reativar** com um novo pacote — o contrato encerrado permanece no histórico.
+6. **Termo de aceite** (Configuração): publicar uma nova versão e conferir que a anterior fica "Substituída", com a contagem de aceites preservada.
+7. Sair e entrar como **Fernanda Alves** (Aluna): ela está "aguardando aceite" e só vê o termo + anamnese. Aceitar e ver o painel com saldo, validade e mensalidade (com os 50% de bolsa aplicados).
+8. Na tela de login, abrir **"Abrir a matrícula pública"** e percorrer o fluxo de auto-matrícula até a conclusão; depois entrar com a aluna criada — ela já entra liberada, sem passar pelo aceite de novo.
+
+Próxima fase (Fase 4) usa estes contratos e saldos para o agendamento de aulas (M7) e o cancelamento com justificativa (M8) — é ela que passa a consumir o saldo, preencher a ocupação da grade e dar efeito visível às devoluções de crédito já implementadas nas fases 2 e 3.

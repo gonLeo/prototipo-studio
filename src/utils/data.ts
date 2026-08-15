@@ -64,6 +64,25 @@ export function somarDias(iso: string, dias: number): string {
   return paraISO(data);
 }
 
+/**
+ * Soma meses mantendo o dia do mês (RF-PAC-05: o vencimento é sempre o dia
+ * de entrada da aluna). Quando o dia não existe no mês de destino — 31 de
+ * janeiro + 1 mês —, cai no último dia daquele mês em vez de virar para o
+ * mês seguinte.
+ */
+export function somarMeses(iso: string, meses: number): string {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const alvo = new Date(Date.UTC(ano, mes - 1 + meses, 1));
+  const ultimoDia = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  return paraISO(new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth(), Math.min(dia, ultimoDia))));
+}
+
+/** Dias inteiros de `inicioISO` até `fimISO` (negativo se `fim` for anterior). */
+export function diferencaEmDias(inicioISO: string, fimISO: string): number {
+  const MS_POR_DIA = 24 * 60 * 60 * 1000;
+  return Math.round((paraUTC(fimISO).getTime() - paraUTC(inicioISO).getTime()) / MS_POR_DIA);
+}
+
 /** Segunda-feira da semana em que a data cai. */
 export function inicioDaSemana(iso: string): string {
   const diaDaSemana = paraUTC(iso).getUTCDay();

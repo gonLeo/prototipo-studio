@@ -16,6 +16,8 @@ interface SessaoContexto {
   carregando: boolean;
   entrarComo: (usuario: Usuario, perfil: PerfilAcesso) => void;
   trocarPerfil: (perfil: PerfilAcesso) => void;
+  /** Relê o usuário da sessão — usado quando a própria tela muda a situação dele (ex.: aceite do termo). */
+  recarregarUsuario: () => Promise<void>;
   sair: () => void;
 }
 
@@ -74,6 +76,12 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
     [usuario],
   );
 
+  const recarregarUsuario = useCallback(async () => {
+    if (!usuario) return;
+    const atualizado = await usuarioRepositorio.buscarPorId(usuario.id);
+    if (atualizado) setUsuario(atualizado);
+  }, [usuario]);
+
   const sair = useCallback(() => {
     setUsuario(undefined);
     setPerfilAtivo(undefined);
@@ -81,8 +89,8 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const valor = useMemo(
-    () => ({ usuario, perfilAtivo, carregando, entrarComo, trocarPerfil, sair }),
-    [usuario, perfilAtivo, carregando, entrarComo, trocarPerfil, sair],
+    () => ({ usuario, perfilAtivo, carregando, entrarComo, trocarPerfil, recarregarUsuario, sair }),
+    [usuario, perfilAtivo, carregando, entrarComo, trocarPerfil, recarregarUsuario, sair],
   );
 
   return <SessaoContext.Provider value={valor}>{children}</SessaoContext.Provider>;

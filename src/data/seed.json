@@ -278,12 +278,140 @@
       "autorId": "usr-admin"
     }
   ],
-  "alunas": [],
-  "anamneses": [],
-  "termosAceite": [],
-  "aceitesRegistrados": [],
-  "pacotes": [],
-  "contratos": [],
+  "alunas": [
+    {
+      "id": "alu-larissa",
+      "usuarioId": "usr-aluna-1",
+      "telefone": "(11) 98888-1010",
+      "dataNascimento": "1995-03-22",
+      "contatoEmergencia": "Marcos Prado — (11) 97777-2020",
+      "origem": "direta",
+      "situacao": "ativa",
+      "bolsista": false,
+      "percentualBolsa": 0
+    },
+    {
+      "id": "alu-fernanda",
+      "usuarioId": "usr-aluna-2",
+      "telefone": "(11) 96666-3030",
+      "dataNascimento": "1990-11-08",
+      "contatoEmergencia": "Juliana Alves — (11) 95555-4040",
+      "origem": "direta",
+      "situacao": "aguardando_aceite",
+      "bolsista": true,
+      "percentualBolsa": 50
+    }
+  ],
+  "anamneses": [
+    {
+      "id": "ana-larissa",
+      "alunaId": "alu-larissa",
+      "dataPreenchimento": "2026-08-10T14:30:00.000Z",
+      "versaoQuestionario": 1,
+      "respostas": {
+        "lesao_ou_cirurgia": "Sim — cirurgia no ombro direito em 2022, liberada para atividade",
+        "dor_articular": "Não",
+        "condicao_cardiaca": "Não",
+        "medicacao_continua": "Não",
+        "gestante": "Não",
+        "pratica_anterior": "Fiz um semestre de pole em outro studio em 2024.",
+        "observacoes": "Prefiro evitar exercícios de carga alta no ombro direito."
+      }
+    }
+  ],
+  "termosAceite": [
+    {
+      "id": "termo-v1",
+      "versao": 1,
+      "conteudo": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote contratado pela aluna.\n\n2. PACOTE E VIGÊNCIA\nO pacote contratado dá direito à quantidade de aulas indicada no ciclo, válidas dentro do prazo de vigência informado no ato da contratação. Aulas não realizadas dentro do ciclo seguem as regras de transferência previstas no contrato.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos fora do prazo consomem a aula do saldo.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nA cobrança é mensal e recorrente, na data de entrada da aluna, pelo valor do pacote contratado, considerando eventual desconto concedido.\n\n6. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima.",
+      "dataPublicacao": "2026-01-15T09:00:00.000Z",
+      "situacao": "ativo"
+    }
+  ],
+  "aceitesRegistrados": [
+    {
+      "id": "ace-larissa",
+      "usuarioId": "usr-aluna-1",
+      "termoVersaoId": "termo-v1",
+      "dataHora": "2026-08-10T14:28:00.000Z",
+      "enderecoIp": "203.0.113.10 (simulado no protótipo)",
+      "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote contratado pela aluna.\n\n2. PACOTE E VIGÊNCIA\nO pacote contratado dá direito à quantidade de aulas indicada no ciclo, válidas dentro do prazo de vigência informado no ato da contratação. Aulas não realizadas dentro do ciclo seguem as regras de transferência previstas no contrato.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos fora do prazo consomem a aula do saldo.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nA cobrança é mensal e recorrente, na data de entrada da aluna, pelo valor do pacote contratado, considerando eventual desconto concedido.\n\n6. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
+    }
+  ],
+  "pacotes": [
+    {
+      "id": "pac-4",
+      "nome": "Pacote 4 aulas",
+      "valorMensal": 220,
+      "aulasPorCiclo": 4,
+      "aulasPorSemana": 1,
+      "duracaoMeses": 12,
+      "validadeCicloDias": 30,
+      "limiteDiasPausa": 15,
+      "situacao": "ativo"
+    },
+    {
+      "id": "pac-8",
+      "nome": "Pacote 8 aulas",
+      "valorMensal": 380,
+      "aulasPorCiclo": 8,
+      "aulasPorSemana": 2,
+      "duracaoMeses": 12,
+      "validadeCicloDias": 30,
+      "limiteDiasPausa": 30,
+      "situacao": "ativo"
+    },
+    {
+      "id": "pac-12",
+      "nome": "Pacote 12 aulas",
+      "valorMensal": 520,
+      "aulasPorCiclo": 12,
+      "aulasPorSemana": 3,
+      "duracaoMeses": 12,
+      "validadeCicloDias": 30,
+      "limiteDiasPausa": 45,
+      "situacao": "ativo"
+    },
+    {
+      "id": "pac-livre",
+      "nome": "Pacote livre",
+      "valorMensal": 690,
+      "aulasPorCiclo": 20,
+      "aulasPorSemana": 5,
+      "duracaoMeses": 12,
+      "validadeCicloDias": 30,
+      "limiteDiasPausa": 60,
+      "situacao": "ativo"
+    }
+  ],
+  "contratos": [
+    {
+      "id": "ctr-larissa",
+      "alunaId": "alu-larissa",
+      "pacoteId": "pac-8",
+      "tipo": "mensal",
+      "dataInicio": "2026-08-10",
+      "dataVencimentoCiclo": "2026-09-10",
+      "dataTerminoContrato": "2027-08-10",
+      "saldoAulas": 6,
+      "diasAdicionaisConcedidos": 0,
+      "situacao": "ativo",
+      "percentualBolsa": 0
+    },
+    {
+      "id": "ctr-fernanda",
+      "alunaId": "alu-fernanda",
+      "pacoteId": "pac-4",
+      "tipo": "mensal",
+      "dataInicio": "2026-08-12",
+      "dataVencimentoCiclo": "2026-09-12",
+      "dataTerminoContrato": "2027-08-12",
+      "saldoAulas": 4,
+      "diasAdicionaisConcedidos": 0,
+      "situacao": "ativo",
+      "percentualBolsa": 50
+    }
+  ],
   "historicoPlanos": [],
   "historicoBolsas": [],
   "pausas": [],

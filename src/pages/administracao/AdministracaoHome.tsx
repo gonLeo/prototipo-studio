@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom';
 
 const CARTOES_OPERACAO = [
+  { to: '/administracao/alunas', titulo: 'Alunas', descricao: 'Cadastro, pacote, saldo, bolsa e ficha completa.' },
   { to: '/administracao/grade', titulo: 'Grade de horários', descricao: 'Sessões recorrentes, conflitos e ocupação.' },
   { to: '/administracao/excecoes', titulo: 'Calendário de exceções', descricao: 'Feriados, recessos e fechamentos.' },
 ];
 
 const CARTOES = [
+  { to: '/administracao/pacotes', titulo: 'Pacotes', descricao: 'Aulas por ciclo, valor mensal e duração.' },
+  { to: '/administracao/termos', titulo: 'Termo de aceite', descricao: 'Versões publicadas e quem aceitou cada uma.' },
   { to: '/administracao/modalidades', titulo: 'Modalidades', descricao: 'Nome, capacidade máxima e situação.' },
   { to: '/administracao/espacos', titulo: 'Espaços', descricao: 'Cadastro opcional de espaços do studio.' },
   { to: '/administracao/studio', titulo: 'Studio e horário', descricao: 'Dados do studio e dias/faixa de funcionamento.' },
