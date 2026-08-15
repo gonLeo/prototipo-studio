@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/*
+ * Identidade visual do protótipo: sóbria, de sistema administrativo (não
+ * de marca de studio) — slate neutro + azul como única cor de destaque,
+ * Inter em tudo (sem serifa). Ver README "Padrões de UI".
+ */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #0f172a;
+
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+}
+
 html,
 body,
 #root {
@@ -7,5 +40,6 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-900;
+  @apply bg-neutral-50 text-ink;
+  font-family: var(--font-sans);
 }

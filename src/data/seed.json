@@ -87,5 +87,30 @@
   "historicoCategorias": [
     { "id": "hist-cat-1", "professoraId": "prof-admin", "categoriaId": "cat-3", "dataInicioVigencia": "2026-01-05", "autorId": "usr-admin" },
     { "id": "hist-cat-2", "professoraId": "prof-2", "categoriaId": "cat-1", "dataInicioVigencia": "2026-03-10", "autorId": "usr-admin" }
-  ]
+  ],
+  "alunas": [],
+  "anamneses": [],
+  "termosAceite": [],
+  "aceitesRegistrados": [],
+  "pacotes": [],
+  "contratos": [],
+  "historicoPlanos": [],
+  "historicoBolsas": [],
+  "pausas": [],
+  "sessoes": [],
+  "ocorrenciasSessao": [],
+  "agendamentos": [],
+  "excecoesCalendario": [],
+  "chamadas": [],
+  "registrosPresenca": [],
+  "justificativas": [],
+  "solicitacoesCancelamento": [],
+  "comissoes": [],
+  "fechamentosComissao": [],
+  "cobrancas": [],
+  "tentativasCobranca": [],
+  "conveniosIntegracao": [],
+  "reservasConvenio": [],
+  "notificacoes": [],
+  "registrosAuditoria": []
 }

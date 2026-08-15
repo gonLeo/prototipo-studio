@@ -35,38 +35,43 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4 py-10">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Studio MUV — protótipo</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Ambiente de demonstração, sem senha real. Escolha uma usuária de exemplo e o perfil para entrar.
-        </p>
+    <div className="flex min-h-full items-center justify-center bg-neutral-100 px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-700 text-base font-bold text-white">
+            M
+          </span>
+          <h1 className="mt-3 text-2xl font-semibold text-ink">Studio MUV</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Ambiente de demonstração, sem senha real. Escolha uma usuária de exemplo e o perfil para entrar.
+          </p>
+        </div>
+
+        {carregando && <p className="text-center text-sm text-neutral-500">Carregando usuárias de exemplo…</p>}
+
+        <ul className="flex flex-col gap-3">
+          {usuarios.map((usuario) => (
+            <li key={usuario.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-ink">{usuario.nome}</p>
+              <p className="text-xs text-neutral-500">{usuario.email}</p>
+              {usuario.situacao === 'aguardando_aceite' && (
+                <p className="mt-1 text-xs font-medium text-amber-600">Aguardando aceite do termo</p>
+              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {usuario.perfis.map((perfil) => (
+                  <button
+                    key={perfil}
+                    onClick={() => acessar(usuario, perfil)}
+                    className="rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
+                  >
+                    Entrar como {ROTULO_PERFIL[perfil]}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
-
-      {carregando && <p className="text-sm text-slate-500">Carregando usuárias de exemplo…</p>}
-
-      <ul className="flex flex-col gap-3">
-        {usuarios.map((usuario) => (
-          <li key={usuario.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-slate-900">{usuario.nome}</p>
-            <p className="text-xs text-slate-500">{usuario.email}</p>
-            {usuario.situacao === 'aguardando_aceite' && (
-              <p className="mt-1 text-xs font-medium text-amber-600">Aguardando aceite do termo</p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {usuario.perfis.map((perfil) => (
-                <button
-                  key={perfil}
-                  onClick={() => acessar(usuario, perfil)}
-                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
-                >
-                  Entrar como {ROTULO_PERFIL[perfil]}
-                </button>
-              ))}
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

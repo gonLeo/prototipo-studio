@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SessaoProvider, useSessao } from './hooks/useSessao';
+import { ToastProvider } from './hooks/useToast';
+import { ConfirmProvider } from './hooks/useConfirm';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { PainelPlaceholder } from './pages/PainelPlaceholder';
@@ -39,57 +41,61 @@ function RotaInicial() {
 function App() {
   return (
     <BrowserRouter>
-      <SessaoProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/administracao"
-            element={
-              <RotaComPerfil perfilExigido="administracao">
-                <AdministracaoLayout />
-              </RotaComPerfil>
-            }
-          >
-            <Route index element={<AdministracaoHome />} />
-            <Route path="modalidades" element={<ModalidadesPage />} />
-            <Route path="espacos" element={<EspacosPage />} />
-            <Route path="studio" element={<StudioPage />} />
-            <Route path="parametros" element={<ParametrosPage />} />
-            <Route path="professoras" element={<ProfessorasPage />} />
-            <Route path="categorias" element={<CategoriasProfessoraPage />} />
-          </Route>
-          <Route
-            path="/professora"
-            element={
-              <RotaComPerfil perfilExigido="professora">
-                <PainelPlaceholder
-                  titulo="Painel da Professora"
-                  proximasFases={[
-                    'Fase 2 — grade de horários com as próprias sessões',
-                    'Fase 5 — chamada, presença e acompanhamento de comissão',
-                  ]}
-                />
-              </RotaComPerfil>
-            }
-          />
-          <Route
-            path="/aluna"
-            element={
-              <RotaComPerfil perfilExigido="aluna">
-                <PainelPlaceholder
-                  titulo="Painel da Aluna"
-                  proximasFases={[
-                    'Fase 3 — ficha da aluna, pacote e situação financeira',
-                    'Fase 4 — agendamento, cancelamento e justificativa de falta',
-                  ]}
-                />
-              </RotaComPerfil>
-            }
-          />
-          <Route path="/" element={<RotaInicial />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </SessaoProvider>
+      <ToastProvider>
+        <ConfirmProvider>
+          <SessaoProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/administracao"
+                element={
+                  <RotaComPerfil perfilExigido="administracao">
+                    <AdministracaoLayout />
+                  </RotaComPerfil>
+                }
+              >
+                <Route index element={<AdministracaoHome />} />
+                <Route path="modalidades" element={<ModalidadesPage />} />
+                <Route path="espacos" element={<EspacosPage />} />
+                <Route path="studio" element={<StudioPage />} />
+                <Route path="parametros" element={<ParametrosPage />} />
+                <Route path="professoras" element={<ProfessorasPage />} />
+                <Route path="categorias" element={<CategoriasProfessoraPage />} />
+              </Route>
+              <Route
+                path="/professora"
+                element={
+                  <RotaComPerfil perfilExigido="professora">
+                    <PainelPlaceholder
+                      titulo="Painel da Professora"
+                      proximasFases={[
+                        'Fase 2 — grade de horários com as próprias sessões',
+                        'Fase 5 — chamada, presença e acompanhamento de comissão',
+                      ]}
+                    />
+                  </RotaComPerfil>
+                }
+              />
+              <Route
+                path="/aluna"
+                element={
+                  <RotaComPerfil perfilExigido="aluna">
+                    <PainelPlaceholder
+                      titulo="Painel da Aluna"
+                      proximasFases={[
+                        'Fase 3 — ficha da aluna, pacote e situação financeira',
+                        'Fase 4 — agendamento, cancelamento e justificativa de falta',
+                      ]}
+                    />
+                  </RotaComPerfil>
+                }
+              />
+              <Route path="/" element={<RotaInicial />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </SessaoProvider>
+        </ConfirmProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

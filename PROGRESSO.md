@@ -71,4 +71,10 @@ Deixado de fora intencionalmente nesta fase: RF-PRO-04 (termo de aceite da profe
 8. **Professoras**: cadastrar uma nova professora, trocar a categoria de uma existente e conferir em "Ver histórico" que a troca ficou registrada, tentar cadastrar com e-mail já usado (deve bloquear).
 9. "Resetar protótipo" continua funcionando e agora restaura todos esses recursos também.
 
+### Ajustes pós-entrega (mesma fase, antes da validação)
+
+- Corrigido bug real: excluir modalidade falhava porque `sessoes` (recurso só usado pela Fase 2) não existia no backfill — json-server devolve 404 para uma chave inexistente, não lista vazia, e isso quebrava a checagem de "sessão vinculada". Todos os recursos do modelo de dados agora existem no seed como array vazio desde o início.
+- Horário de funcionamento do studio: era um único intervalo do dia. Agora é configurável por dia da semana, com múltiplos intervalos por dia (ex.: segunda 08h-11h e 15h-18h), reordenados automaticamente por horário de início assim que um intervalo fica completo, com validação de sobreposição em tempo real. Novo intervalo nasce vazio (não pré-preenchido).
+- Padrões de UI fixados para o resto do projeto (documentados em `README.md`): confirmação sempre em modal (`useConfirm`), erros/sucessos de ação sempre em toast (`useToast`), seletor de horário próprio (`TimePicker`) no lugar do `input[type=time]` nativo.
+
 Próxima fase (Fase 2) usa essas modalidades, espaços, professoras e horário de funcionamento para construir a grade de horários (M5) e o calendário de exceções (M6).

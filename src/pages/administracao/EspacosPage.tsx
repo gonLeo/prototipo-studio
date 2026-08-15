@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useEspacos } from '../../hooks/useEspacos';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import type { Espaco } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { TextField } from '../../components/ui/Field';
+import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 
 function FormularioEspaco({
   espaco,
@@ -52,44 +55,79 @@ function FormularioEspaco({
 
 export function EspacosPage() {
   const { espacos, carregando, criar, atualizar, alternarSituacao, remover } = useEspacos();
+  const confirmar = useConfirm();
+  const mostrarToast = useToast();
   const [modalAberto, setModalAberto] = useState<'novo' | Espaco | null>(null);
+
+  async function excluir(espaco: Espaco) {
+    const ok = await confirmar({
+      titulo: 'Excluir espaço',
+      mensagem: `Excluir "${espaco.nome}"? Esta ação não pode ser desfeita.`,
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    });
+    if (!ok) return;
+    try {
+      await remover(espaco.id);
+      mostrarToast('Espaço excluído.', 'sucesso');
+    } catch (erroCapturado) {
+      mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
+    }
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Espaços</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Configuração</p>
+          <h1 className="mt-1 text-2xl font-semibold text-ink">Espaços</h1>
+          <p className="mt-1 text-sm text-neutral-500">
             Cadastro opcional. Com um único espaço, a validação de conflito de sala é automática.
           </p>
         </div>
         <Button onClick={() => setModalAberto('novo')}>Novo espaço</Button>
       </div>
 
-      {carregando && <p className="mt-4 text-sm text-slate-500">Carregando…</p>}
+      {carregando && <p className="mt-4 text-sm text-neutral-500">Carregando…</p>}
 
-      <ul className="mt-4 flex flex-col gap-2">
-        {espacos.map((espaco) => (
-          <li key={espaco.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-            <p className="text-sm font-medium text-slate-900">{espaco.nome}</p>
-            <div className="flex items-center gap-2">
-              <Badge tom={espaco.situacao === 'ativo' ? 'sucesso' : 'neutro'}>
-                {espaco.situacao === 'ativo' ? 'Ativo' : 'Inativo'}
-              </Badge>
-              <Button variante="fantasma" onClick={() => setModalAberto(espaco)}>
-                Editar
-              </Button>
-              <Button variante="fantasma" onClick={() => alternarSituacao(espaco)}>
-                {espaco.situacao === 'ativo' ? 'Inativar' : 'Ativar'}
-              </Button>
-              <Button variante="perigo" onClick={() => remover(espaco.id)}>
-                Excluir
-              </Button>
-            </div>
-          </li>
-        ))}
-        {!carregando && espacos.length === 0 && <p className="text-sm text-slate-500">Nenhum espaço cadastrado ainda.</p>}
-      </ul>
+      {!carregando && espacos.length === 0 && <p className="mt-6 text-sm text-neutral-500">Nenhum espaço cadastrado ainda.</p>}
+
+      {!carregando && espacos.length > 0 && (
+        <Tabela
+          rotulo="Espaços cadastrados"
+          itens={espacos}
+          chave={(espaco) => espaco.id}
+          busca={{ placeholder: 'Buscar por nome', corresponde: (espaco, termo) => espaco.nome.toLowerCase().includes(termo) }}
+          colunas={[
+            { chave: 'nome', rotulo: 'Espaço' },
+            { chave: 'situacao', rotulo: 'Situação' },
+            { chave: 'acoes', rotulo: '', alinhamento: 'direita' },
+          ]}
+          renderLinha={(espaco) => (
+            <LinhaTabela key={espaco.id}>
+              <CelulaTabela className="font-medium text-ink">{espaco.nome}</CelulaTabela>
+              <CelulaTabela>
+                <Badge tom={espaco.situacao === 'ativo' ? 'sucesso' : 'neutro'}>
+                  {espaco.situacao === 'ativo' ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </CelulaTabela>
+              <CelulaTabela alinhamento="direita">
+                <div className="inline-flex items-center gap-1">
+                  <Button variante="fantasma" onClick={() => setModalAberto(espaco)}>
+                    Editar
+                  </Button>
+                  <Button variante="fantasma" onClick={() => alternarSituacao(espaco)}>
+                    {espaco.situacao === 'ativo' ? 'Inativar' : 'Ativar'}
+                  </Button>
+                  <Button variante="perigo" onClick={() => excluir(espaco)}>
+                    Excluir
+                  </Button>
+                </div>
+              </CelulaTabela>
+            </LinhaTabela>
+          )}
+        />
+      )}
 
       {modalAberto && (
         <Modal titulo={modalAberto === 'novo' ? 'Novo espaço' : 'Editar espaço'} onFechar={() => setModalAberto(null)}>

@@ -1,55 +1,40 @@
 import { useState } from 'react';
 import { resetarPrototipo } from '../services/reset';
+import { useConfirm } from '../hooks/useConfirm';
+import { useToast } from '../hooks/useToast';
 
 export function BotaoResetar() {
-  const [estado, setEstado] = useState<'ocioso' | 'confirmando' | 'resetando' | 'concluido' | 'erro'>('ocioso');
+  const confirmar = useConfirm();
+  const mostrarToast = useToast();
+  const [resetando, setResetando] = useState(false);
 
-  async function confirmar() {
-    setEstado('resetando');
+  async function iniciar() {
+    const ok = await confirmar({
+      titulo: 'Resetar protótipo',
+      mensagem: 'Todas as alterações feitas na navegação serão apagadas e os dados originais de exemplo (backfill) serão restaurados. Esta ação não pode ser desfeita.',
+      textoConfirmar: 'Resetar',
+      perigo: true,
+    });
+    if (!ok) return;
+
+    setResetando(true);
     try {
       await resetarPrototipo();
-      setEstado('concluido');
-      setTimeout(() => window.location.assign('/login'), 1200);
+      mostrarToast('Protótipo resetado — dados originais restaurados.', 'sucesso');
+      setTimeout(() => window.location.assign('/login'), 800);
     } catch {
-      setEstado('erro');
+      mostrarToast('Não foi possível resetar o protótipo. Tente novamente.', 'erro');
+      setResetando(false);
     }
-  }
-
-  if (estado === 'concluido') {
-    return (
-      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
-        Protótipo resetado ✓
-      </span>
-    );
-  }
-
-  if (estado === 'confirmando') {
-    return (
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-slate-600">Apagar tudo e restaurar o backfill?</span>
-        <button
-          onClick={confirmar}
-          className="rounded-md bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-700"
-        >
-          Confirmar
-        </button>
-        <button
-          onClick={() => setEstado('ocioso')}
-          className="rounded-md bg-slate-200 px-2 py-1 font-medium text-slate-700 hover:bg-slate-300"
-        >
-          Cancelar
-        </button>
-      </div>
-    );
   }
 
   return (
     <button
-      onClick={() => setEstado('confirmando')}
-      disabled={estado === 'resetando'}
-      className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+      onClick={iniciar}
+      disabled={resetando}
+      className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
     >
-      {estado === 'resetando' ? 'Resetando…' : estado === 'erro' ? 'Erro — tentar de novo' : 'Resetar protótipo'}
+      {resetando ? 'Resetando…' : 'Resetar protótipo'}
     </button>
   );
 }

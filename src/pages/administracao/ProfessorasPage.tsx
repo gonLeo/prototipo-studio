@@ -4,11 +4,13 @@ import { useProfessoras } from '../../hooks/useProfessoras';
 import type { ProfessoraComDetalhes } from '../../hooks/useProfessoras';
 import { useCategoriasProfessora } from '../../hooks/useCategoriasProfessora';
 import { useSessao } from '../../hooks/useSessao';
+import { useToast } from '../../hooks/useToast';
 import type { HistoricoCategoria } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { TextField, SelectField } from '../../components/ui/Field';
+import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 
 function FormularioProfessora({
   professora,
@@ -44,18 +46,32 @@ function FormularioProfessora({
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
-      <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
-      <TextField label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <TextField label="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} required />
-      {!professora && (
-        <SelectField label="Categoria vigente" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField
+          label="Nome"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          required
+          autoFocus
+          wrapperClassName="sm:col-span-2"
+        />
+        <TextField label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <TextField label="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} required />
+        <SelectField
+          label="Categoria vigente"
+          value={categoriaId}
+          onChange={(e) => setCategoriaId(e.target.value)}
+          required
+          dica={professora ? 'Trocar a categoria registra a mudança no histórico, sem efeito retroativo.' : undefined}
+          wrapperClassName="sm:col-span-2"
+        >
           {categorias.map((c) => (
             <option key={c.id} value={c.id}>
               {c.nome}
             </option>
           ))}
         </SelectField>
-      )}
+      </div>
       {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variante="secundaria" onClick={onFechar}>
@@ -84,14 +100,14 @@ function ModalHistorico({
     <Modal titulo={`Histórico de categoria — ${professora.usuario.nome}`} onFechar={onFechar}>
       <ul className="flex flex-col gap-2">
         {historico.map((item) => (
-          <li key={item.id} className="rounded-md border border-slate-200 p-2 text-sm">
-            <span className="font-medium text-slate-900">
+          <li key={item.id} className="rounded-md border border-neutral-200 p-2 text-sm">
+            <span className="font-medium text-ink">
               {categorias.find((c) => c.id === item.categoriaId)?.nome ?? 'Categoria removida'}
             </span>{' '}
-            <span className="text-slate-500">— vigente desde {item.dataInicioVigencia}</span>
+            <span className="text-neutral-500">— vigente desde {item.dataInicioVigencia}</span>
           </li>
         ))}
-        {historico.length === 0 && <p className="text-sm text-slate-500">Sem histórico registrado.</p>}
+        {historico.length === 0 && <p className="text-sm text-neutral-500">Sem histórico registrado.</p>}
       </ul>
     </Modal>
   );
@@ -102,87 +118,87 @@ export function ProfessorasPage() {
     useProfessoras();
   const { categorias } = useCategoriasProfessora();
   const { usuario } = useSessao();
+  const mostrarToast = useToast();
 
   const [modalAberto, setModalAberto] = useState<'novo' | ProfessoraComDetalhes | null>(null);
   const [historicoAberto, setHistoricoAberto] = useState<{ professora: ProfessoraComDetalhes; historico: HistoricoCategoria[] } | null>(
     null,
   );
-  const [erroLinha, setErroLinha] = useState<string>();
 
   async function abrirHistorico(professora: ProfessoraComDetalhes) {
     const historico = await buscarHistoricoCategoria(professora.id);
     setHistoricoAberto({ professora, historico });
   }
 
-  async function mudarCategoria(professora: ProfessoraComDetalhes, novaCategoriaId: string) {
-    if (!usuario) return;
-    setErroLinha(undefined);
-    try {
-      await trocarCategoria(professora, novaCategoriaId, usuario.id);
-    } catch (erroCapturado) {
-      setErroLinha(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
-    }
-  }
-
   async function alternar(professora: ProfessoraComDetalhes) {
-    setErroLinha(undefined);
     try {
       await alternarSituacao(professora);
     } catch (erroCapturado) {
-      setErroLinha(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+      mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
     }
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-900">Professoras</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Configuração</p>
+          <h1 className="mt-1 text-2xl font-semibold text-ink">Professoras</h1>
+        </div>
         <Button onClick={() => setModalAberto('novo')}>Nova professora</Button>
       </div>
 
-      {erroLinha && <p className="mt-3 text-sm font-medium text-rose-600">{erroLinha}</p>}
-      {carregando && <p className="mt-4 text-sm text-slate-500">Carregando…</p>}
+      {carregando && <p className="mt-4 text-sm text-neutral-500">Carregando…</p>}
 
-      <ul className="mt-4 flex flex-col gap-2">
-        {professoras.map((professora) => (
-          <li key={professora.id} className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-sm font-medium text-slate-900">{professora.usuario.nome}</p>
-                <p className="text-xs text-slate-500">{professora.usuario.email}</p>
-              </div>
-              <Badge tom={professora.situacao === 'ativa' ? 'sucesso' : 'neutro'}>
-                {professora.situacao === 'ativa' ? 'Ativa' : 'Inativa'}
-              </Badge>
-            </div>
+      {!carregando && professoras.length === 0 && (
+        <p className="mt-6 text-sm text-neutral-500">Nenhuma professora cadastrada ainda.</p>
+      )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <SelectField
-                label="Categoria"
-                value={professora.categoriaId}
-                onChange={(e) => mudarCategoria(professora, e.target.value)}
-                className="text-xs"
-              >
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </SelectField>
-              <Button variante="fantasma" onClick={() => abrirHistorico(professora)}>
-                Ver histórico
-              </Button>
-              <Button variante="fantasma" onClick={() => setModalAberto(professora)}>
-                Editar dados
-              </Button>
-              <Button variante="fantasma" onClick={() => alternar(professora)}>
-                {professora.situacao === 'ativa' ? 'Inativar' : 'Ativar'}
-              </Button>
-            </div>
-          </li>
-        ))}
-        {!carregando && professoras.length === 0 && <p className="text-sm text-slate-500">Nenhuma professora cadastrada ainda.</p>}
-      </ul>
+      {!carregando && professoras.length > 0 && (
+        <Tabela
+          rotulo="Professoras cadastradas"
+          itens={professoras}
+          chave={(professora) => professora.id}
+          busca={{
+            placeholder: 'Buscar por nome ou e-mail',
+            corresponde: (professora, termo) =>
+              professora.usuario.nome.toLowerCase().includes(termo) || professora.usuario.email.toLowerCase().includes(termo),
+          }}
+          colunas={[
+            { chave: 'nome', rotulo: 'Professora' },
+            { chave: 'categoria', rotulo: 'Categoria' },
+            { chave: 'situacao', rotulo: 'Situação' },
+            { chave: 'acoes', rotulo: '', alinhamento: 'direita' },
+          ]}
+          renderLinha={(professora) => (
+            <LinhaTabela key={professora.id}>
+              <CelulaTabela>
+                <p className="font-medium text-ink">{professora.usuario.nome}</p>
+                <p className="text-xs text-neutral-500">{professora.usuario.email}</p>
+              </CelulaTabela>
+              <CelulaTabela>{categorias.find((c) => c.id === professora.categoriaId)?.nome ?? '—'}</CelulaTabela>
+              <CelulaTabela>
+                <Badge tom={professora.situacao === 'ativa' ? 'sucesso' : 'neutro'}>
+                  {professora.situacao === 'ativa' ? 'Ativa' : 'Inativa'}
+                </Badge>
+              </CelulaTabela>
+              <CelulaTabela alinhamento="direita">
+                <div className="inline-flex items-center gap-1">
+                  <Button variante="fantasma" onClick={() => abrirHistorico(professora)}>
+                    Histórico
+                  </Button>
+                  <Button variante="fantasma" onClick={() => setModalAberto(professora)}>
+                    Editar
+                  </Button>
+                  <Button variante="fantasma" onClick={() => alternar(professora)}>
+                    {professora.situacao === 'ativa' ? 'Inativar' : 'Ativar'}
+                  </Button>
+                </div>
+              </CelulaTabela>
+            </LinhaTabela>
+          )}
+        />
+      )}
 
       {modalAberto && (
         <Modal titulo={modalAberto === 'novo' ? 'Nova professora' : 'Editar dados cadastrais'} onFechar={() => setModalAberto(null)}>
@@ -190,11 +206,12 @@ export function ProfessorasPage() {
             professora={modalAberto === 'novo' ? undefined : modalAberto}
             categorias={categorias}
             onSalvar={async (dados) => {
+              if (!usuario) return;
               if (modalAberto === 'novo') {
-                if (!usuario) return;
                 await criar({ ...dados, autorId: usuario.id });
               } else {
                 await atualizarDadosCadastrais(modalAberto, dados);
+                await trocarCategoria(modalAberto, dados.categoriaId, usuario.id);
               }
             }}
             onFechar={() => setModalAberto(null)}

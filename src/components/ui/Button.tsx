@@ -3,10 +3,10 @@ import type { ButtonHTMLAttributes } from 'react';
 type Variante = 'primaria' | 'secundaria' | 'perigo' | 'fantasma';
 
 const CLASSES_VARIANTE: Record<Variante, string> = {
-  primaria: 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-indigo-300',
-  secundaria: 'bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50',
-  perigo: 'bg-rose-600 text-white hover:bg-rose-700 disabled:bg-rose-300',
-  fantasma: 'text-slate-600 hover:bg-slate-100 disabled:opacity-50',
+  primaria: 'bg-primary-600 text-white shadow-sm hover:bg-primary-700 disabled:bg-primary-300',
+  secundaria: 'bg-white text-ink ring-1 ring-inset ring-neutral-300 hover:bg-neutral-100 disabled:opacity-50',
+  perigo: 'bg-rose-600 text-white shadow-sm hover:bg-rose-700 disabled:bg-rose-300',
+  fantasma: 'text-neutral-600 hover:bg-neutral-100 disabled:opacity-50',
 };
 
 interface BotaoProps extends ButtonHTMLAttributes<HTMLButtonElement> {

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useCategoriasProfessora } from '../../hooks/useCategoriasProfessora';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import type { CategoriaProfessora } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { TextField } from '../../components/ui/Field';
+import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 
 function FormularioCategoria({
   categoria,
@@ -37,16 +40,18 @@ function FormularioCategoria({
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
-      <TextField label="Nome da categoria" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
-      <TextField
-        label="Valor por aula (R$)"
-        type="number"
-        min={0.01}
-        step="0.01"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        required
-      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField label="Nome da categoria" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+        <TextField
+          label="Valor por aula (R$)"
+          type="number"
+          min={0.01}
+          step="0.01"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          required
+        />
+      </div>
       {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variante="secundaria" onClick={onFechar}>
@@ -62,57 +67,81 @@ function FormularioCategoria({
 
 export function CategoriasProfessoraPage() {
   const { categorias, carregando, criar, atualizar, alternarSituacao, remover } = useCategoriasProfessora();
+  const confirmar = useConfirm();
+  const mostrarToast = useToast();
   const [modalAberto, setModalAberto] = useState<'novo' | CategoriaProfessora | null>(null);
-  const [erroLista, setErroLista] = useState<string>();
 
   async function excluir(categoria: CategoriaProfessora) {
-    setErroLista(undefined);
-    if (!confirm(`Excluir a categoria "${categoria.nome}"?`)) return;
+    const ok = await confirmar({
+      titulo: 'Excluir categoria',
+      mensagem: `Excluir "${categoria.nome}"? Esta ação não pode ser desfeita.`,
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    });
+    if (!ok) return;
     try {
       await remover(categoria.id);
+      mostrarToast('Categoria excluída.', 'sucesso');
     } catch (erroCapturado) {
-      setErroLista(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+      mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
     }
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Categorias de professora</h1>
-          <p className="mt-1 text-sm text-slate-500">Base para o cálculo automático de comissão por aula.</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Configuração</p>
+          <h1 className="mt-1 text-2xl font-semibold text-ink">Categorias de professora</h1>
+          <p className="mt-1 text-sm text-neutral-500">Base para o cálculo automático de comissão por aula.</p>
         </div>
         <Button onClick={() => setModalAberto('novo')}>Nova categoria</Button>
       </div>
 
-      {erroLista && <p className="mt-3 text-sm font-medium text-rose-600">{erroLista}</p>}
-      {carregando && <p className="mt-4 text-sm text-slate-500">Carregando…</p>}
+      {carregando && <p className="mt-4 text-sm text-neutral-500">Carregando…</p>}
 
-      <ul className="mt-4 flex flex-col gap-2">
-        {categorias.map((categoria) => (
-          <li key={categoria.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-            <div>
-              <p className="text-sm font-medium text-slate-900">{categoria.nome}</p>
-              <p className="text-xs text-slate-500">R$ {categoria.valorPorAula.toFixed(2)} por aula</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge tom={categoria.situacao === 'ativo' ? 'sucesso' : 'neutro'}>
-                {categoria.situacao === 'ativo' ? 'Ativa' : 'Inativa'}
-              </Badge>
-              <Button variante="fantasma" onClick={() => setModalAberto(categoria)}>
-                Editar
-              </Button>
-              <Button variante="fantasma" onClick={() => alternarSituacao(categoria)}>
-                {categoria.situacao === 'ativo' ? 'Inativar' : 'Ativar'}
-              </Button>
-              <Button variante="perigo" onClick={() => excluir(categoria)}>
-                Excluir
-              </Button>
-            </div>
-          </li>
-        ))}
-        {!carregando && categorias.length === 0 && <p className="text-sm text-slate-500">Nenhuma categoria cadastrada ainda.</p>}
-      </ul>
+      {!carregando && categorias.length === 0 && (
+        <p className="mt-6 text-sm text-neutral-500">Nenhuma categoria cadastrada ainda.</p>
+      )}
+
+      {!carregando && categorias.length > 0 && (
+        <Tabela
+          rotulo="Categorias de professora cadastradas"
+          itens={categorias}
+          chave={(categoria) => categoria.id}
+          busca={{ placeholder: 'Buscar por nome', corresponde: (categoria, termo) => categoria.nome.toLowerCase().includes(termo) }}
+          colunas={[
+            { chave: 'nome', rotulo: 'Categoria' },
+            { chave: 'valor', rotulo: 'Valor por aula' },
+            { chave: 'situacao', rotulo: 'Situação' },
+            { chave: 'acoes', rotulo: '', alinhamento: 'direita' },
+          ]}
+          renderLinha={(categoria) => (
+            <LinhaTabela key={categoria.id}>
+              <CelulaTabela className="font-medium text-ink">{categoria.nome}</CelulaTabela>
+              <CelulaTabela>R$ {categoria.valorPorAula.toFixed(2)}</CelulaTabela>
+              <CelulaTabela>
+                <Badge tom={categoria.situacao === 'ativo' ? 'sucesso' : 'neutro'}>
+                  {categoria.situacao === 'ativo' ? 'Ativa' : 'Inativa'}
+                </Badge>
+              </CelulaTabela>
+              <CelulaTabela alinhamento="direita">
+                <div className="inline-flex items-center gap-1">
+                  <Button variante="fantasma" onClick={() => setModalAberto(categoria)}>
+                    Editar
+                  </Button>
+                  <Button variante="fantasma" onClick={() => alternarSituacao(categoria)}>
+                    {categoria.situacao === 'ativo' ? 'Inativar' : 'Ativar'}
+                  </Button>
+                  <Button variante="perigo" onClick={() => excluir(categoria)}>
+                    Excluir
+                  </Button>
+                </div>
+              </CelulaTabela>
+            </LinhaTabela>
+          )}
+        />
+      )}
 
       {modalAberto && (
         <Modal titulo={modalAberto === 'novo' ? 'Nova categoria' : 'Editar categoria'} onFechar={() => setModalAberto(null)}>

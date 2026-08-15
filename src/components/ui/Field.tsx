@@ -4,32 +4,35 @@ interface WrapperProps {
   label: string;
   erro?: string;
   dica?: string;
+  wrapperClassName?: string;
   children: ReactNode;
 }
 
-function CampoWrapper({ label, erro, dica, children }: WrapperProps) {
+function CampoWrapper({ label, erro, dica, wrapperClassName = '', children }: WrapperProps) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-slate-700">{label}</span>
+    <label className={`flex flex-col gap-1 text-sm ${wrapperClassName}`}>
+      <span className="font-medium text-neutral-700">{label}</span>
       {children}
-      {dica && !erro && <span className="text-xs text-slate-500">{dica}</span>}
+      {dica && !erro && <span className="text-xs text-neutral-500">{dica}</span>}
       {erro && <span className="text-xs font-medium text-rose-600">{erro}</span>}
     </label>
   );
 }
 
 const CLASSE_INPUT =
-  'rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100';
+  'rounded-md border border-neutral-300 px-3 py-2 text-sm text-ink focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100';
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   erro?: string;
   dica?: string;
+  /** Classe aplicada ao `<label>` que envolve o campo (ex.: `sm:col-span-2` num grid). */
+  wrapperClassName?: string;
 }
 
-export function TextField({ label, erro, dica, className = '', ...props }: TextFieldProps) {
+export function TextField({ label, erro, dica, wrapperClassName, className = '', ...props }: TextFieldProps) {
   return (
-    <CampoWrapper label={label} erro={erro} dica={dica}>
+    <CampoWrapper label={label} erro={erro} dica={dica} wrapperClassName={wrapperClassName}>
       <input className={`${CLASSE_INPUT} ${className}`} {...props} />
     </CampoWrapper>
   );
@@ -39,11 +42,13 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
   erro?: string;
   dica?: string;
+  /** Classe aplicada ao `<label>` que envolve o campo (ex.: `sm:col-span-2` num grid). */
+  wrapperClassName?: string;
 }
 
-export function SelectField({ label, erro, dica, className = '', children, ...props }: SelectFieldProps) {
+export function SelectField({ label, erro, dica, wrapperClassName, className = '', children, ...props }: SelectFieldProps) {
   return (
-    <CampoWrapper label={label} erro={erro} dica={dica}>
+    <CampoWrapper label={label} erro={erro} dica={dica} wrapperClassName={wrapperClassName}>
       <select className={`${CLASSE_INPUT} bg-white ${className}`} {...props}>
         {children}
       </select>
@@ -59,12 +64,12 @@ interface CheckboxFieldProps {
 
 export function CheckboxField({ label, checked, onChange }: CheckboxFieldProps) {
   return (
-    <label className="flex items-center gap-2 text-sm text-slate-700">
+    <label className="flex items-center gap-2 text-sm text-neutral-700">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
       />
       {label}
     </label>
