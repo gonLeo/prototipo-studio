@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 
+const CARTOES_OPERACAO = [
+  { to: '/administracao/grade', titulo: 'Grade de horários', descricao: 'Sessões recorrentes, conflitos e ocupação.' },
+  { to: '/administracao/excecoes', titulo: 'Calendário de exceções', descricao: 'Feriados, recessos e fechamentos.' },
+];
+
 const CARTOES = [
   { to: '/administracao/modalidades', titulo: 'Modalidades', descricao: 'Nome, capacidade máxima e situação.' },
   { to: '/administracao/espacos', titulo: 'Espaços', descricao: 'Cadastro opcional de espaços do studio.' },
@@ -9,16 +14,12 @@ const CARTOES = [
   { to: '/administracao/categorias', titulo: 'Categorias de professora', descricao: 'Nome e valor por aula.' },
 ];
 
-export function AdministracaoHome() {
+function GrupoDeCartoes({ titulo, cartoes }: { titulo: string; cartoes: typeof CARTOES }) {
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Configuração</p>
-      <h1 className="mt-1 text-2xl font-semibold text-ink">Base do studio</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Base para tudo que vem nas próximas fases: grade, alunas, agendamento e financeiro dependem destes cadastros.
-      </p>
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {CARTOES.map((cartao) => (
+    <section className="mt-6">
+      <h2 className="text-sm font-semibold text-ink">{titulo}</h2>
+      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {cartoes.map((cartao) => (
           <Link
             key={cartao.to}
             to={cartao.to}
@@ -29,6 +30,22 @@ export function AdministracaoHome() {
           </Link>
         ))}
       </div>
+    </section>
+  );
+}
+
+export function AdministracaoHome() {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Administração</p>
+      <h1 className="mt-1 text-2xl font-semibold text-ink">Visão geral</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        A grade e o calendário de exceções operam o dia a dia; a configuração sustenta tudo que vem nas próximas
+        fases — alunas, agendamento e financeiro dependem destes cadastros.
+      </p>
+
+      <GrupoDeCartoes titulo="Operação" cartoes={CARTOES_OPERACAO} />
+      <GrupoDeCartoes titulo="Configuração" cartoes={CARTOES} />
     </div>
   );
 }

@@ -14,6 +14,8 @@ import { StudioPage } from './pages/administracao/StudioPage';
 import { ParametrosPage } from './pages/administracao/ParametrosPage';
 import { ProfessorasPage } from './pages/administracao/ProfessorasPage';
 import { CategoriasProfessoraPage } from './pages/administracao/CategoriasProfessoraPage';
+import { GradePage } from './pages/administracao/GradePage';
+import { ExcecoesPage } from './pages/administracao/ExcecoesPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -61,6 +63,8 @@ function App() {
                 <Route path="parametros" element={<ParametrosPage />} />
                 <Route path="professoras" element={<ProfessorasPage />} />
                 <Route path="categorias" element={<CategoriasProfessoraPage />} />
+                <Route path="grade" element={<GradePage />} />
+                <Route path="excecoes" element={<ExcecoesPage />} />
               </Route>
               <Route
                 path="/professora"

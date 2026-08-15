@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 interface Coluna {
@@ -100,7 +100,11 @@ export function Tabela<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100">{paginados.map((item) => renderLinha(item))}</tbody>
+          <tbody className="divide-y divide-neutral-100">
+            {paginados.map((item) => (
+              <Fragment key={chave(item)}>{renderLinha(item)}</Fragment>
+            ))}
+          </tbody>
         </table>
       </div>
 

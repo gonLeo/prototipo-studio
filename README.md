@@ -20,6 +20,7 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 - `src/hooks/` — regras de domínio e sessão (perfis simulados).
 - `src/components/`, `src/pages/` — apresentação.
 - `src/data/seed.json` — backfill versionado. Todo recurso já usado por algum repositório (mesmo que ainda sem tela) precisa existir aqui, nem que seja como array vazio — json-server responde 404 (não lista vazia) para uma chave que não existe no `db.json`, e um `listar()` que estoura 404 quebra qualquer regra de negócio que dependa dele. Botão "Resetar protótipo" na interface restaura este estado a qualquer momento.
+- `src/services/reset.ts` — restaura o backfill pela API REST. **O json-server ignora o `id` enviado no POST e gera um novo**, então toda entidade que aponte para outra precisa ter suas chaves estrangeiras declaradas no mapa `CHAVES_ESTRANGEIRAS` desse arquivo; sem isso, os vínculos do seed ficam órfãos depois de um reset (a tela passa a mostrar "Modalidade removida", "Professora removida" e afins). O reset recria os recursos em ordem de dependência e traduz cada FK para o id realmente gravado.
 
 ## Padrões de UI (valem para todas as fases, não só a atual)
 

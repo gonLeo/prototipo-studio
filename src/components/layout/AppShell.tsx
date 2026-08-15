@@ -12,18 +12,41 @@ const ROTULO_PERFIL: Record<PerfilAcesso, string> = {
   aluna: 'Aluna',
 };
 
-const NAV_POR_PERFIL: Record<PerfilAcesso, Array<{ to: string; label: string; fim?: boolean }>> = {
+interface ItemNav {
+  to: string;
+  label: string;
+  fim?: boolean;
+}
+
+interface GrupoNav {
+  titulo?: string;
+  itens: ItemNav[];
+}
+
+const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
   administracao: [
-    { to: '/administracao', label: 'Visão geral', fim: true },
-    { to: '/administracao/modalidades', label: 'Modalidades' },
-    { to: '/administracao/espacos', label: 'Espaços' },
-    { to: '/administracao/studio', label: 'Studio e horário' },
-    { to: '/administracao/parametros', label: 'Parâmetros' },
-    { to: '/administracao/professoras', label: 'Professoras' },
-    { to: '/administracao/categorias', label: 'Categorias' },
+    { itens: [{ to: '/administracao', label: 'Visão geral', fim: true }] },
+    {
+      titulo: 'Operação',
+      itens: [
+        { to: '/administracao/grade', label: 'Grade de horários' },
+        { to: '/administracao/excecoes', label: 'Exceções' },
+      ],
+    },
+    {
+      titulo: 'Configuração',
+      itens: [
+        { to: '/administracao/modalidades', label: 'Modalidades' },
+        { to: '/administracao/espacos', label: 'Espaços' },
+        { to: '/administracao/studio', label: 'Studio e horário' },
+        { to: '/administracao/parametros', label: 'Parâmetros' },
+        { to: '/administracao/professoras', label: 'Professoras' },
+        { to: '/administracao/categorias', label: 'Categorias' },
+      ],
+    },
   ],
-  professora: [{ to: '/professora', label: 'Painel' }],
-  aluna: [{ to: '/aluna', label: 'Painel' }],
+  professora: [{ itens: [{ to: '/professora', label: 'Painel' }] }],
+  aluna: [{ itens: [{ to: '/aluna', label: 'Painel' }] }],
 };
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -36,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const itensNav = perfilAtivo ? NAV_POR_PERFIL[perfilAtivo] : [];
+  const gruposNav = perfilAtivo ? NAV_POR_PERFIL[perfilAtivo] : [];
   const outrosPerfis = usuario?.perfis.filter((p) => p !== perfilAtivo) ?? [];
 
   return (
@@ -76,21 +99,32 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <div className="flex flex-1 flex-col sm:flex-row">
-        {itensNav.length > 0 && (
+        {gruposNav.length > 0 && (
           <nav className="order-2 flex gap-1 overflow-x-auto border-t border-neutral-200 bg-white px-2 py-1.5 sm:order-1 sm:w-52 sm:flex-col sm:justify-start sm:gap-0.5 sm:overflow-visible sm:border-t-0 sm:border-r sm:px-3 sm:py-4">
-            {itensNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.fim}
-                className={({ isActive }) =>
-                  `shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-center text-sm sm:text-left ${
-                    isActive ? 'bg-primary-50 font-semibold text-primary-800' : 'text-neutral-600 hover:bg-neutral-100'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
+            {gruposNav.map((grupo, indice) => (
+              <div key={grupo.titulo ?? indice} className="flex shrink-0 gap-1 sm:mt-1 sm:flex-col sm:gap-0.5">
+                {grupo.titulo && (
+                  <p className="hidden px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400 sm:block">
+                    {grupo.titulo}
+                  </p>
+                )}
+                {grupo.itens.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.fim}
+                    className={({ isActive }) =>
+                      `shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-center text-sm sm:text-left ${
+                        isActive
+                          ? 'bg-primary-50 font-semibold text-primary-800'
+                          : 'text-neutral-600 hover:bg-neutral-100'
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
         )}
