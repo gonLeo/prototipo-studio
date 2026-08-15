@@ -229,4 +229,12 @@ Próxima fase (Fase 4) usa estes contratos e saldos para o agendamento de aulas 
 8. Testar os bloqueios: suspender o contrato de uma aluna e conferir que a grade dela mostra o aviso com os botões desabilitados; zerar o saldo agendando tudo e conferir a mensagem de saldo esgotado.
 9. Abrir a **matrícula pública** e percorrer o fluxo até o novo passo "Primeira aula".
 
+### Ajustes pós-entrega (mesma fase, antes da validação)
+
+- **Grade da aluna e agenda da professora ganharam navegação por dia**, no formato do modelo de referência: mês à esquerda, `<` / HOJE / `>` à direita, faixa de 7 dias clicáveis com o dia selecionado em destaque, e os cartões da data logo abaixo. A faixa começa em hoje (não existe agendamento retroativo) e vai até o limite da janela configurada. Componentes novos: `NavegadorDeDatas` e `CartaoDeAula` em `src/components/ui/`.
+  - O cartão tem um espaço opcional para preço, hoje não usado: aulas do pacote não têm valor por aula. Ele existe para a **aula experimental** (M12, Fase 7), que é cobrada à parte.
+- **Paginação com itens por página configurável** (5/10/25/50), extraída para `usePaginacao` + `ControlesDePaginacao` e aplicada tanto nas tabelas — que antes tinham página fixa e nenhum seletor — quanto na lista de próximas aulas da aluna.
+- **Histórico de aulas da aluna virou collapse**, fechado por padrão, com paginação própria.
+- **Saldo, validade e mensalidade ficam em uma única linha também no celular** (três colunas em qualquer largura, com tipografia reduzida no mobile em vez de empilhar).
+
 Próxima fase (Fase 5) usa estes agendamentos para a chamada e o registro de presença (M9) e para a apuração de comissão das professoras (M10) — é ela que passa a marcar as aulas como realizadas e a produzir os valores que a professora acompanha.

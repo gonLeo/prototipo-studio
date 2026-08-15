@@ -1,5 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { ControlesDePaginacao } from './Paginacao';
+import { usePaginacao } from './usePaginacao';
 
 interface Coluna {
   chave: string;
@@ -39,7 +41,6 @@ export function Tabela<T>({
   semResultados = 'Nenhum registro encontrado.',
 }: TabelaProps<T>) {
   const [termo, setTermo] = useState('');
-  const [pagina, setPagina] = useState(1);
 
   const filtrados = useMemo(() => {
     if (!busca || !termo.trim()) return itens;
@@ -47,14 +48,13 @@ export function Tabela<T>({
     return itens.filter((item) => busca.corresponde(item, termoNormalizado));
   }, [itens, busca, termo]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / itensPorPagina));
-  const paginaAtual = Math.min(pagina, totalPaginas);
-  const inicio = (paginaAtual - 1) * itensPorPagina;
-  const paginados = filtrados.slice(inicio, inicio + itensPorPagina);
+  const paginacao = usePaginacao(filtrados, itensPorPagina);
 
   function mudarTermo(valor: string) {
     setTermo(valor);
-    setPagina(1);
+    // Filtrar encurta a lista: a página em que a usuária estava pode nem
+    // existir mais no resultado.
+    paginacao.reiniciar();
   }
 
   return (
@@ -101,7 +101,7 @@ export function Tabela<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {paginados.map((item) => (
+            {paginacao.visiveis.map((item) => (
               <Fragment key={chave(item)}>{renderLinha(item)}</Fragment>
             ))}
           </tbody>
@@ -111,35 +111,15 @@ export function Tabela<T>({
       {filtrados.length === 0 && <p className="px-4 py-8 text-center text-sm text-neutral-500">{semResultados}</p>}
 
       {filtrados.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 px-4 py-2.5">
-          <p className="text-xs text-neutral-500">
-            Mostrando {inicio + 1} a {Math.min(inicio + itensPorPagina, filtrados.length)} de {filtrados.length}{' '}
-            {filtrados.length === 1 ? 'registro' : 'registros'}
-          </p>
-          {totalPaginas > 1 && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                disabled={paginaAtual === 1}
-                className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs font-medium text-ink hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Anterior
-              </button>
-              <span className="px-2 text-xs text-neutral-500">
-                Página {paginaAtual} de {totalPaginas}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                disabled={paginaAtual === totalPaginas}
-                className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs font-medium text-ink hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Próxima
-              </button>
-            </div>
-          )}
-        </div>
+        <ControlesDePaginacao
+          pagina={paginacao.pagina}
+          setPagina={paginacao.setPagina}
+          itensPorPagina={paginacao.itensPorPagina}
+          setItensPorPagina={paginacao.setItensPorPagina}
+          totalPaginas={paginacao.totalPaginas}
+          inicio={paginacao.inicio}
+          total={paginacao.total}
+        />
       )}
     </div>
   );

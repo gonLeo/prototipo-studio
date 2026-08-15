@@ -29,23 +29,29 @@ export function ResumoDoPacote({
   const percentualBolsa = aluna?.percentualBolsa ?? 0;
   const diasRestantes = diferencaEmDias(hojeISO(), contrato.dataVencimentoCiclo);
 
+  // Três colunas em qualquer largura: no celular a faixa continua sendo
+  // uma linha só, com tipografia reduzida em vez de empilhar os cartões.
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <p className="text-xs uppercase tracking-wide text-neutral-500">Saldo de aulas</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">{contrato.saldoAulas}</p>
-        <p className="text-xs text-neutral-500">{pacote?.nome ?? 'Pacote'}</p>
+    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+        <p className="text-[10px] uppercase tracking-wide text-neutral-500 sm:text-xs">Saldo</p>
+        <p className="mt-0.5 text-lg font-semibold text-ink sm:mt-1 sm:text-2xl">{contrato.saldoAulas}</p>
+        <p className="truncate text-[10px] text-neutral-500 sm:text-xs">{pacote?.nome ?? 'Pacote'}</p>
       </div>
-      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <p className="text-xs uppercase tracking-wide text-neutral-500">Validade do ciclo</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">{formatarDataBR(contrato.dataVencimentoCiclo)}</p>
-        <p className="text-xs text-neutral-500">
-          {diasRestantes >= 0 ? `${diasRestantes} dias restantes` : 'Ciclo vencido'}
+
+      <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+        <p className="text-[10px] uppercase tracking-wide text-neutral-500 sm:text-xs">Validade</p>
+        <p className="mt-0.5 text-lg font-semibold text-ink sm:mt-1 sm:text-2xl">
+          {formatarDataBR(contrato.dataVencimentoCiclo)}
+        </p>
+        <p className="text-[10px] text-neutral-500 sm:text-xs">
+          {diasRestantes >= 0 ? `${diasRestantes} dias` : 'Vencido'}
         </p>
       </div>
-      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <p className="text-xs uppercase tracking-wide text-neutral-500">Mensalidade</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">
+
+      <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+        <p className="text-[10px] uppercase tracking-wide text-neutral-500 sm:text-xs">Mensalidade</p>
+        <p className="mt-0.5 text-lg font-semibold text-ink sm:mt-1 sm:text-2xl">
           {!pacote
             ? '—'
             : ehIsencaoTotal(percentualBolsa)
@@ -53,7 +59,7 @@ export function ResumoDoPacote({
               : formatarMoeda(valorComBolsa(pacote.valorMensal, percentualBolsa))}
         </p>
         {percentualBolsa > 0 && !ehIsencaoTotal(percentualBolsa) && (
-          <p className="text-xs text-emerald-700">Com {percentualBolsa}% de bolsa</p>
+          <p className="text-[10px] text-emerald-700 sm:text-xs">{percentualBolsa}% de bolsa</p>
         )}
       </div>
     </div>

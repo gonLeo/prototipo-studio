@@ -9,8 +9,9 @@ import type { SituacaoSolicitacaoCancelamento } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { diaSemanaDe, formatarDataBR } from '../../utils/data';
-import { DIAS_SEMANA } from '../../utils/horarioFuncionamento';
+import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
+import { NavegadorDeDatas } from '../../components/ui/NavegadorDeDatas';
+import { formatarDataBR, hojeISO, somarDias } from '../../utils/data';
 
 const ROTULO_SOLICITACAO: Record<SituacaoSolicitacaoCancelamento, string> = {
   pendente: 'Aguardando aprovação',
@@ -96,76 +97,65 @@ export function MinhasAulasProfessoraPage() {
   const mostrarToast = useToast();
   const [solicitando, setSolicitando] = useState<AulaDaProfessora | null>(null);
 
+  const hoje = hojeISO();
+  const [dataSelecionada, setDataSelecionada] = useState(hoje);
+
   if (agenda.carregando) return <p className="text-sm text-neutral-500">Carregando…</p>;
   if (!agenda.professora) {
     return <p className="text-sm text-neutral-500">Cadastro de professora não encontrado.</p>;
   }
 
-  const porData = agenda.aulas.reduce<Record<string, AulaDaProfessora[]>>((mapa, aula) => {
-    (mapa[aula.data] ??= []).push(aula);
-    return mapa;
-  }, {});
+  const aulasDoDia = agenda.aulas.filter((aula) => aula.data === dataSelecionada);
 
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold text-ink">Minhas aulas</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Suas próximas aulas, com a ocupação de cada turma. Para não dar uma aula, solicite o cancelamento — a
+        Suas aulas por dia, com a ocupação de cada turma. Para não dar uma aula, solicite o cancelamento — a
         administração decide se designa substituta ou cancela.
       </p>
 
-      {Object.keys(porData).length === 0 ? (
-        <p className="mt-6 text-sm text-neutral-500">Você não tem aulas nas próximas semanas.</p>
+      <div className="mt-4">
+        <NavegadorDeDatas
+          dataSelecionada={dataSelecionada}
+          onSelecionar={setDataSelecionada}
+          dataMinima={hoje}
+          dataMaxima={somarDias(hoje, agenda.diasVisiveis)}
+        />
+      </div>
+
+      {aulasDoDia.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500">
+          Nenhuma aula sua nesta data.
+        </p>
       ) : (
-        <div className="mt-6 flex flex-col gap-4">
-          {Object.entries(porData).map(([data, aulas]) => (
-            <section key={data} className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-              <header className="flex items-baseline justify-between gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-2">
-                <h2 className="text-sm font-semibold text-ink">
-                  {DIAS_SEMANA.find((d) => d.valor === diaSemanaDe(data))?.rotulo}
-                </h2>
-                <span className="text-xs text-neutral-500">{formatarDataBR(data)}</span>
-              </header>
-
-              <ul className="divide-y divide-neutral-100">
-                {aulas.map((aula) => (
-                  <li
-                    key={`${aula.sessao.id}-${aula.data}`}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className={`text-sm font-semibold ${aula.cancelada ? 'text-neutral-400 line-through' : 'text-ink'}`}>
-                        {aula.sessao.horarioInicio}–{aula.sessao.horarioFim} · {aula.nomeModalidade}
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        {aula.ocupacao}/{aula.sessao.capacidade} aluna(s)
-                        {aula.nomeEspaco ? ` · ${aula.nomeEspaco}` : ''}
-                      </p>
-                      {aula.cancelada && aula.motivoCancelamento && (
-                        <p className="mt-1 text-xs font-medium text-amber-700">{aula.motivoCancelamento}</p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {aula.substituindo && <Badge tom="info">Substituindo</Badge>}
-                      {aula.solicitacao ? (
-                        <Badge tom={TOM_SOLICITACAO[aula.solicitacao.situacao]}>
-                          {ROTULO_SOLICITACAO[aula.solicitacao.situacao]}
-                        </Badge>
-                      ) : (
-                        !aula.cancelada && (
-                          <Button variante="secundaria" onClick={() => setSolicitando(aula)}>
-                            Solicitar cancelamento
-                          </Button>
-                        )
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+        <ul className="mt-4 flex flex-col gap-3">
+          {aulasDoDia.map((aula) => (
+            <CartaoDeAula
+              key={`${aula.sessao.id}-${aula.data}`}
+              titulo={aula.nomeModalidade}
+              subtitulo={aula.nomeEspaco}
+              etiqueta={aula.substituindo ? 'Substituindo' : undefined}
+              horario={`${aula.sessao.horarioInicio} - ${aula.sessao.horarioFim}`}
+              detalhe={`${aula.ocupacao}/${aula.sessao.capacidade} aluna(s)`}
+              esmaecido={aula.cancelada}
+              aviso={aula.cancelada ? aula.motivoCancelamento : undefined}
+              acao={
+                aula.solicitacao ? (
+                  <Badge tom={TOM_SOLICITACAO[aula.solicitacao.situacao]}>
+                    {ROTULO_SOLICITACAO[aula.solicitacao.situacao]}
+                  </Badge>
+                ) : (
+                  !aula.cancelada && (
+                    <Button variante="secundaria" onClick={() => setSolicitando(aula)}>
+                      Solicitar cancelamento
+                    </Button>
+                  )
+                )
+              }
+            />
           ))}
-        </div>
+        </ul>
       )}
 
       <h2 className="mt-8 text-sm font-semibold text-ink">Minhas solicitações</h2>

@@ -11,6 +11,8 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { TextField } from '../../components/ui/Field';
+import { ControlesDePaginacao } from '../../components/ui/Paginacao';
+import { usePaginacao } from '../../components/ui/usePaginacao';
 import { ResumoDoPacote } from './ResumoDoPacote';
 import { formatarDataBR } from '../../utils/data';
 
@@ -152,6 +154,12 @@ export function MinhasAulasPage() {
   const confirmar = useConfirm();
   const mostrarToast = useToast();
   const [justificando, setJustificando] = useState<AulaDaAluna | null>(null);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+
+  // Os hooks de paginação precisam rodar sempre, antes de qualquer saída
+  // antecipada — daí virem acima dos returns de carregamento.
+  const paginacaoProximas = usePaginacao(agenda.proximas, 5);
+  const paginacaoHistorico = usePaginacao(agenda.historico, 5);
 
   if (agenda.carregando) return <p className="text-sm text-neutral-500">Carregando…</p>;
   if (!agenda.aluna) return <p className="text-sm text-neutral-500">Cadastro de aluna não encontrado.</p>;
@@ -215,37 +223,87 @@ export function MinhasAulasPage() {
       {agenda.proximas.length === 0 ? (
         <p className="mt-2 text-sm text-neutral-500">Você não tem aulas agendadas.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-          {agenda.proximas.map((aula) => (
-            <ItemDeAula
-              key={aula.id}
-              aula={aula}
-              podeCancelar={aula.situacao === 'ativo' && !aula.canceladaPeloStudio}
-              podeJustificar={podeJustificar(aula)}
-              onCancelar={() => cancelar(aula)}
-              onJustificar={() => setJustificando(aula)}
-            />
-          ))}
-        </ul>
+        <div className="mt-2 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <ul className="divide-y divide-neutral-100">
+            {paginacaoProximas.visiveis.map((aula) => (
+              <ItemDeAula
+                key={aula.id}
+                aula={aula}
+                podeCancelar={aula.situacao === 'ativo' && !aula.canceladaPeloStudio}
+                podeJustificar={podeJustificar(aula)}
+                onCancelar={() => cancelar(aula)}
+                onJustificar={() => setJustificando(aula)}
+              />
+            ))}
+          </ul>
+          <ControlesDePaginacao
+            pagina={paginacaoProximas.pagina}
+            setPagina={paginacaoProximas.setPagina}
+            itensPorPagina={paginacaoProximas.itensPorPagina}
+            setItensPorPagina={paginacaoProximas.setItensPorPagina}
+            totalPaginas={paginacaoProximas.totalPaginas}
+            inicio={paginacaoProximas.inicio}
+            total={paginacaoProximas.total}
+            rotuloItens="aula"
+          />
+        </div>
       )}
 
-      <h2 className="mt-6 text-sm font-semibold text-ink">Histórico</h2>
-      {agenda.historico.length === 0 ? (
-        <p className="mt-2 text-sm text-neutral-500">Nada por aqui ainda.</p>
-      ) : (
-        <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-          {agenda.historico.map((aula) => (
-            <ItemDeAula
-              key={aula.id}
-              aula={aula}
-              podeCancelar={false}
-              podeJustificar={podeJustificar(aula)}
-              onCancelar={() => cancelar(aula)}
-              onJustificar={() => setJustificando(aula)}
-            />
+      <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setHistoricoAberto((atual) => !atual)}
+          aria-expanded={historicoAberto}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-neutral-50"
+        >
+          <span className="text-sm font-semibold text-ink">
+            Histórico
+            <span className="ml-2 text-xs font-normal text-neutral-500">
+              {agenda.historico.length} aula(s)
+            </span>
+          </span>
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${historicoAberto ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <path d="M5 7.5l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {historicoAberto &&
+          (agenda.historico.length === 0 ? (
+            <p className="border-t border-neutral-100 px-4 py-3 text-sm text-neutral-500">Nada por aqui ainda.</p>
+          ) : (
+            <>
+              <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
+                {paginacaoHistorico.visiveis.map((aula) => (
+                  <ItemDeAula
+                    key={aula.id}
+                    aula={aula}
+                    podeCancelar={false}
+                    podeJustificar={podeJustificar(aula)}
+                    onCancelar={() => cancelar(aula)}
+                    onJustificar={() => setJustificando(aula)}
+                  />
+                ))}
+              </ul>
+              <ControlesDePaginacao
+                pagina={paginacaoHistorico.pagina}
+                setPagina={paginacaoHistorico.setPagina}
+                itensPorPagina={paginacaoHistorico.itensPorPagina}
+                setItensPorPagina={paginacaoHistorico.setItensPorPagina}
+                totalPaginas={paginacaoHistorico.totalPaginas}
+                inicio={paginacaoHistorico.inicio}
+                total={paginacaoHistorico.total}
+                rotuloItens="aula"
+              />
+            </>
           ))}
-        </ul>
-      )}
+      </div>
 
       {justificando && (
         <Modal titulo="Justificar falta" onFechar={() => setJustificando(null)}>

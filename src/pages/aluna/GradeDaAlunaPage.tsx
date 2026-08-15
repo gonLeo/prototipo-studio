@@ -7,76 +7,34 @@ import { agendarAula } from '../../hooks/agendamentoDeAulas';
 import type { AulaDisponivel } from '../../hooks/agendamentoDeAulas';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
+import { NavegadorDeDatas } from '../../components/ui/NavegadorDeDatas';
 import { ResumoDoPacote } from './ResumoDoPacote';
-import { diaSemanaDe, formatarDataBR, formatarDiaMes } from '../../utils/data';
-import { DIAS_SEMANA } from '../../utils/horarioFuncionamento';
-
-function CartaoDeAula({
-  aula,
-  desabilitado,
-  onAgendar,
-}: {
-  aula: AulaDisponivel;
-  desabilitado: boolean;
-  onAgendar: () => void;
-}) {
-  const indisponivel = desabilitado || aula.impedimento !== undefined;
-
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink">
-          {aula.sessao.horarioInicio}–{aula.sessao.horarioFim} · {aula.modalidade?.nome ?? 'Modalidade'}
-        </p>
-        <p className="text-xs text-neutral-500">
-          {aula.nomeProfessora}
-          {aula.nomeEspaco ? ` · ${aula.nomeEspaco}` : ''}
-        </p>
-        {aula.impedimento && <p className="mt-1 text-xs font-medium text-amber-700">{aula.impedimento}</p>}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-neutral-500">
-          {aula.vagas > 0 ? `${aula.vagas} vaga(s)` : 'Sem vagas'}
-          <span className="ml-1 text-neutral-400">
-            ({aula.ocupacao}/{aula.sessao.capacidade})
-          </span>
-        </span>
-        {aula.jaAgendada ? (
-          <Badge tom="sucesso">Agendada</Badge>
-        ) : (
-          <Button onClick={onAgendar} disabled={indisponivel}>
-            Agendar
-          </Button>
-        )}
-      </div>
-    </li>
-  );
-}
+import { formatarDataBR, hojeISO, somarDias } from '../../utils/data';
 
 /**
  * Grade disponível para a aluna (RF-AGD-01).
  *
- * O saldo e a validade ficam visíveis de forma persistente no topo, e
- * quando há bloqueio (sem saldo, inadimplente, contrato pausado) a
- * mensagem aparece na própria grade com os botões desabilitados — decisão
- * de UX registrada no escopo, para a aluna não descobrir o impedimento só
- * ao clicar.
+ * A navegação é por dia: a faixa começa em hoje — não existe agendamento
+ * retroativo — e vai até o limite da janela configurada para o perfil
+ * (RF-AGD-02). O saldo fica visível de forma persistente no topo, e os
+ * bloqueios aparecem na própria tela com os botões desabilitados.
  */
 export function GradeDaAlunaPage() {
   const { usuario } = useSessao();
   const agenda = useAgendaDaAluna(usuario?.id);
   const confirmar = useConfirm();
   const mostrarToast = useToast();
+
+  const hoje = hojeISO();
+  const [dataSelecionada, setDataSelecionada] = useState(hoje);
   const [agendando, setAgendando] = useState(false);
 
   if (agenda.carregando) return <p className="text-sm text-neutral-500">Carregando…</p>;
   if (!agenda.aluna) return <p className="text-sm text-neutral-500">Cadastro de aluna não encontrado.</p>;
 
-  const porData = agenda.disponiveis.reduce<Record<string, AulaDisponivel[]>>((mapa, aula) => {
-    (mapa[aula.data] ??= []).push(aula);
-    return mapa;
-  }, {});
+  const dataMaxima = somarDias(hoje, agenda.janelaDias);
+  const aulasDoDia = agenda.disponiveis.filter((aula) => aula.data === dataSelecionada);
 
   async function tentarAgendar(aula: AulaDisponivel) {
     if (!agenda.aluna || !usuario) return;
@@ -127,34 +85,46 @@ export function GradeDaAlunaPage() {
         </div>
       )}
 
-      {Object.keys(porData).length === 0 ? (
-        <p className="mt-6 text-sm text-neutral-500">
-          Nenhuma aula disponível na sua janela de agendamento no momento.
+      <div className="mt-4">
+        <NavegadorDeDatas
+          dataSelecionada={dataSelecionada}
+          onSelecionar={setDataSelecionada}
+          dataMinima={hoje}
+          dataMaxima={dataMaxima}
+        />
+      </div>
+
+      {aulasDoDia.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500">
+          Nenhuma aula nesta data.
         </p>
       ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          {Object.entries(porData).map(([data, aulas]) => (
-            <section key={data} className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-              <header className="flex items-baseline justify-between gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-2">
-                <h2 className="text-sm font-semibold text-ink">
-                  {DIAS_SEMANA.find((d) => d.valor === diaSemanaDe(data))?.rotulo}
-                  {data === agenda.hoje && <span className="ml-2 text-xs font-normal text-primary-700">hoje</span>}
-                </h2>
-                <span className="text-xs text-neutral-500">{formatarDiaMes(data)}</span>
-              </header>
-              <ul className="divide-y divide-neutral-100">
-                {aulas.map((aula) => (
-                  <CartaoDeAula
-                    key={`${aula.sessao.id}-${aula.data}`}
-                    aula={aula}
-                    desabilitado={agenda.bloqueio !== undefined || agendando}
-                    onAgendar={() => tentarAgendar(aula)}
-                  />
-                ))}
-              </ul>
-            </section>
+        <ul className="mt-4 flex flex-col gap-3">
+          {aulasDoDia.map((aula) => (
+            <CartaoDeAula
+              key={`${aula.sessao.id}-${aula.data}`}
+              titulo={`${aula.modalidade?.nome ?? 'Modalidade'} — ${aula.nomeProfessora}`}
+              subtitulo={aula.nomeEspaco}
+              etiqueta={aula.modalidade?.nome}
+              horario={`${aula.sessao.horarioInicio} - ${aula.sessao.horarioFim}`}
+              detalhe={aula.vagas > 0 ? `${aula.vagas} vaga(s)` : 'Sem vagas'}
+              aviso={aula.impedimento}
+              esmaecido={aula.impedimento !== undefined && !aula.jaAgendada}
+              acao={
+                aula.jaAgendada ? (
+                  <Badge tom="sucesso">Agendada</Badge>
+                ) : (
+                  <Button
+                    onClick={() => tentarAgendar(aula)}
+                    disabled={agenda.bloqueio !== undefined || aula.impedimento !== undefined || agendando}
+                  >
+                    Agendar
+                  </Button>
+                )
+              }
+            />
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

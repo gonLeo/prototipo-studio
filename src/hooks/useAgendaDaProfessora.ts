@@ -114,5 +114,5 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
     recarregar();
   }, [recarregar]);
 
-  return { professora, aulas, solicitacoes, carregando, recarregar };
+  return { professora, aulas, solicitacoes, carregando, recarregar, diasVisiveis: DIAS_VISIVEIS };
 }
