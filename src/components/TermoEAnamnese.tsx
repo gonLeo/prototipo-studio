@@ -44,7 +44,8 @@ export function TermoEAnamnese({
       <section>
         <h2 className="text-sm font-semibold text-ink">Ficha de anamnese</h2>
         <p className="mt-1 text-xs text-neutral-500">
-          Respostas autodeclaradas. Elas ficam registradas na sua ficha e ajudam a equipe a cuidar de você em aula.
+          Respostas autodeclaradas. Elas ficam registradas na sua ficha e ajudam a equipe a cuidar de você em aula. As
+          perguntas de saúde são obrigatórias.
         </p>
 
         <div className="mt-3 flex flex-col gap-4">
@@ -65,7 +66,12 @@ export function TermoEAnamnese({
             const respondeuSim = resposta.startsWith('Sim');
             return (
               <div key={pergunta.chave}>
-                <p className="text-sm font-medium text-neutral-700">{pergunta.pergunta}</p>
+                <p className="text-sm font-medium text-neutral-700">
+                  {pergunta.pergunta}
+                  <span className="ml-1 text-rose-600" aria-hidden="true">
+                    *
+                  </span>
+                </p>
                 <div className="mt-1 flex gap-1">
                   {['Sim', 'Não'].map((opcao) => {
                     const marcado = resposta === opcao || (opcao === 'Sim' && respondeuSim);

@@ -9,6 +9,7 @@ import type { TipoContrato } from '../types/domain';
 import { Button } from '../components/ui/Button';
 import { TextField, SelectField } from '../components/ui/Field';
 import { TermoEAnamnese } from '../components/TermoEAnamnese';
+import { perguntasNaoRespondidas } from '../data/anamnese';
 import { formatarMoeda } from '../utils/contrato';
 import { formatarDataBR, hojeISO } from '../utils/data';
 
@@ -82,6 +83,11 @@ export function MatriculaPage() {
 
   const pacotesAtivos = pacotes.filter((p) => p.situacao === 'ativo');
   const pacoteEscolhido = pacotesAtivos.find((p) => p.id === pacoteId);
+
+  // Só avança do termo com o aceite marcado E as perguntas de saúde
+  // respondidas (RF-ALU-08).
+  const faltamRespostas = perguntasNaoRespondidas(respostas);
+  const podeAvancarDoTermo = aceito && faltamRespostas.length === 0;
 
   function mudarDado(campo: keyof DadosCadastraisAluna, valor: string) {
     setDados((atual) => ({ ...atual, [campo]: valor }));
@@ -277,13 +283,23 @@ export function MatriculaPage() {
                 respostas={respostas}
                 onResponder={(chave, valor) => setRespostas((atual) => ({ ...atual, [chave]: valor }))}
               />
-              <div className="flex justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Button type="button" variante="secundaria" onClick={() => setPasso('pacote')}>
                   Voltar
                 </Button>
-                <Button type="submit" disabled={!aceito}>
-                  Continuar
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  {!podeAvancarDoTermo && (
+                    <p className="text-xs text-neutral-500">
+                      {!aceito && 'Aceite o termo'}
+                      {!aceito && faltamRespostas.length > 0 && ' e '}
+                      {faltamRespostas.length > 0 && `responda ${faltamRespostas.length} pergunta(s) de saúde`} para
+                      continuar.
+                    </p>
+                  )}
+                  <Button type="submit" disabled={!podeAvancarDoTermo}>
+                    Continuar
+                  </Button>
+                </div>
               </div>
             </form>
           )}

@@ -62,6 +62,24 @@ export const PERGUNTAS_ANAMNESE: PerguntaAnamnese[] = [
   },
 ];
 
+/**
+ * Perguntas que precisam de resposta para a anamnese valer.
+ *
+ * São as de saúde (sim/não): é o que compõe o resguardo do studio quanto a
+ * condições preexistentes não informadas. As perguntas abertas seguem
+ * opcionais — obrigar a escrever em "há algo mais que precisamos saber?"
+ * só produziria resposta vazia de conteúdo.
+ */
+export const PERGUNTAS_OBRIGATORIAS = PERGUNTAS_ANAMNESE.filter((p) => p.tipo === 'sim_nao');
+
+export function perguntasNaoRespondidas(respostas: Record<string, string>): PerguntaAnamnese[] {
+  return PERGUNTAS_OBRIGATORIAS.filter((pergunta) => !(respostas[pergunta.chave] ?? '').trim());
+}
+
+export function anamneseEstaCompleta(respostas: Record<string, string>): boolean {
+  return perguntasNaoRespondidas(respostas).length === 0;
+}
+
 /** Texto de referência do termo, usado para publicar a primeira versão. */
 export const TERMO_PADRAO = `TERMO DE PRESTAÇÃO DE SERVIÇOS
 

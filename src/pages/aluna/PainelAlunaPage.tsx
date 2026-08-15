@@ -7,6 +7,7 @@ import type { Aluna, Contrato, Pacote } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { TermoEAnamnese } from '../../components/TermoEAnamnese';
+import { perguntasNaoRespondidas } from '../../data/anamnese';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../../utils/data';
 import { ehIsencaoTotal, formatarMoeda, valorComBolsa } from '../../utils/contrato';
 
@@ -57,6 +58,11 @@ export function PainelAlunaPage() {
 
   const precisaAceitar = usuario.situacao === 'aguardando_aceite' || aluna?.situacao === 'aguardando_aceite';
 
+  // O acesso só é liberado com o termo aceito E as perguntas de saúde
+  // respondidas (RF-ALU-08: aceite do termo *e* anamnese preenchida).
+  const faltamRespostas = perguntasNaoRespondidas(respostas);
+  const podeConcluir = aceito && faltamRespostas.length === 0;
+
   if (precisaAceitar) {
     return (
       <div className="mx-auto max-w-2xl">
@@ -104,8 +110,17 @@ export function PainelAlunaPage() {
               respostas={respostas}
               onResponder={(chave, valor) => setRespostas((atual) => ({ ...atual, [chave]: valor }))}
             />
-            <div className="flex justify-end">
-              <Button type="submit" disabled={!aceito || enviando}>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {!podeConcluir && (
+                <p className="text-xs text-neutral-500">
+                  {!aceito && 'Aceite o termo'}
+                  {!aceito && faltamRespostas.length > 0 && ' e '}
+                  {faltamRespostas.length > 0 &&
+                    `responda ${faltamRespostas.length} pergunta(s) de saúde`}{' '}
+                  para liberar seu acesso.
+                </p>
+              )}
+              <Button type="submit" disabled={!podeConcluir || enviando}>
                 {enviando ? 'Registrando…' : 'Aceitar e liberar meu acesso'}
               </Button>
             </div>

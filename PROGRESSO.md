@@ -180,4 +180,8 @@ Novas telas na Administração: **Alunas** e **Pacotes** (mais **Termo de aceite
 7. Sair e entrar como **Fernanda Alves** (Aluna): ela está "aguardando aceite" e só vê o termo + anamnese. Aceitar e ver o painel com saldo, validade e mensalidade (com os 50% de bolsa aplicados).
 8. Na tela de login, abrir **"Abrir a matrícula pública"** e percorrer o fluxo de auto-matrícula até a conclusão; depois entrar com a aluna criada — ela já entra liberada, sem passar pelo aceite de novo.
 
+### Ajustes pós-entrega (mesma fase, antes da validação)
+
+- O botão de conclusão do aceite só exigia a marcação do termo — dava para liberar o acesso com a anamnese em branco, contrariando RF-ALU-08 ("o acesso permanece bloqueado até que o termo seja aceito **e a anamnese preenchida**"). Agora as perguntas de saúde (sim/não) são obrigatórias, marcadas com asterisco, e o botão fica desabilitado enquanto faltarem, com um aviso dizendo exatamente o que falta em vez de um botão mudo. As perguntas abertas seguem opcionais. A mesma trava foi aplicada ao passo do termo na auto-matrícula pelo site, que tinha a mesma brecha.
+
 Próxima fase (Fase 4) usa estes contratos e saldos para o agendamento de aulas (M7) e o cancelamento com justificativa (M8) — é ela que passa a consumir o saldo, preencher a ocupação da grade e dar efeito visível às devoluções de crédito já implementadas nas fases 2 e 3.
