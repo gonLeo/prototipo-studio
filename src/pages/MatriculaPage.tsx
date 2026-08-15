@@ -59,10 +59,11 @@ function Trilha({ atual }: { atual: Passo }) {
  * e pagamento em fluxo único. O acesso é liberado automaticamente ao fim,
  * sem aprovação manual.
  *
- * O pagamento é simulado — o gateway real entra no M11 (Fase 6). O
- * agendamento da primeira aula, previsto no mesmo fluxo pelo escopo,
- * depende do M7 e entra na Fase 4; até lá a conclusão orienta a aluna a
- * agendar pelo painel.
+ * O pagamento passa pelo gateway simulado do M11, e o fluxo termina com o
+ * agendamento da primeira aula (RF-AGD-10). Quem prefere conhecer o studio
+ * antes de contratar tem o caminho da aula experimental, em
+ * `/experimental` (M12), que inverte a ordem: horário primeiro, pagamento
+ * depois.
  */
 export function MatriculaPage() {
   const { pacotes, carregando: carregandoPacotes } = usePacotes();

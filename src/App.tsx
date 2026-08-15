@@ -29,6 +29,10 @@ import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfess
 import { ChamadaPage } from './pages/professora/ChamadaPage';
 import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
 import { ComissoesPage } from './pages/administracao/ComissoesPage';
+import { CobrancasPage } from './pages/administracao/CobrancasPage';
+import { ConveniosPage } from './pages/administracao/ConveniosPage';
+import { ExperimentaisPage } from './pages/administracao/ExperimentaisPage';
+import { ExperimentalPage } from './pages/ExperimentalPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -85,6 +89,9 @@ function App() {
                 <Route path="justificativas" element={<JustificativasPage />} />
                 <Route path="solicitacoes" element={<SolicitacoesCancelamentoPage />} />
                 <Route path="comissoes" element={<ComissoesPage />} />
+                <Route path="cobrancas" element={<CobrancasPage />} />
+                <Route path="experimentais" element={<ExperimentaisPage />} />
+                <Route path="convenios" element={<ConveniosPage />} />
                 {/* A administração ajusta chamada fora do prazo (RF-PRE-06). */}
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
               </Route>
@@ -114,6 +121,8 @@ function App() {
               </Route>
               {/* Link público de auto-matrícula (RF-ALU-04): fora da casca do sistema e sem sessão. */}
               <Route path="/matricula" element={<MatriculaPage />} />
+              {/* Fluxo público da aula experimental (RF-EXP-01): grade primeiro, pagamento depois. */}
+              <Route path="/experimental" element={<ExperimentalPage />} />
               <Route path="/" element={<RotaInicial />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

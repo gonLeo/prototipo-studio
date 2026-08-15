@@ -43,6 +43,8 @@ export interface DadosSessao {
   dataInicio: string;
   dataTermino?: string;
   descricao?: string;
+  /** RF-CNV-02: a sessão é publicada nos aplicativos dos convênios. */
+  espelhadaConvenio: boolean;
 }
 
 export function useGradeHorarios() {
@@ -166,7 +168,7 @@ export function useGradeHorarios() {
         dataInicio: dados.dataInicio,
         dataTermino: dados.dataTermino,
         descricao: dados.descricao,
-        espelhadaConvenio: false,
+        espelhadaConvenio: dados.espelhadaConvenio,
         situacao: 'ativo',
       });
     }
@@ -197,6 +199,7 @@ export function useGradeHorarios() {
       dataInicio: dados.dataInicio,
       dataTermino: dados.dataTermino,
       descricao: dados.descricao,
+      espelhadaConvenio: dados.espelhadaConvenio,
     });
     await recarregar();
   }

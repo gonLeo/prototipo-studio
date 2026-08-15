@@ -8,8 +8,8 @@ Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança 
 - [x] Fase 3 — M2 Cadastro de Alunas + M3 Pacotes e Contratos
 - [x] Fase 4 — M7 Agendamento de Aulas + M8 Cancelamento e Justificativa
 - [x] Fase 5 — M9 Presença e Chamada + M10 Comissão e Fechamento
-- [ ] Fase 6 — M11 Cobranças e Financeiro
-- [ ] Fase 7 — M12 Aula Experimental + M13 Convênios Corporativos
+- [x] Fase 6 — M11 Cobranças e Financeiro
+- [x] Fase 7 — M12 Aula Experimental + M13 Convênios Corporativos
 - [ ] Fase 8 — M14 Painéis e Indicadores + M15 Notificações + M16 Perfis e Permissões (fechamento)
 
 ## Decisões fixadas
@@ -285,3 +285,98 @@ Próxima fase (Fase 5) usa estes agendamentos para a chamada e o registro de pre
 - **Corrigido laço infinito de requisições em "Meus pagamentos" e "Comissões".** `periodoAtual()` devolve um objeto novo a cada chamada e estava direto nas dependências do `useCallback` que carrega os dados: a cada render nascia uma função nova, o `useEffect` disparava, o `setState` provocava outro render, e assim por diante — até o navegador derrubar as conexões com `ERR_INSUFFICIENT_RESOURCES`. O período do mês corrente não muda enquanto a tela está aberta, então passou a ser memoizado com `useMemo`. Depois da correção, a tela estabiliza em ~26 requisições e não cresce mais (verificado no navegador). Varri os outros 15 pontos do projeto com dependências de efeito e nenhum tinha o mesmo defeito.
 
 Próxima fase (Fase 6) usa estes contratos e cobranças para o módulo financeiro (M11): cobrança recorrente, retentativa, multa e juros, bloqueio por inadimplência e avisos de vencimento.
+
+## Fase 6 — o que foi entregue
+
+**Cobranças e financeiro (M11).** A administração ganhou o painel de cobranças; a aluna passou a ver o próprio débito com multa e juros, e a pagar pelo painel.
+
+### M11 — Cobranças e Financeiro
+
+- **Cobrança na contratação** (RF-FIN-01): a primeira mensalidade deixou de nascer "já paga" e passa pelo mesmo caminho das demais — nasce pendente e é quitada por uma tentativa no gateway, então aparece no painel de cobranças com trilha de tentativas como qualquer outra.
+- **Cobrança recorrente** (RF-FIN-02): gerada na data de vencimento do ciclo de cada contrato ativo, e cobrada automaticamente. Contrato **trancado não é cobrado**; suspenso continua sendo — é justamente o que separa os dois mecanismos no M3.
+- **Retentativa automática** (RF-FIN-03) no dia seguinte à falha, com **cada tentativa registrada** com data, hora, origem (automática ou manual) e o retorno do provedor.
+- **Retentativa manual e reenvio de link** (RF-FIN-04): as duas ações estão na linha da cobrança e no detalhamento, disponíveis a qualquer momento.
+- **Marcação de inadimplência** (RF-FIN-05): passado o prazo configurado (referência: 5 dias) sem pagamento, a aluna é marcada como inadimplente — e o bloqueio do agendamento já estava pronto desde o M7, então passa a ter causa real.
+- **Multa e juros** (RF-FIN-06): multa percentual única na virada do vencimento e juros ao mês **pro rata die**, os dois configuráveis nos parâmetros (referência: 2% e 1% ao mês).
+- **Exibição do débito** (RF-FIN-07): o painel da aluna mostra valor original, multa, juros e valor atualizado, com o botão de pagar ao lado.
+- **Regularização automática** (RF-FIN-08): confirmado o pagamento — pelo gateway ou por baixa manual —, a situação volta a "ativa" e o agendamento é restabelecido na hora, desde que não reste outro débito vencido.
+- **Aviso de término de contrato** (RF-FIN-09) nas antecedências configuradas (referência: 15 e 3 dias), com o texto seguindo a decisão de UX do escopo: informa que a renovação é automática e orienta procurar a administração para ajustar o plano, sem oferecer o cancelamento como ação principal.
+- **Histórico financeiro por aluna** (RF-FIN-10): a seção da ficha virou trilha completa — situação, valor original, encargos, quitação, número de tentativas e o retorno da última.
+- **Painel de cobranças** (RF-FIN-11): consolidado do mês por situação (recebido, a receber, com falha, em atraso), alerta do total em atraso e tabela com busca, filtros por situação e paginação.
+- **Registro manual de pagamento** (RF-FIN-12): baixa fora do gateway com forma de pagamento, data e observação, tudo registrado na auditoria.
+- **Cancelamento de cobrança** (RF-FIN-13) pendente, com motivo obrigatório — e, se era ele que segurava a aluna, a regularização acontece junto.
+
+### Decisões desta fase
+
+- **O gateway ficou isolado em `src/services/gatewayPagamento.ts`.** O provedor está em aberto no escopo (RF-FIN-14 / PA-04), e todo o resto do módulo — retentativa, encargos, inadimplência, regularização — opera sobre o retorno dessas duas funções. Trocar pelo provedor real não deve mexer em regra nem em tela.
+- **A simulação do gateway é determinística, não aleatória**: aprova sempre, exceto nas cobranças marcadas com "Simular falha no gateway" (ação no detalhamento da cobrança). Um resultado sorteado tornaria impossível demonstrar retentativa, multa, juros e bloqueio de forma reproduzível.
+- **A rotina do dia é disparada pela administração.** No sistema final é o agendador que executa a cobrança recorrente, a retentativa, os encargos, o bloqueio e os avisos na virada do dia. O protótipo não tem agendador, então o botão "Executar rotina do dia" aplica exatamente a mesma regra — mesmo tratamento dado à renovação de ciclo (RF-PAC-07) na Fase 3.
+- **A renovação de ciclo passou a gerar a cobrança do ciclo que vence**, antes de avançar o vencimento: sem isso, renovar manualmente antes da rotina financeira faria aquela competência nunca ser cobrada.
+- **Multa e juros são recalculados na leitura do painel da aluna**, e não só quando a rotina roda: assim ela nunca vê um valor congelado na data da última execução. A gravação na cobrança continua sendo feita pela rotina, que é quem "fecha" o número usado na cobrança.
+- `Cobranca` ganhou `origem`, `formaPagamento`, `observacao` e `motivoCancelamento` — os três últimos são exigência direta de RF-FIN-12 e RF-FIN-13, que pedem o registro estruturado dessas informações. `simularFalhaGateway` existe só no protótipo e não faz parte do modelo de dados do escopo.
+- Backfill expandido com a aluna **Patrícia Lima**: contrato mensal iniciado em 30/08/2025, com término em 30/08/2026 (15 dias à frente da data de referência do backfill, para exercitar o aviso de término) e a mensalidade de 30/07/2026 recusada duas vezes pelo gateway — é o cenário que dá conteúdo a atraso, encargos e bloqueio por inadimplência.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"** para carregar a aluna e as cobranças novas.
+2. Entrar como **Camila Duarte** → Administração → **Cobranças**: o painel mostra recebido, a receber, com falha e em atraso, e a cobrança da Patrícia aparece com as duas tentativas recusadas.
+3. **Detalhar** a cobrança da Patrícia: valor, encargos e a trilha de tentativas com o retorno do gateway.
+4. **Executar rotina do dia**: o toast resume o que aconteceu — a cobrança da Patrícia recebe multa e juros, ela é marcada como inadimplente e o aviso de término de contrato dela é enviado. Rodar de novo no mesmo dia não repete a tentativa nem o aviso.
+5. Entrar como **Patrícia Lima** (Aluna): o painel mostra o débito decomposto (original, multa, juros, atualizado) e o aviso de que o agendamento está bloqueado; a grade de aulas confirma o bloqueio.
+6. Voltar à Administração, **Detalhar** a cobrança e usar **Parar de simular falha**; entrar como Patrícia e **pagar pelo painel**: o pagamento é aprovado, ela volta a "ativa" e o agendamento é liberado na mesma hora.
+7. Alternativamente, testar **Receber por fora**: informe forma, data e observação — a baixa quita a cobrança, regulariza a aluna e fica no histórico da ficha dela.
+8. Testar **Cancelar cobrança** com motivo e conferir o registro no histórico financeiro da ficha.
+9. Na ficha da **Larissa** → **Renovar ciclo**: além de creditar as aulas, a renovação gera e cobra a mensalidade daquele ciclo, que aparece no painel de cobranças.
+10. Em **Parâmetros**, mudar multa, juros ou o prazo de bloqueio e rodar a rotina de novo para ver os valores acompanharem a configuração.
+
+Próxima fase (Fase 7) usa este financeiro para a aula experimental (M12), que é paga à parte antes de confirmar a vaga, e para os convênios corporativos (M13).
+
+## Fase 7 — o que foi entregue
+
+**Aula experimental (M12) e convênios corporativos (M13).** O site ganhou um segundo fluxo público, e a administração ganhou o painel de convênios e o relatório de conversão.
+
+### M12 — Aula Experimental
+
+- **Fluxo iniciado pela agenda** (RF-EXP-01), em `/experimental`: a interessada vê a grade por dia, escolhe o horário e **só então** se cadastra e paga — a ordem inversa da matrícula, exatamente como definido na reunião, para evitar pagamento sem horário compatível.
+- **Cadastro obrigatório sem pacote** (RF-EXP-02): a interessada vira usuária e aluna do sistema, sem contrato e sem saldo. É esse cadastro que ela reaproveita se decidir se matricular.
+- **Limite por modalidade controlado por CPF** (RF-EXP-03): a grade já mostra a aula bloqueada com o motivo, e a regra é revalidada na confirmação — cadastrar-se de novo com outro e-mail não contorna o limite, porque a contagem é por CPF.
+- **Valor único configurável** (RF-EXP-04, referência R$ 30,00) e **vaga confirmada só após o pagamento** (RF-EXP-05): a cobrança é avulsa, passa pelo mesmo gateway das mensalidades e a reserva só é criada com a aprovação em mãos.
+- **Identificação na chamada** (RF-EXP-06): a aluna experimental aparece marcada como tal na lista de presença da professora.
+- **Conversão em matrícula pelo painel** (RF-EXP-07): a aluna sem pacote passa a ver, no próprio painel, a escolha de pacote e duração com pagamento imediato — sem repetir cadastro. A conversão fica registrada na auditoria como tal.
+- **Relatório de conversão** (RF-EXP-08): aulas do período, valor arrecadado, quantas viraram matrícula e a taxa.
+
+### M13 — Convênios Corporativos
+
+- **Espelhamento da grade** (RF-CNV-01/02): "Espelhar nos convênios" virou campo do cadastro de sessão, e a tela de convênios permite publicar ou retirar sessão a sessão. O botão "Sincronizar grade" registra a sincronização de cada parceiro.
+- **Reserva, confirmação e recusa** (RF-CNV-03/04/07): a reserva ocupa vaga na sessão como qualquer agendamento e é **recusada com motivo** quando a turma está cheia — a capacidade da modalidade é a mesma para matriculada e convênio.
+- **Cancelamento** (RF-CNV-05) libera a vaga na hora; **check-in validado** (RF-CNV-06) é aceito sem confirmação manual.
+- **Janela própria** (RF-CNV-08): a oferta aos convênios respeita o parâmetro separado (referência: 7 dias), independente dos 30 dias das matriculadas.
+- **Chamada** (RF-CNV-09/10): a aluna de convênio aparece com "check-in validado" ou "check-in pendente", e a professora pode marcá-la presente mesmo sem check-in — com o aviso, na própria tela, de que isso vale para o controle interno de ocupação e não gera repasse.
+- **Relatório de conferência** (RF-CNV-11): por convênio e por período — reservas, check-ins validados, reservas sem check-in, ausências e cancelamentos.
+- **Credenciais por convênio** (RF-CNV-12) com situação ativa/contingência/inativa, editáveis sem intervenção técnica.
+- **Contingência** (RF-CNV-13): a mesma tela registra reserva manualmente, marcada como contingência e com registro na auditoria.
+
+### Decisões desta fase
+
+- **Não há API dos convênios no protótipo**, então as mensagens que viriam dos parceiros são disparadas pela administração — mesmo tratamento dado ao gateway no M11. O que entra e sai do sistema é idêntico ao da integração real; muda quem aperta o botão. Como efeito colateral bem-vindo, esse é exatamente o caminho da contingência (RF-CNV-13), que precisa existir de qualquer forma.
+- **A aluna de convênio não tem contrato nem saldo** — o vínculo financeiro dela é com o parceiro. Por isso o bloqueio de agendamento dela no portal ganhou mensagem própria ("suas reservas acontecem pelo aplicativo do convênio") em vez do genérico "contrate um pacote".
+- **A aula experimental não consome saldo** e é cobrada à parte, então `Cobranca` passou a aceitar vínculo direto com a aluna (`alunaId`), com `contratoId` opcional. Sem isso, uma cobrança sem contrato não teria dono — e ela precisa aparecer no painel de cobranças e no histórico financeiro da ficha como qualquer outra.
+- **A conversão é contada por contrato iniciado a partir da data da aula experimental**, não por um campo "veio da experimental": assim o número continua correto mesmo quando a matrícula acontece pela administração, e não pelo painel da aluna.
+- **A presença de convênio no relatório é casada pela chamada da ocorrência**, não pelo id da aluna solto — do contrário uma falta em qualquer outra aula contaminaria a conferência do repasse.
+- A aula experimental **não pede termo nem anamnese**: o escopo exige apenas cadastro e pagamento (RF-EXP-02/05), e o termo é de prestação de serviço do pacote. Ele aparece quando ela converte em matrícula.
+- Backfill expandido: sessões de Pole Iniciante, Dança e Alongamento marcadas como espelhadas; credenciais dos dois convênios; **Renata Souza** (aluna de convênio) com uma reserva já com check-in validado na aula de 13/08 e outra pendente para 17/08; e **Juliana Rocha**, que fez uma aula experimental paga em 13/08 e ainda não contratou pacote.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"** para carregar os dados novos.
+2. Na tela de login, abrir **"Agendar aula experimental"**: navegue pelos dias, escolha uma aula, cadastre-se e pague — a vaga só é confirmada depois do pagamento aprovado.
+3. Repita o fluxo com o **mesmo CPF na mesma modalidade**: a aula aparece bloqueada com o motivo do limite (RF-EXP-03). Em **Parâmetros**, aumente "Limite de aulas experimentais por modalidade" e veja o bloqueio sumir.
+4. Entre como **Juliana Rocha** (Aluna): o painel dela oferece a contratação de pacote — contrate e confira que o saldo é creditado, a cobrança aparece no painel de cobranças e o agendamento é liberado.
+5. Administração → **Experimentais**: aulas do período, valor arrecadado e a taxa de conversão, que sobe depois do passo anterior.
+6. Administração → **Convênios** → aba **Grade espelhada**: publique ou retire uma sessão. Em **Credenciais**, edite as chaves e use "Sincronizar grade".
+7. Ainda em Convênios → **Registrar reserva**: escolha convênio, aluna e uma aula espelhada; tente uma turma sem vaga para ver a recusa. Marque "Registro de contingência" para simular a integração fora do ar.
+8. Na aba **Reservas**: **Validar check-in** de uma reserva pendente e **Cancelar** outra — a vaga volta à sessão na hora (confira na Grade).
+9. Entre como **Beatriz Nogueira** (Professora) → chamada de 13/08: a Renata aparece como convênio com check-in validado e a Juliana como aula experimental. Finalize a chamada.
+10. Volte em Convênios → **Relatório do período** e confira reservas, check-ins, sem check-in e ausências por convênio.
+
+Próxima fase (Fase 8) fecha o protótipo com painéis e indicadores (M14), notificações (M15) e perfis e permissões (M16).

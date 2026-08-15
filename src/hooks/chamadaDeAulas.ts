@@ -7,6 +7,7 @@ import {
   parametroRepositorio,
   registroAuditoriaRepositorio,
   registroPresencaRepositorio,
+  reservaConvenioRepositorio,
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
@@ -30,6 +31,14 @@ export interface AlunaNaChamada {
   alunaId: string;
   nome: string;
   origemConvenio: boolean;
+  /** RF-EXP-06: a aluna experimental aparece identificada como tal. */
+  experimental: boolean;
+  /**
+   * RF-CNV-09: check-in do aplicativo do convênio já validado. Quando
+   * falta, a professora ainda pode marcar presença (RF-CNV-10) — o
+   * registro vale para o controle interno de ocupação e não gera repasse.
+   */
+  checkinConvenio: boolean;
   presente: boolean;
 }
 
@@ -68,11 +77,12 @@ export async function carregarChamada(params: {
 }): Promise<{ chamada: Chamada | undefined; alunas: AlunaNaChamada[] }> {
   const { sessao, data } = params;
 
-  const [ocorrencias, chamadas, agendamentos, registros, { alunasPorId }] = await Promise.all([
+  const [ocorrencias, chamadas, agendamentos, registros, reservas, { alunasPorId }] = await Promise.all([
     ocorrenciaSessaoRepositorio.listar(),
     chamadaRepositorio.listar(),
     agendamentoRepositorio.listar(),
     registroPresencaRepositorio.listar(),
+    reservaConvenioRepositorio.listar(),
     carregarNomesDeAlunas(),
   ]);
 
@@ -96,11 +106,16 @@ export async function carregarChamada(params: {
       ? registros.find((r) => r.chamadaId === chamada.id && r.alunaId === agendamento.alunaId)
       : undefined;
     const dados = alunasPorId[agendamento.alunaId];
+    const reserva = reservas.find(
+      (r) => r.ocorrenciaSessaoId === ocorrencia.id && r.alunaId === agendamento.alunaId && r.situacao === 'confirmada',
+    );
     return {
       agendamentoId: agendamento.id,
       alunaId: agendamento.alunaId,
       nome: dados?.nome ?? 'Aluna removida',
       origemConvenio: dados?.origemConvenio ?? false,
+      experimental: agendamento.experimental,
+      checkinConvenio: reserva?.checkinValidado ?? false,
       // RF-PRE-03: presente por padrão até alguém dizer o contrário.
       presente: registro ? registro.situacao === 'presente' : true,
     };
@@ -221,8 +236,10 @@ async function gravarRegistrosDePresenca(params: {
         chamadaId: chamada.id,
         alunaId: aluna.alunaId,
         situacao,
-        // Check-in de convênio é validado no app do parceiro (M13).
-        checkinConvenio: false,
+        // O check-in vem validado do aplicativo do parceiro (RF-CNV-06). A
+        // presença marcada aqui sem check-in vale para o controle interno
+        // de ocupação e não gera repasse (RF-CNV-10).
+        checkinConvenio: aluna.checkinConvenio,
         dataHora: new Date().toISOString(),
         autorId,
       });

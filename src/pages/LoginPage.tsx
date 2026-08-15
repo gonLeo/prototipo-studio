@@ -49,12 +49,20 @@ export function LoginPage() {
 
         {carregando && <p className="text-center text-sm text-neutral-500">Carregando usuárias de exemplo…</p>}
 
-        <p className="mb-4 rounded-lg border border-neutral-200 bg-white p-3 text-center text-sm text-neutral-600 shadow-sm">
-          Quer simular uma matrícula pelo site?{' '}
-          <Link to="/matricula" className="font-medium text-primary-700 hover:text-primary-800">
-            Abrir a matrícula pública
-          </Link>
-        </p>
+        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 text-center text-sm text-neutral-600 shadow-sm">
+          <p>
+            Quer simular uma matrícula pelo site?{' '}
+            <Link to="/matricula" className="font-medium text-primary-700 hover:text-primary-800">
+              Abrir a matrícula pública
+            </Link>
+          </p>
+          <p>
+            Quer experimentar antes de contratar?{' '}
+            <Link to="/experimental" className="font-medium text-primary-700 hover:text-primary-800">
+              Agendar aula experimental
+            </Link>
+          </p>
+        </div>
 
         <ul className="flex flex-col gap-3">
           {usuarios.map((usuario) => (

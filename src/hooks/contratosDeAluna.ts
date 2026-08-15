@@ -22,6 +22,7 @@ import {
 } from '../utils/contrato';
 import { RegraNegocioError } from './useModalidades';
 import { cancelarAgendamentosDaAlunaNoPeriodo, contarAulasRealizadasNoPeriodo } from './cancelamentoDeAulas';
+import { gerarCobrancaDoCiclo, tentarPagamento } from './cobrancas';
 
 /**
  * Regras de contrato da aluna (M3): matrícula, renovação de ciclo,
@@ -235,23 +236,19 @@ export async function matricularAlunaPeloSite(params: {
 }
 
 /**
- * Registra o pagamento da primeira cobrança do contrato, feito pela aluna
- * no primeiro acesso.
+ * Cobrança da contratação (RF-FIN-01), paga pela aluna no primeiro acesso.
  *
  * Bolsista com isenção total não gera cobrança nenhuma (RF-BOL-03): nesse
  * caso nada é criado e a função devolve `undefined` — é o que faz o passo
  * de pagamento ser pulado no primeiro acesso.
  *
- * O gateway real entra no M11 (Fase 6); aqui a cobrança já nasce quitada,
- * com a marcação de que a transação foi simulada.
+ * Desde o M11 (Fase 6) a cobrança nasce **pendente** e é quitada pela
+ * tentativa no gateway, como qualquer outra: assim a primeira mensalidade
+ * aparece no painel de cobranças com a mesma trilha de tentativas das
+ * recorrentes, em vez de surgir já paga sem histórico.
  */
 export async function registrarPagamentoDaPrimeiraCobranca(contrato: Contrato): Promise<Cobranca | undefined> {
-  const percentual = contrato.percentualBolsa ?? 0;
-  if (ehIsencaoTotal(percentual)) return undefined;
-
-  const pacotes = await pacoteRepositorio.listar();
-  const pacote = pacotes.find((p) => p.id === contrato.pacoteId);
-  if (!pacote) throw new RegraNegocioError('O pacote deste contrato não existe mais.');
+  if (ehIsencaoTotal(contrato.percentualBolsa ?? 0)) return undefined;
 
   const cobrancas = await cobrancaRepositorio.listar();
   const jaPaga = cobrancas.find(
@@ -259,29 +256,69 @@ export async function registrarPagamentoDaPrimeiraCobranca(contrato: Contrato): 
   );
   if (jaPaga) return jaPaga;
 
-  const cobranca = await cobrancaRepositorio.criar({
-    contratoId: contrato.id,
-    valorBruto: pacote.valorMensal,
-    percentualBolsa: percentual,
-    valorLiquido: valorComBolsa(pacote.valorMensal, percentual),
-    multa: 0,
-    juros: 0,
+  const cobranca = await gerarCobrancaDoCiclo({
+    contrato,
     dataVencimento: contrato.dataInicio,
-    situacao: 'paga',
-    dataQuitacao: hojeISO(),
-    identificadorGateway: 'simulado-no-prototipo',
+    origem: 'contratacao',
+  });
+  if (!cobranca) return undefined;
+
+  const { cobranca: processada, sucesso, mensagem } = await tentarPagamento({ cobranca, origem: 'manual' });
+  if (!sucesso) throw new RegraNegocioError(`O pagamento não foi aprovado: ${mensagem}`);
+
+  return processada;
+}
+
+/**
+ * Contratação de pacote por uma aluna que já existe no sistema — hoje o
+ * caminho da **conversão da aula experimental em matrícula** (RF-EXP-07):
+ * o cadastro é preservado, só o contrato é novo.
+ *
+ * Diferente de `reativarAluna`, que pressupõe um contrato encerrado antes,
+ * aqui a aluna pode nunca ter tido contrato nenhum.
+ */
+export async function contratarPacoteParaAluna(params: {
+  aluna: Aluna;
+  contratacao: DadosContratacao;
+  autorId: string;
+}): Promise<Contrato> {
+  const { aluna, contratacao, autorId } = params;
+
+  const contratos = await contratoRepositorio.listar();
+  if (contratos.some((c) => c.alunaId === aluna.id && c.situacao !== 'encerrado')) {
+    throw new RegraNegocioError('Esta aluna já tem um contrato em andamento — altere o plano em vez de criar outro.');
+  }
+
+  const pacotes = await pacoteRepositorio.listar();
+  const pacote = pacotes.find((p) => p.id === contratacao.pacoteId);
+  if (!pacote) throw new RegraNegocioError('Selecione um pacote válido.');
+
+  const contrato = await criarContrato(aluna.id, pacote, contratacao);
+
+  await alunaRepositorio.atualizar(aluna.id, {
+    situacao: 'ativa',
+    bolsista: contratacao.percentualBolsa > 0,
+    percentualBolsa: contratacao.percentualBolsa,
   });
 
   await notificacaoRepositorio.criar({
-    destinatarioId: contrato.alunaId,
-    evento: 'pagamento_confirmado',
+    destinatarioId: aluna.usuarioId,
+    evento: 'pacote_contratado',
     canal: 'email',
-    conteudo: `Recebemos o pagamento de ${formatarMoeda(cobranca.valorLiquido)} referente ao seu pacote. Seu acesso ao agendamento está liberado.`,
+    conteudo: mensagemDeAcesso(pacote, contratacao, false),
     dataEnvio: new Date().toISOString(),
     situacaoEnvio: 'enviada',
   });
 
-  return cobranca;
+  await registroAuditoriaRepositorio.criar({
+    entidadeAfetada: 'Contrato',
+    operacao: 'contratacao_de_pacote',
+    autorId,
+    dataHora: new Date().toISOString(),
+    valorNovo: { alunaId: aluna.id, contratoId: contrato.id, pacote: pacote.nome },
+  });
+
+  return contrato;
 }
 
 /**
@@ -289,6 +326,10 @@ export async function registrarPagamentoDaPrimeiraCobranca(contrato: Contrato): 
  * de vencimento; no protótipo é disparada pela administração na ficha da
  * aluna, aplicando exatamente a mesma regra — inclusive a transferência
  * das aulas não realizadas para o novo ciclo.
+ *
+ * A renovação também gera a cobrança do ciclo que vence (RF-FIN-02) antes
+ * de avançar o vencimento: sem isso, renovar manualmente antes da rotina
+ * financeira do dia faria aquela competência nunca ser cobrada.
  */
 export async function renovarCiclo(contrato: Contrato, autorId: string): Promise<Contrato> {
   if (contrato.situacao !== 'ativo') {
@@ -304,6 +345,15 @@ export async function renovarCiclo(contrato: Contrato, autorId: string): Promise
     throw new RegraNegocioError(
       `A vigência do contrato termina em ${formatarDataBR(contrato.dataTerminoContrato)} — encerre ou contrate um novo pacote em vez de renovar o ciclo.`,
     );
+  }
+
+  const cobranca = await gerarCobrancaDoCiclo({
+    contrato,
+    dataVencimento: contrato.dataVencimentoCiclo,
+    origem: 'recorrencia',
+  });
+  if (cobranca && cobranca.situacao === 'pendente') {
+    await tentarPagamento({ cobranca, origem: 'automatica' });
   }
 
   const atualizado = await contratoRepositorio.atualizar(contrato.id, {

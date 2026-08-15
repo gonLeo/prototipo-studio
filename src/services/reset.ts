@@ -56,7 +56,9 @@ const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
     periodoFechamentoId: 'fechamentosComissao',
   },
   fechamentosComissao: { autorId: 'usuarios' },
-  cobrancas: { contratoId: 'contratos' },
+  // A cobrança de mensalidade aponta para o contrato; a avulsa da aula
+  // experimental aponta direto para a aluna (RF-EXP-04).
+  cobrancas: { contratoId: 'contratos', alunaId: 'alunas' },
   tentativasCobranca: { cobrancaId: 'cobrancas' },
   reservasConvenio: { alunaId: 'alunas', ocorrenciaSessaoId: 'ocorrenciasSessao' },
   notificacoes: { destinatarioId: 'usuarios' },

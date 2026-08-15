@@ -10,6 +10,7 @@ import {
   ocorrenciaSessaoRepositorio,
   pacoteRepositorio,
   pausaRepositorio,
+  tentativaCobrancaRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
 import type {
@@ -22,6 +23,7 @@ import type {
   HistoricoPlano,
   Pacote,
   Pausa,
+  TentativaCobranca,
   Usuario,
 } from '../types/domain';
 import { hojeISO } from '../utils/data';
@@ -43,6 +45,8 @@ export interface FichaAluna {
   pausas: Pausa[];
   frequencia: FrequenciaDaAluna[];
   cobrancas: Cobranca[];
+  /** Tentativas de cobrança por cobrança, para o histórico financeiro (RF-FIN-10). */
+  tentativasPorCobranca: Record<string, TentativaCobranca[]>;
   pacotes: Pacote[];
 }
 
@@ -51,9 +55,9 @@ export interface FichaAluna {
  * pacote ativo, saldo, validade, situação financeira e os históricos de
  * contratos, planos, bolsas, pausas, frequência e pagamentos.
  *
- * Frequência e pagamentos já são lidos aqui, mas só ganham conteúdo
- * quando os módulos que os produzem existirem (M9 na Fase 5 e M11 na
- * Fase 6) — até lá as seções aparecem vazias, sem dado inventado.
+ * O histórico financeiro traz cada cobrança com suas tentativas
+ * (RF-FIN-10): é a trilha que explica por que uma mensalidade está em
+ * aberto — recusa do gateway, retentativa, baixa manual ou cancelamento.
  */
 export function useFichaAluna(alunaId: string | undefined) {
   const [ficha, setFicha] = useState<FichaAluna | undefined>(undefined);
@@ -79,6 +83,7 @@ export function useFichaAluna(alunaId: string | undefined) {
       agendamentos,
       ocorrencias,
       cobrancas,
+      tentativas,
     ] = await Promise.all([
       alunaRepositorio.listar(),
       usuarioRepositorio.listar(),
@@ -91,6 +96,7 @@ export function useFichaAluna(alunaId: string | undefined) {
       agendamentoRepositorio.listar(),
       ocorrenciaSessaoRepositorio.listar(),
       cobrancaRepositorio.listar(),
+      tentativaCobrancaRepositorio.listar(),
     ]);
 
     const aluna = alunas.find((a) => a.id === alunaId);
@@ -106,6 +112,19 @@ export function useFichaAluna(alunaId: string | undefined) {
       .sort((a, b) => b.dataInicio.localeCompare(a.dataInicio));
     const contrato = contratosDaAluna.find((c) => c.situacao !== 'encerrado');
     const idsContratos = contratosDaAluna.map((c) => c.id);
+
+    // A cobrança de mensalidade chega pelo contrato; a da aula
+    // experimental é avulsa e aponta direto para a aluna (RF-EXP-04).
+    const cobrancasDaAluna = cobrancas
+      .filter((c) => (c.alunaId ? c.alunaId === aluna.id : c.contratoId !== undefined && idsContratos.includes(c.contratoId)))
+      .sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento));
+
+    const tentativasPorCobranca: Record<string, TentativaCobranca[]> = {};
+    for (const cobranca of cobrancasDaAluna) {
+      tentativasPorCobranca[cobranca.id] = tentativas
+        .filter((t) => t.cobrancaId === cobranca.id)
+        .sort((a, b) => b.dataHora.localeCompare(a.dataHora));
+    }
 
     const frequencia = agendamentos
       .filter((a) => a.alunaId === aluna.id)
@@ -132,9 +151,8 @@ export function useFichaAluna(alunaId: string | undefined) {
         .filter((p) => idsContratos.includes(p.contratoId))
         .sort((a, b) => b.dataInicio.localeCompare(a.dataInicio)),
       frequencia,
-      cobrancas: cobrancas
-        .filter((c) => idsContratos.includes(c.contratoId))
-        .sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento)),
+      cobrancas: cobrancasDaAluna,
+      tentativasPorCobranca,
       pacotes,
     });
     setCarregando(false);

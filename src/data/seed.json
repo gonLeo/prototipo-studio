@@ -107,6 +107,36 @@
       "perfis": [
         "aluna"
       ]
+    },
+    {
+      "id": "usr-aluna-3",
+      "nome": "Patrícia Lima",
+      "email": "patricia@example.com",
+      "cpf": "555.555.555-55",
+      "situacao": "ativo",
+      "perfis": [
+        "aluna"
+      ]
+    },
+    {
+      "id": "usr-aluna-4",
+      "nome": "Renata Souza",
+      "email": "renata@example.com",
+      "cpf": "666.666.666-66",
+      "situacao": "ativo",
+      "perfis": [
+        "aluna"
+      ]
+    },
+    {
+      "id": "usr-aluna-5",
+      "nome": "Juliana Rocha",
+      "email": "juliana@example.com",
+      "cpf": "777.777.777-77",
+      "situacao": "ativo",
+      "perfis": [
+        "aluna"
+      ]
     }
   ],
   "modalidades": [
@@ -300,6 +330,39 @@
       "situacao": "aguardando_aceite",
       "bolsista": true,
       "percentualBolsa": 50
+    },
+    {
+      "id": "alu-patricia",
+      "usuarioId": "usr-aluna-3",
+      "telefone": "(11) 94444-5050",
+      "dataNascimento": "1988-06-14",
+      "contatoEmergencia": "Renato Lima — (11) 93333-6060",
+      "origem": "direta",
+      "situacao": "ativa",
+      "bolsista": false,
+      "percentualBolsa": 0
+    },
+    {
+      "id": "alu-renata",
+      "usuarioId": "usr-aluna-4",
+      "telefone": "(11) 92222-7070",
+      "dataNascimento": "1993-02-19",
+      "contatoEmergencia": "",
+      "origem": "convenio",
+      "situacao": "ativa",
+      "bolsista": false,
+      "percentualBolsa": 0
+    },
+    {
+      "id": "alu-juliana",
+      "usuarioId": "usr-aluna-5",
+      "telefone": "(11) 91111-8080",
+      "dataNascimento": "1997-09-05",
+      "contatoEmergencia": "Marina Rocha — (11) 90000-9090",
+      "origem": "direta",
+      "situacao": "ativa",
+      "bolsista": false,
+      "percentualBolsa": 0
     }
   ],
   "anamneses": [
@@ -316,6 +379,21 @@
         "gestante": "Não",
         "pratica_anterior": "Fiz um semestre de pole em outro studio em 2024.",
         "observacoes": "Prefiro evitar exercícios de carga alta no ombro direito."
+      }
+    },
+    {
+      "id": "ana-patricia",
+      "alunaId": "alu-patricia",
+      "dataPreenchimento": "2025-08-30T10:05:00.000Z",
+      "versaoQuestionario": 1,
+      "respostas": {
+        "lesao_ou_cirurgia": "Não",
+        "dor_articular": "Não",
+        "condicao_cardiaca": "Não",
+        "medicacao_continua": "Não",
+        "gestante": "Não",
+        "pratica_anterior": "Nunca pratiquei antes.",
+        "observacoes": ""
       }
     }
   ],
@@ -335,6 +413,14 @@
       "termoVersaoId": "termo-v1",
       "dataHora": "2026-08-10T14:28:00.000Z",
       "enderecoIp": "203.0.113.10 (simulado no protótipo)",
+      "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote contratado pela aluna.\n\n2. PACOTE E VIGÊNCIA\nO pacote contratado dá direito à quantidade de aulas indicada no ciclo, válidas dentro do prazo de vigência informado no ato da contratação. Aulas não realizadas dentro do ciclo seguem as regras de transferência previstas no contrato.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos fora do prazo consomem a aula do saldo.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nA cobrança é mensal e recorrente, na data de entrada da aluna, pelo valor do pacote contratado, considerando eventual desconto concedido.\n\n6. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
+    },
+    {
+      "id": "ace-patricia",
+      "usuarioId": "usr-aluna-3",
+      "termoVersaoId": "termo-v1",
+      "dataHora": "2025-08-30T10:02:00.000Z",
+      "enderecoIp": "203.0.113.44 (simulado no protótipo)",
       "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote contratado pela aluna.\n\n2. PACOTE E VIGÊNCIA\nO pacote contratado dá direito à quantidade de aulas indicada no ciclo, válidas dentro do prazo de vigência informado no ato da contratação. Aulas não realizadas dentro do ciclo seguem as regras de transferência previstas no contrato.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos fora do prazo consomem a aula do saldo.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nA cobrança é mensal e recorrente, na data de entrada da aluna, pelo valor do pacote contratado, considerando eventual desconto concedido.\n\n6. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
     }
   ],
@@ -399,6 +485,19 @@
       "percentualBolsa": 0
     },
     {
+      "id": "ctr-patricia",
+      "alunaId": "alu-patricia",
+      "pacoteId": "pac-4",
+      "tipo": "mensal",
+      "dataInicio": "2025-08-30",
+      "dataVencimentoCiclo": "2026-07-30",
+      "dataTerminoContrato": "2026-08-30",
+      "saldoAulas": 4,
+      "diasAdicionaisConcedidos": 0,
+      "situacao": "ativo",
+      "percentualBolsa": 0
+    },
+    {
       "id": "ctr-fernanda",
       "alunaId": "alu-fernanda",
       "pacoteId": "pac-4",
@@ -430,7 +529,7 @@
       "capacidade": 6,
       "dataInicio": "2026-02-02",
       "descricao": "Turma da manhã",
-      "espelhadaConvenio": false,
+      "espelhadaConvenio": true,
       "situacao": "ativo"
     },
     {
@@ -462,7 +561,7 @@
       "horarioFim": "16:00",
       "capacidade": 12,
       "dataInicio": "2026-02-03",
-      "espelhadaConvenio": false,
+      "espelhadaConvenio": true,
       "situacao": "ativo"
     },
     {
@@ -493,7 +592,7 @@
       "capacidade": 14,
       "dataInicio": "2026-02-07",
       "descricao": "Aberta a todos os níveis",
-      "espelhadaConvenio": false,
+      "espelhadaConvenio": true,
       "situacao": "ativo"
     }
   ],
@@ -549,6 +648,33 @@
       "dataHora": "2026-08-11T09:00:00.000Z",
       "situacao": "ativo",
       "experimental": false
+    },
+    {
+      "id": "agd-renata-13",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-danca-13",
+      "origem": "convenio",
+      "dataHora": "2026-08-11T19:40:00.000Z",
+      "situacao": "ativo",
+      "experimental": false
+    },
+    {
+      "id": "agd-renata-17",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-futura",
+      "origem": "convenio",
+      "dataHora": "2026-08-14T08:10:00.000Z",
+      "situacao": "ativo",
+      "experimental": false
+    },
+    {
+      "id": "agd-juliana-exp",
+      "alunaId": "alu-juliana",
+      "ocorrenciaSessaoId": "oco-danca-13",
+      "origem": "portal",
+      "dataHora": "2026-08-11T21:05:00.000Z",
+      "situacao": "ativo",
+      "experimental": true
     }
   ],
   "excecoesCalendario": [
@@ -585,10 +711,150 @@
   ],
   "comissoes": [],
   "fechamentosComissao": [],
-  "cobrancas": [],
-  "tentativasCobranca": [],
-  "conveniosIntegracao": [],
-  "reservasConvenio": [],
+  "cobrancas": [
+    {
+      "id": "cob-larissa-contratacao",
+      "contratoId": "ctr-larissa",
+      "valorBruto": 380,
+      "percentualBolsa": 0,
+      "valorLiquido": 380,
+      "multa": 0,
+      "juros": 0,
+      "dataVencimento": "2026-08-10",
+      "situacao": "paga",
+      "dataQuitacao": "2026-08-10",
+      "identificadorGateway": "sim-seed-larissa",
+      "origem": "contratacao",
+      "formaPagamento": "gateway"
+    },
+    {
+      "id": "cob-patricia-contratacao",
+      "contratoId": "ctr-patricia",
+      "valorBruto": 220,
+      "percentualBolsa": 0,
+      "valorLiquido": 220,
+      "multa": 0,
+      "juros": 0,
+      "dataVencimento": "2025-08-30",
+      "situacao": "paga",
+      "dataQuitacao": "2025-08-30",
+      "identificadorGateway": "sim-seed-patricia",
+      "origem": "contratacao",
+      "formaPagamento": "gateway"
+    },
+    {
+      "id": "cob-patricia-julho",
+      "contratoId": "ctr-patricia",
+      "valorBruto": 220,
+      "percentualBolsa": 0,
+      "valorLiquido": 220,
+      "multa": 0,
+      "juros": 0,
+      "dataVencimento": "2026-07-30",
+      "situacao": "falha",
+      "origem": "recorrencia",
+      "simularFalhaGateway": true
+    },
+    {
+      "id": "cob-juliana-experimental",
+      "alunaId": "alu-juliana",
+      "valorBruto": 30,
+      "percentualBolsa": 0,
+      "valorLiquido": 30,
+      "multa": 0,
+      "juros": 0,
+      "dataVencimento": "2026-08-11",
+      "situacao": "paga",
+      "dataQuitacao": "2026-08-11",
+      "identificadorGateway": "sim-seed-juliana",
+      "origem": "experimental",
+      "formaPagamento": "gateway",
+      "observacao": "Aula experimental de 13/08/2026 às 15:00"
+    }
+  ],
+  "tentativasCobranca": [
+    {
+      "id": "tent-larissa-1",
+      "cobrancaId": "cob-larissa-contratacao",
+      "dataHora": "2026-08-10T14:35:00.000Z",
+      "retornoGateway": "Aprovada — R$ 380.00 (simulação do protótipo).",
+      "situacao": "sucesso",
+      "origem": "manual"
+    },
+    {
+      "id": "tent-patricia-1",
+      "cobrancaId": "cob-patricia-contratacao",
+      "dataHora": "2025-08-30T11:20:00.000Z",
+      "retornoGateway": "Aprovada — R$ 220.00 (simulação do protótipo).",
+      "situacao": "sucesso",
+      "origem": "manual"
+    },
+    {
+      "id": "tent-patricia-2",
+      "cobrancaId": "cob-patricia-julho",
+      "dataHora": "2026-07-30T03:00:00.000Z",
+      "retornoGateway": "Recusada pelo emissor do cartão (simulação do protótipo).",
+      "situacao": "falha",
+      "origem": "automatica"
+    },
+    {
+      "id": "tent-patricia-3",
+      "cobrancaId": "cob-patricia-julho",
+      "dataHora": "2026-07-31T03:00:00.000Z",
+      "retornoGateway": "Recusada pelo emissor do cartão (simulação do protótipo).",
+      "situacao": "falha",
+      "origem": "automatica"
+    },
+    {
+      "id": "tent-juliana-1",
+      "cobrancaId": "cob-juliana-experimental",
+      "dataHora": "2026-08-11T21:04:00.000Z",
+      "retornoGateway": "Aprovada — R$ 30.00 (simulação do protótipo).",
+      "situacao": "sucesso",
+      "origem": "manual"
+    }
+  ],
+  "conveniosIntegracao": [
+    {
+      "id": "int-wellhub",
+      "convenio": "wellhub",
+      "credenciais": "wh_live_**** (credencial simulada no protótipo)",
+      "situacaoIntegracao": "ativa",
+      "dataUltimaSincronizacao": "2026-08-14T11:00:00.000Z"
+    },
+    {
+      "id": "int-totalpass",
+      "convenio": "totalpass",
+      "credenciais": "tp_live_**** (credencial simulada no protótipo)",
+      "situacaoIntegracao": "ativa",
+      "dataUltimaSincronizacao": "2026-08-14T11:05:00.000Z"
+    }
+  ],
+  "reservasConvenio": [
+    {
+      "id": "res-renata-13",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000131",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-danca-13",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "2026-08-13T17:55:00.000Z",
+      "data": "2026-08-13",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-renata-17",
+      "convenio": "totalpass",
+      "identificadorExterno": "TOTALPASS-000174",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-futura",
+      "situacao": "confirmada",
+      "checkinValidado": false,
+      "data": "2026-08-17",
+      "origemRegistro": "integracao"
+    }
+  ],
   "notificacoes": [],
   "registrosAuditoria": []
 }

@@ -15,9 +15,24 @@ const CARTOES_OPERACAO = [
     descricao: 'Pedidos das professoras: designar substituta ou cancelar.',
   },
   {
+    to: '/administracao/cobrancas',
+    titulo: 'Cobranças',
+    descricao: 'Recebido, a receber, falhas e atrasos — com retentativa e baixa manual.',
+  },
+  {
     to: '/administracao/comissoes',
     titulo: 'Comissões',
     descricao: 'Apuração do período, fechamento e registro de pagamento.',
+  },
+  {
+    to: '/administracao/experimentais',
+    titulo: 'Aulas experimentais',
+    descricao: 'Aulas do período, valor arrecadado e taxa de conversão em matrícula.',
+  },
+  {
+    to: '/administracao/convenios',
+    titulo: 'Convênios',
+    descricao: 'Grade espelhada, reservas, check-ins e conferência do repasse.',
   },
 ];
 

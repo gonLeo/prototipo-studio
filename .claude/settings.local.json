@@ -46,7 +46,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X PUT http://localhost:4000/db -H \"Content-Type: application/json\" -d '{\"espacos\":[]}')",
       "Bash(npx vite *)",
       "Bash(sed -i \"s|import { ControlesDePaginacao, usePaginacao } from './Paginacao';|import { ControlesDePaginacao } from './Paginacao';\\\\nimport { usePaginacao } from './usePaginacao';|\" src/components/ui/Table.tsx)",
-      "Bash(sed -i \"s|import { ControlesDePaginacao, usePaginacao } from '../../components/ui/Paginacao';|import { ControlesDePaginacao } from '../../components/ui/Paginacao';\\\\nimport { usePaginacao } from '../../components/ui/usePaginacao';|\" src/pages/aluna/MinhasAulasPage.tsx)"
+      "Bash(sed -i \"s|import { ControlesDePaginacao, usePaginacao } from '../../components/ui/Paginacao';|import { ControlesDePaginacao } from '../../components/ui/Paginacao';\\\\nimport { usePaginacao } from '../../components/ui/usePaginacao';|\" src/pages/aluna/MinhasAulasPage.tsx)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/src/tools/caveman-init.js)",
+      "Bash(node - --dry-run)",
+      "Bash(python -c ' *)",
+      "Bash(python -)"
     ]
   }
 }

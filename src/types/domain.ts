@@ -341,9 +341,22 @@ export type SituacaoCobranca =
   | 'atrasada'
   | 'cancelada';
 
+/**
+ * Como a cobrança nasceu — a primeira é a da contratação (RF-FIN-01), as
+ * seguintes são recorrentes (RF-FIN-02), e a aula experimental é avulsa,
+ * cobrada à parte e sem contrato (RF-EXP-04/05).
+ */
+export type OrigemCobranca = 'contratacao' | 'recorrencia' | 'experimental';
+
+/** RF-FIN-12: pagamento fora do gateway é registrado com a forma usada. */
+export type FormaPagamento = 'gateway' | 'pix' | 'dinheiro' | 'transferencia' | 'cartao' | 'outro';
+
 export interface Cobranca {
   id: ID;
-  contratoId: ID;
+  /** Ausente na cobrança avulsa da aula experimental, que não tem contrato. */
+  contratoId?: ID;
+  /** Preenchido quando a cobrança não vem de um contrato (aula experimental). */
+  alunaId?: ID;
   valorBruto: number;
   percentualBolsa: number;
   valorLiquido: number;
@@ -353,6 +366,16 @@ export interface Cobranca {
   situacao: SituacaoCobranca;
   dataQuitacao?: string;
   identificadorGateway?: string;
+  origem?: OrigemCobranca;
+  formaPagamento?: FormaPagamento;
+  observacao?: string;
+  motivoCancelamento?: string;
+  /**
+   * Só existe no protótipo: liga a recusa do gateway simulado para esta
+   * cobrança, para que retentativa, multa/juros e bloqueio por
+   * inadimplência possam ser demonstrados de forma determinística.
+   */
+  simularFalhaGateway?: boolean;
 }
 
 export interface TentativaCobranca {
@@ -383,6 +406,13 @@ export interface ReservaConvenio {
   situacao: 'confirmada' | 'cancelada';
   checkinValidado: boolean;
   dataHoraCheckin?: string;
+  /** Data da aula reservada, copiada da ocorrência para relatório por período. */
+  data?: string;
+  /**
+   * Reserva vinda da integração ou registrada à mão pela administração
+   * durante indisponibilidade do parceiro (RF-CNV-13).
+   */
+  origemRegistro?: 'integracao' | 'contingencia';
 }
 
 export interface Notificacao {

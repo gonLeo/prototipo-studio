@@ -17,7 +17,8 @@ import {
   renovarCiclo,
   retornarDePausa,
 } from '../../hooks/contratosDeAluna';
-import type { SituacaoAluna } from '../../types/domain';
+import type { SituacaoAluna, SituacaoCobranca } from '../../types/domain';
+import { valorAtualizadoDaCobranca } from '../../utils/financeiro';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
@@ -35,6 +36,22 @@ const TOM_POR_SITUACAO: Record<SituacaoAluna, 'sucesso' | 'erro' | 'aviso' | 'ne
   suspensa: 'aviso',
   encerrada: 'neutro',
   aguardando_aceite: 'info',
+};
+
+const ROTULO_SITUACAO_COBRANCA: Record<SituacaoCobranca, string> = {
+  pendente: 'Pendente',
+  paga: 'Paga',
+  falha: 'Falha no gateway',
+  atrasada: 'Em atraso',
+  cancelada: 'Cancelada',
+};
+
+const TOM_SITUACAO_COBRANCA: Record<SituacaoCobranca, 'sucesso' | 'erro' | 'aviso' | 'neutro' | 'info'> = {
+  pendente: 'info',
+  paga: 'sucesso',
+  falha: 'aviso',
+  atrasada: 'erro',
+  cancelada: 'neutro',
 };
 
 function Secao({ titulo, acao, children }: { titulo: string; acao?: ReactNode; children: ReactNode }) {
@@ -373,9 +390,7 @@ export function AlunaFichaPage() {
 
         <Secao titulo="Histórico de frequência">
           {ficha.frequencia.length === 0 ? (
-            <p className="text-sm text-neutral-500">
-              Sem aulas registradas. O agendamento chega na Fase 4 e a chamada na Fase 5.
-            </p>
+            <p className="text-sm text-neutral-500">Nenhuma aula agendada ou realizada até agora.</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {ficha.frequencia.map((item) => (
@@ -388,19 +403,58 @@ export function AlunaFichaPage() {
           )}
         </Secao>
 
-        <Secao titulo="Histórico de pagamentos">
+        <Secao
+          titulo="Histórico financeiro"
+          acao={
+            <Link
+              to="/administracao/cobrancas"
+              className="text-sm font-medium text-primary-700 hover:text-primary-800"
+            >
+              Painel de cobranças →
+            </Link>
+          }
+        >
           {ficha.cobrancas.length === 0 ? (
-            <p className="text-sm text-neutral-500">Sem cobranças registradas. O financeiro chega na Fase 6.</p>
+            <p className="text-sm text-neutral-500">Nenhuma cobrança registrada para esta aluna.</p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {ficha.cobrancas.map((item) => (
-                <li key={item.id} className="flex justify-between gap-2 rounded-md border border-neutral-200 p-2 text-sm">
-                  <span className="text-ink">{formatarDataBR(item.dataVencimento)}</span>
-                  <span className="text-neutral-500">
-                    {formatarMoeda(item.valorLiquido)} · {item.situacao}
-                  </span>
-                </li>
-              ))}
+              {ficha.cobrancas.map((item) => {
+                const tentativas = ficha.tentativasPorCobranca[item.id] ?? [];
+                const encargos = (item.multa ?? 0) + (item.juros ?? 0);
+                return (
+                  <li key={item.id} className="rounded-md border border-neutral-200 p-2 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-ink">
+                        Vencimento {formatarDataBR(item.dataVencimento)}
+                        {item.origem === 'contratacao' && (
+                          <span className="ml-1 text-xs text-neutral-500">· contratação</span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-medium text-ink">
+                          {formatarMoeda(valorAtualizadoDaCobranca(item))}
+                        </span>
+                        <Badge tom={TOM_SITUACAO_COBRANCA[item.situacao]}>
+                          {ROTULO_SITUACAO_COBRANCA[item.situacao]}
+                        </Badge>
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      {encargos > 0 &&
+                        `Original ${formatarMoeda(item.valorLiquido)} + encargos ${formatarMoeda(encargos)} · `}
+                      {item.dataQuitacao ? `quitada em ${formatarDataBR(item.dataQuitacao)}` : 'em aberto'}
+                      {tentativas.length > 0 && ` · ${tentativas.length} tentativa(s)`}
+                    </p>
+                    {tentativas[0] && (
+                      <p className="text-xs text-neutral-500">Última tentativa: {tentativas[0].retornoGateway}</p>
+                    )}
+                    {item.motivoCancelamento && (
+                      <p className="text-xs text-neutral-500">Cancelada: {item.motivoCancelamento}</p>
+                    )}
+                    {item.observacao && <p className="text-xs text-neutral-500">{item.observacao}</p>}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Secao>

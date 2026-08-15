@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useSessao } from '../../hooks/useSessao';
+import { usePacotes } from '../../hooks/usePacotes';
 import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../../hooks/useTermos';
-import { registrarPagamentoDaPrimeiraCobranca } from '../../hooks/contratosDeAluna';
+import { contratarPacoteParaAluna, registrarPagamentoDaPrimeiraCobranca } from '../../hooks/contratosDeAluna';
+import { registrarConversao } from '../../hooks/aulasExperimentais';
+import { debitoDaAluna, pagarDebitoDaAluna } from '../../hooks/cobrancas';
+import type { DebitoDaAluna } from '../../hooks/cobrancas';
 import { useToast } from '../../hooks/useToast';
 import {
   aceiteRegistradoRepositorio,
@@ -9,13 +14,128 @@ import {
   contratoRepositorio,
   pacoteRepositorio,
 } from '../../services/repositorios';
-import type { Aluna, Contrato, Pacote } from '../../types/domain';
+import type { Aluna, Contrato, Pacote, TipoContrato } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { SelectField } from '../../components/ui/Field';
 import { TermoEAnamnese } from '../../components/TermoEAnamnese';
 import { perguntasNaoRespondidas } from '../../data/anamnese';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../../utils/data';
 import { ehIsencaoTotal, formatarMoeda, valorComBolsa } from '../../utils/contrato';
+
+/**
+ * Contratação de pacote pela própria aluna (RF-EXP-07).
+ *
+ * É por aqui que quem fez a aula experimental vira matriculada sem repetir
+ * cadastro: o vínculo já existe, o que falta é o contrato — e a primeira
+ * mensalidade segue o mesmo caminho de cobrança das demais (RF-FIN-01).
+ */
+function ContratarPacote({
+  aluna,
+  onContratado,
+}: {
+  aluna: Aluna | undefined;
+  onContratado: (mensagem: string) => Promise<void>;
+}) {
+  const { pacotes, carregando } = usePacotes();
+  const [pacoteId, setPacoteId] = useState('');
+  const [tipo, setTipo] = useState<TipoContrato>('mensal');
+  const [erro, setErro] = useState<string>();
+  const [processando, setProcessando] = useState(false);
+
+  const ativos = pacotes.filter((p) => p.situacao === 'ativo');
+  const escolhido = ativos.find((p) => p.id === pacoteId);
+
+  async function contratar(e: FormEvent) {
+    e.preventDefault();
+    if (!aluna || !escolhido) return;
+    setErro(undefined);
+    setProcessando(true);
+    try {
+      const contrato = await contratarPacoteParaAluna({
+        aluna,
+        contratacao: { pacoteId: escolhido.id, tipo, dataPrimeiraCobranca: hojeISO(), percentualBolsa: 0 },
+        autorId: aluna.usuarioId,
+      });
+      await registrarPagamentoDaPrimeiraCobranca(contrato);
+      await registrarConversao({ alunaId: aluna.id, contratoId: contrato.id, autorId: aluna.usuarioId });
+      await onContratado(
+        `Pacote contratado. ${escolhido.aulasPorCiclo} aulas creditadas e agendamento liberado.`,
+      );
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  if (carregando) return <p className="mt-6 text-sm text-neutral-500">Carregando pacotes…</p>;
+
+  return (
+    <form onSubmit={contratar} className="mt-6 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <div>
+        <h2 className="text-sm font-semibold text-ink">Contrate um pacote</h2>
+        <p className="mt-1 text-sm text-neutral-600">
+          Você ainda não tem pacote ativo. Escolha um plano para liberar o agendamento — seu cadastro é aproveitado,
+          nada precisa ser preenchido de novo.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {ativos.map((pacote) => (
+          <label
+            key={pacote.id}
+            className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 ${
+              pacoteId === pacote.id ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 hover:bg-neutral-50'
+            }`}
+          >
+            <span className="flex items-start gap-3">
+              <input
+                type="radio"
+                name="pacote-conversao"
+                value={pacote.id}
+                checked={pacoteId === pacote.id}
+                onChange={() => setPacoteId(pacote.id)}
+                required
+                className="mt-1 h-4 w-4 border-neutral-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-ink">{pacote.nome}</span>
+                <span className="block text-xs text-neutral-500">
+                  {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana
+                </span>
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-semibold text-ink">{formatarMoeda(pacote.valorMensal)}</span>
+          </label>
+        ))}
+        {ativos.length === 0 && <p className="text-sm text-neutral-500">Nenhum pacote disponível no momento.</p>}
+      </div>
+
+      <SelectField
+        label="Duração do contrato"
+        value={tipo}
+        onChange={(e) => setTipo(e.target.value as TipoContrato)}
+        dica="Em ambos os casos a cobrança é mensal e recorrente."
+      >
+        <option value="mensal">Mensal</option>
+        <option value="semestral">Semestral</option>
+      </SelectField>
+
+      {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
+
+      <div className="flex justify-end">
+        <Button type="submit" disabled={!escolhido || processando}>
+          {processando
+            ? 'Processando…'
+            : escolhido
+              ? `Pagar ${formatarMoeda(escolhido.valorMensal)} e contratar`
+              : 'Escolha um pacote'}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 /**
  * Painel da aluna.
@@ -33,6 +153,8 @@ export function PainelAlunaPage() {
   const [aluna, setAluna] = useState<Aluna | undefined>();
   const [contrato, setContrato] = useState<Contrato | undefined>();
   const [pacote, setPacote] = useState<Pacote | undefined>();
+  const [debito, setDebito] = useState<DebitoDaAluna | undefined>();
+  const [pagandoDebito, setPagandoDebito] = useState(false);
   const [carregando, setCarregando] = useState(true);
 
   const [aceito, setAceito] = useState(false);
@@ -54,6 +176,7 @@ export function PainelAlunaPage() {
     setAluna(minha);
     setContrato(meuContrato);
     setPacote(pacotes.find((p) => p.id === meuContrato?.pacoteId));
+    setDebito(minha ? await debitoDaAluna(minha.id) : undefined);
 
     // Se o aceite já foi registrado mas o acesso ainda não abriu, o que
     // falta é o pagamento: retoma desse ponto em vez de pedir o aceite de
@@ -270,9 +393,20 @@ export function PainelAlunaPage() {
       <p className="mt-1 text-sm text-neutral-500">Seu pacote, saldo e validade ficam sempre visíveis por aqui.</p>
 
       {!contrato ? (
-        <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
-          Você não tem um pacote ativo no momento. Fale com a administração do studio para contratar.
-        </p>
+        aluna?.origem === 'convenio' ? (
+          <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
+            Seu acesso é pelo convênio: a reserva das aulas acontece no aplicativo do parceiro, e o check-in é
+            validado aqui automaticamente.
+          </p>
+        ) : (
+          <ContratarPacote
+            aluna={aluna}
+            onContratado={async (mensagem) => {
+              await recarregar();
+              mostrarToast(mensagem, 'sucesso');
+            }}
+          />
+        )
       ) : (
         <>
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -316,9 +450,70 @@ export function PainelAlunaPage() {
             </div>
           )}
 
-          <div className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-500">
-            A grade disponível e o agendamento das suas aulas chegam na próxima fase do protótipo.
-          </div>
+          {debito && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tom="erro">Mensalidade em aberto</Badge>
+                <span className="text-xs text-rose-800">
+                  {debito.cobrancas.length} cobrança(s) · {debito.diasDeAtraso} dia(s) de atraso
+                </span>
+              </div>
+
+              <dl className="mt-3 flex flex-col gap-1 text-sm">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-rose-800">Valor original</dt>
+                  <dd className="text-rose-900">{formatarMoeda(debito.valorOriginal)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-rose-800">Multa</dt>
+                  <dd className="text-rose-900">{formatarMoeda(debito.multa)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-rose-800">Juros de mora</dt>
+                  <dd className="text-rose-900">{formatarMoeda(debito.juros)}</dd>
+                </div>
+                <div className="flex justify-between gap-2 border-t border-rose-200 pt-1">
+                  <dt className="font-medium text-rose-900">Valor atualizado</dt>
+                  <dd className="font-semibold text-rose-900">{formatarMoeda(debito.valorAtualizado)}</dd>
+                </div>
+              </dl>
+
+              <p className="mt-3 text-sm text-rose-800">
+                {aluna?.situacao === 'inadimplente'
+                  ? 'O agendamento de novas aulas está bloqueado até a regularização — as aulas já marcadas continuam valendo. O acesso é liberado assim que o pagamento é confirmado.'
+                  : 'Regularize para não ter o agendamento bloqueado. As aulas já marcadas continuam valendo.'}
+              </p>
+
+              <div className="mt-3 flex justify-end">
+                <Button
+                  disabled={pagandoDebito}
+                  onClick={async () => {
+                    if (!aluna) return;
+                    setPagandoDebito(true);
+                    try {
+                      const { pagas, falhas } = await pagarDebitoDaAluna(aluna.id);
+                      await recarregar();
+                      mostrarToast(
+                        falhas > 0
+                          ? `${falhas} cobrança(s) recusada(s) pelo gateway. Tente novamente ou fale com a administração.`
+                          : `Pagamento de ${pagas} cobrança(s) confirmado. Seu agendamento está liberado.`,
+                        falhas > 0 ? 'erro' : 'sucesso',
+                      );
+                    } catch (erroCapturado) {
+                      mostrarToast(
+                        erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.',
+                        'erro',
+                      );
+                    } finally {
+                      setPagandoDebito(false);
+                    }
+                  }}
+                >
+                  {pagandoDebito ? 'Processando…' : `Pagar ${formatarMoeda(debito.valorAtualizado)}`}
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

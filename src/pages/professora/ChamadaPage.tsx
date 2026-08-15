@@ -175,6 +175,13 @@ export function ChamadaPage() {
         <span className="text-xs text-neutral-500">Toque no nome para marcar ausência</span>
       </div>
 
+      {alunas.some((a) => a.origemConvenio && !a.checkinConvenio) && (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Há aluna de convênio sem check-in no aplicativo. Você pode marcá-la como presente para o controle de
+          ocupação do studio — isso não substitui o check-in do convênio nem gera repasse.
+        </p>
+      )}
+
       {alunas.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500">
           Nenhuma aluna agendada nesta aula.
@@ -198,7 +205,16 @@ export function ChamadaPage() {
                   <span className={`block text-base font-medium ${aluna.presente ? 'text-ink' : 'text-neutral-500'}`}>
                     {aluna.nome}
                   </span>
-                  {aluna.origemConvenio && <span className="text-xs text-neutral-500">Convênio</span>}
+                  {aluna.experimental && (
+                    <span className="mr-2 inline-block text-xs font-medium text-primary-700">Aula experimental</span>
+                  )}
+                  {aluna.origemConvenio && (
+                    <span
+                      className={`text-xs ${aluna.checkinConvenio ? 'text-emerald-700' : 'text-amber-700'}`}
+                    >
+                      Convênio · {aluna.checkinConvenio ? 'check-in validado' : 'check-in pendente'}
+                    </span>
+                  )}
                 </span>
 
                 <span

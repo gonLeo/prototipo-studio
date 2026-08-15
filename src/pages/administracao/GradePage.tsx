@@ -12,7 +12,7 @@ import type { DiaSemana } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { TextField, SelectField } from '../../components/ui/Field';
+import { TextField, SelectField, CheckboxField } from '../../components/ui/Field';
 import { TimePicker } from '../../components/ui/TimePicker';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { DIAS_SEMANA } from '../../utils/horarioFuncionamento';
@@ -80,6 +80,7 @@ function FormularioSessao({
   const [dataInicio, setDataInicio] = useState(sessao?.dataInicio ?? hojeISO());
   const [dataTermino, setDataTermino] = useState(sessao?.dataTermino ?? '');
   const [descricao, setDescricao] = useState(sessao?.descricao ?? '');
+  const [espelhadaConvenio, setEspelhadaConvenio] = useState(sessao?.espelhadaConvenio ?? false);
   const [faixas, setFaixas] = useState<FaixaHorario[]>(
     sessao
       ? [{ diasSemana: sessao.diasSemana, horarioInicio: sessao.horarioInicio, horarioFim: sessao.horarioFim }]
@@ -107,6 +108,7 @@ function FormularioSessao({
           dataInicio,
           dataTermino: dataTermino || undefined,
           descricao: descricao.trim() || undefined,
+          espelhadaConvenio,
         },
         faixas,
       );
@@ -175,6 +177,17 @@ function FormularioSessao({
           onChange={(e) => setDataTermino(e.target.value)}
           dica="Opcional. Em branco, a sessão segue por tempo indeterminado."
         />
+      </div>
+
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+        <CheckboxField
+          label="Publicar esta sessão nos convênios (Wellhub e TotalPass)"
+          checked={espelhadaConvenio}
+          onChange={setEspelhadaConvenio}
+        />
+        <p className="mt-1 text-xs text-neutral-500">
+          As vagas reservadas pelos convênios ocupam a mesma capacidade da modalidade (RF-CNV-02/07).
+        </p>
       </div>
 
       <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
@@ -482,6 +495,9 @@ export function GradePage() {
                     <Badge tom={sessao.situacao === 'ativo' ? 'sucesso' : 'neutro'}>
                       {sessao.situacao === 'ativo' ? 'Ativa' : 'Inativa'}
                     </Badge>
+                    {sessao.espelhadaConvenio && (
+                      <p className="mt-1 text-xs text-neutral-500">Espelhada nos convênios</p>
+                    )}
                   </CelulaTabela>
                   <CelulaTabela alinhamento="direita">
                     <div className="inline-flex items-center gap-1">

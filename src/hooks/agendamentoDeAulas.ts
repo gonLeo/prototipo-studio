@@ -90,9 +90,17 @@ export function bloqueioParaAgendar(aluna: Aluna, contrato: Contrato | undefined
     };
   }
   if (!contrato || contrato.situacao === 'encerrado') {
+    // A aluna de convênio reserva pelo aplicativo do parceiro (M13): ela
+    // não tem pacote no studio, e dizer "contrate um pacote" seria errado.
+    if (aluna.origem === 'convenio') {
+      return {
+        motivo: 'Suas reservas acontecem pelo aplicativo do convênio.',
+        detalhe: 'A vaga reservada por lá aparece automaticamente na agenda do studio.',
+      };
+    }
     return {
       motivo: 'Você não tem um pacote ativo.',
-      detalhe: 'Fale com a administração do studio para contratar um pacote e voltar a agendar.',
+      detalhe: 'Contrate um pacote no seu painel para liberar o agendamento.',
     };
   }
   if (contrato.situacao === 'trancado' || contrato.situacao === 'suspenso') {
