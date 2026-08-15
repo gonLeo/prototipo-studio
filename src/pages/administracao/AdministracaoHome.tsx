@@ -14,6 +14,11 @@ const CARTOES_OPERACAO = [
     titulo: 'Solicitações de cancelamento',
     descricao: 'Pedidos das professoras: designar substituta ou cancelar.',
   },
+  {
+    to: '/administracao/comissoes',
+    titulo: 'Comissões',
+    descricao: 'Apuração do período, fechamento e registro de pagamento.',
+  },
 ];
 
 const CARTOES = [

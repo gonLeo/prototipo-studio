@@ -511,6 +511,13 @@
       "data": "2026-08-12",
       "professoraEfetivaId": "prof-2",
       "situacao": "ativa"
+    },
+    {
+      "id": "oco-danca-13",
+      "sessaoId": "ses-3",
+      "data": "2026-08-13",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
     }
   ],
   "agendamentos": [
@@ -532,6 +539,15 @@
       "situacao": "cancelado",
       "origemCancelamento": "aluna",
       "creditoDevolvido": false,
+      "experimental": false
+    },
+    {
+      "id": "agd-danca-13",
+      "alunaId": "alu-larissa",
+      "ocorrenciaSessaoId": "oco-danca-13",
+      "origem": "portal",
+      "dataHora": "2026-08-11T09:00:00.000Z",
+      "situacao": "ativo",
       "experimental": false
     }
   ],

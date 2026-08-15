@@ -26,6 +26,9 @@ import { PainelAlunaPage } from './pages/aluna/PainelAlunaPage';
 import { GradeDaAlunaPage } from './pages/aluna/GradeDaAlunaPage';
 import { MinhasAulasPage } from './pages/aluna/MinhasAulasPage';
 import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfessoraPage';
+import { ChamadaPage } from './pages/professora/ChamadaPage';
+import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
+import { ComissoesPage } from './pages/administracao/ComissoesPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -81,15 +84,22 @@ function App() {
                 <Route path="termos" element={<TermosPage />} />
                 <Route path="justificativas" element={<JustificativasPage />} />
                 <Route path="solicitacoes" element={<SolicitacoesCancelamentoPage />} />
+                <Route path="comissoes" element={<ComissoesPage />} />
+                {/* A administração ajusta chamada fora do prazo (RF-PRE-06). */}
+                <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
               </Route>
               <Route
                 path="/professora"
                 element={
                   <RotaComPerfil perfilExigido="professora">
-                    <MinhasAulasProfessoraPage />
+                    <Outlet />
                   </RotaComPerfil>
                 }
-              />
+              >
+                <Route index element={<MinhasAulasProfessoraPage />} />
+                <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
+                <Route path="pagamentos" element={<MeusPagamentosPage />} />
+              </Route>
               <Route
                 path="/aluna"
                 element={

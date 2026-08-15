@@ -7,7 +7,7 @@ Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança 
 - [x] Fase 2 — M5 Grade de Horários + M6 Calendário de Exceções
 - [x] Fase 3 — M2 Cadastro de Alunas + M3 Pacotes e Contratos
 - [x] Fase 4 — M7 Agendamento de Aulas + M8 Cancelamento e Justificativa
-- [ ] Fase 5 — M9 Presença e Chamada + M10 Comissão e Fechamento
+- [x] Fase 5 — M9 Presença e Chamada + M10 Comissão e Fechamento
 - [ ] Fase 6 — M11 Cobranças e Financeiro
 - [ ] Fase 7 — M12 Aula Experimental + M13 Convênios Corporativos
 - [ ] Fase 8 — M14 Painéis e Indicadores + M15 Notificações + M16 Perfis e Permissões (fechamento)
@@ -238,3 +238,50 @@ Próxima fase (Fase 4) usa estes contratos e saldos para o agendamento de aulas 
 - **Saldo, validade e mensalidade ficam em uma única linha também no celular** (três colunas em qualquer largura, com tipografia reduzida no mobile em vez de empilhar).
 
 Próxima fase (Fase 5) usa estes agendamentos para a chamada e o registro de presença (M9) e para a apuração de comissão das professoras (M10) — é ela que passa a marcar as aulas como realizadas e a produzir os valores que a professora acompanha.
+
+## Fase 5 — o que foi entregue
+
+**Chamada e presença (M9) e comissão com fechamento (M10).** A professora ganhou a tela de chamada e o painel de ganhos; a administração ganhou a apuração do período.
+
+### M9 — Presença e Chamada
+
+- **Aulas do dia com situação da chamada** (RF-PRE-01): na agenda da professora, cada aula passada mostra "Fazer chamada" ou "Ver chamada", conforme já tenha sido finalizada.
+- **Lista de presença** (RF-PRE-02/03): só quem tem agendamento válido aparece — quem cancelou, não —, incluindo alunas de convênio, e **todas já vêm marcadas como presentes**. A tela é feita para o celular durante a aula: lista vertical, cartão inteiro clicável como alvo de toque, e a professora só aponta as ausências.
+- **Finalização** (RF-PRE-04): consolida os registros, marca os agendamentos como realizados, gera a comissão e informa no toast o valor gerado e em qual período ele será pago.
+- **Correção** (RF-PRE-05/06): dentro do prazo configurado (referência: 3 dias) a própria professora corrige; fora dele a tela dela fica bloqueada com a orientação de pedir à administração, que ajusta pela mesma tela **com justificativa obrigatória**, registrada na auditoria.
+- **Histórico da aluna** (RF-PRE-07): "Minhas aulas" passou a mostrar Presente/Falta depois da chamada finalizada — e a falta agora habilita o envio de justificativa, fechando o RF-JUS-01, que na Fase 4 só cobria o cancelamento fora do prazo.
+- **Chamadas pendentes sinalizadas** (RF-PRE-08) nos dois painéis: aviso no topo da agenda da professora e bloco de alerta na tela de comissões, com link direto para cada chamada em aberto.
+
+### M10 — Comissão e Fechamento
+
+- **Geração automática na finalização** (RF-COM-01/02), pelo **valor da categoria vigente na data da aula** — não a categoria atual. Se a professora mudou de categoria depois, a aula antiga continua valendo o que valia, que é o que torna a troca de categoria não retroativa (RF-PRO-03).
+- **Comissão em substituição** (RF-COM-03): a chamada é criada para a professora **efetiva** da ocorrência, então a comissão vai para quem realmente deu a aula.
+- **Período mensal** (RF-COM-04) e **painel da professora** (RF-COM-05): aulas do período, valor por aula vigente, total acumulado, data de fechamento e data prevista de pagamento — o quinto dia útil do mês seguinte, conforme definido na reunião.
+- **Fechamento** (RF-COM-06/07/08): total por professora e total geral, detalhamento aula a aula para conferência antes de pagar, e registro do pagamento. O fechamento avisa quando há chamadas pendentes, porque cada uma é uma comissão que ainda não existe.
+- **Histórico de fechamentos** (RF-COM-09) visível para administração e professora.
+- **Ajuste em período fechado** (RF-COM-10): corrigir uma chamada de período já fechado não mexe no fechamento anterior — a comissão recalculada entra como lançamento de **ajuste**, identificado como tal, e é absorvida pelo próximo fechamento.
+
+### Decisões desta fase
+
+- **Presença e falta consomem a aula.** As duas situações mantêm o desconto feito no agendamento; o crédito só volta por justificativa aprovada (M8). Por isso a correção de chamada não mexe no saldo — o "quando aplicável" do RF-PRE-05 é justamente o caminho da justificativa.
+- **A comissão é por aula dada, não por aluna presente**: o valor é o da categoria, e a quantidade de presenças aparece no detalhamento como informação de conferência (RF-COM-02).
+- A agenda da professora passou a alcançar 14 dias para trás, para que ela consiga fazer ou corrigir chamadas recentes sem depender da administração.
+- O quinto dia útil considera apenas fins de semana — o sistema não tem calendário de feriados bancários, e o calendário de exceções do studio (M6) é outra coisa: fecha o studio, não o banco.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. Entrar como **Beatriz Nogueira** (Professora): o topo mostra a chamada pendente de 13/08. Abrir, deixar a aluna como presente (ou marcar ausência) e **finalizar** — o toast traz o valor da comissão.
+3. Ainda como Beatriz, ir em **Meus pagamentos**: a aula aparece no período, com valor por aula, total acumulado e a data prevista de pagamento.
+4. Voltar em **Minhas aulas** e abrir a mesma aula: agora é "Ver chamada" e permite correção enquanto estiver dentro do prazo de 3 dias.
+5. Entrar como **Administração** → **Comissões**: conferir o total por professora, usar **Detalhar** para ver as aulas que compõem o valor, e **Fechar período**.
+6. Depois de fechar, **Registrar pagamento** no fechamento criado.
+7. Ainda como administração, abrir uma chamada já finalizada de período fechado e corrigi-la: o sistema exige justificativa e lança a comissão como **ajuste**, preservando o fechamento anterior.
+8. Entrar como **Larissa Prado** (Aluna) → **Minhas aulas**: o histórico mostra Presente ou Falta; se estiver como falta, o botão **Justificar** aparece.
+
+### Ajustes pós-entrega (mesma fase, antes da validação)
+
+- **Corrigido erro 404 ao finalizar a chamada.** A tela de chamada *criava* o registro de `Chamada` ao carregar. Abrir uma tela não pode escrever no banco — e, pior, o React executa o efeito duas vezes em desenvolvimento (StrictMode), o que criava duas chamadas para a mesma aula e deixava a tela segurando um id que podia não ser o que sobrou; o `PATCH` na finalização então dava 404. Agora `carregarChamada` **só lê**, e a chamada nasce apenas na finalização ou correção, sempre resolvida **pela ocorrência** e não por um id guardado na tela — o que também torna a operação segura se a página estiver aberta desde antes de um "Resetar protótipo". Verificado no navegador: abrir a tela não grava nada, finalizar gera exatamente uma chamada, um registro de presença e uma comissão (R$ 35,00, da Categoria I), reabrir não duplica, e a correção estorna e relança a comissão em vez de somar outra.
+- **Corrigido laço infinito de requisições em "Meus pagamentos" e "Comissões".** `periodoAtual()` devolve um objeto novo a cada chamada e estava direto nas dependências do `useCallback` que carrega os dados: a cada render nascia uma função nova, o `useEffect` disparava, o `setState` provocava outro render, e assim por diante — até o navegador derrubar as conexões com `ERR_INSUFFICIENT_RESOURCES`. O período do mês corrente não muda enquanto a tela está aberta, então passou a ser memoizado com `useMemo`. Depois da correção, a tela estabiliza em ~26 requisições e não cresce mais (verificado no navegador). Varri os outros 15 pontos do projeto com dependências de efeito e nenhum tinha o mesmo defeito.
+
+Próxima fase (Fase 6) usa estes contratos e cobranças para o módulo financeiro (M11): cobrança recorrente, retentativa, multa e juros, bloqueio por inadimplência e avisos de vencimento.

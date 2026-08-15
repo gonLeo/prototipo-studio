@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   agendamentoRepositorio,
+  chamadaRepositorio,
   espacoRepositorio,
   excecaoCalendarioRepositorio,
   modalidadeRepositorio,
@@ -24,10 +25,22 @@ export interface AulaDaProfessora {
   /** Preenchido quando a professora está cobrindo a aula de outra pessoa. */
   substituindo: boolean;
   solicitacao: SolicitacaoCancelamento | undefined;
+  /** Situação da chamada daquela data (RF-PRE-01). */
+  chamadaFinalizada: boolean;
+  /** A aula já aconteceu e ainda tem chamada em aberto (RF-PRE-08). */
+  chamadaPendente: boolean;
 }
 
 /** Quantos dias à frente a professora enxerga a própria agenda. */
 const DIAS_VISIVEIS = 28;
+
+/**
+ * Quantos dias para trás a agenda vai. A professora precisa alcançar as
+ * aulas recentes para fazer ou corrigir a chamada dentro do prazo
+ * (RF-PRE-05); usamos uma folga sobre o prazo configurado para que uma
+ * chamada esquecida ainda apareça na tela.
+ */
+const DIAS_RETROATIVOS = 14;
 
 /**
  * Agenda da professora logada: as próprias aulas das próximas semanas,
@@ -47,7 +60,7 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
     }
     setCarregando(true);
 
-    const [professoras, sessoes, ocorrencias, agendamentos, modalidades, espacos, excecoes, listaSolicitacoes] =
+    const [professoras, sessoes, ocorrencias, agendamentos, modalidades, espacos, excecoes, listaSolicitacoes, chamadas] =
       await Promise.all([
         professoraRepositorio.listar(),
         sessaoRepositorio.listar(),
@@ -57,6 +70,7 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
         espacoRepositorio.listar(),
         excecaoCalendarioRepositorio.listar(),
         solicitacaoCancelamentoRepositorio.listar(),
+        chamadaRepositorio.listar(),
       ]);
 
     const minha = professoras.find((p) => p.usuarioId === usuarioId);
@@ -73,10 +87,11 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
     setSolicitacoes(minhasSolicitacoes);
 
     const hoje = hojeISO();
+    const inicio = somarDias(hoje, -DIAS_RETROATIVOS);
     const limite = somarDias(hoje, DIAS_VISIVEIS);
     const lista: AulaDaProfessora[] = [];
 
-    for (let data = hoje; data <= limite; data = somarDias(data, 1)) {
+    for (let data = inicio; data <= limite; data = somarDias(data, 1)) {
       const excecao = excecoes.find((e) => e.data === data);
 
       for (const sessao of sessoes) {
@@ -88,18 +103,26 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
         const professoraEfetivaId = ocorrencia?.professoraEfetivaId ?? sessao.professoraId;
         if (professoraEfetivaId !== minha.id) continue;
 
+        const chamada = ocorrencia ? chamadas.find((c) => c.ocorrenciaSessaoId === ocorrencia.id) : undefined;
+        const alunasAgendadas = ocorrencia
+          ? agendamentos.filter(
+              (a) => a.ocorrenciaSessaoId === ocorrencia.id && (a.situacao === 'ativo' || a.situacao === 'realizado'),
+            ).length
+          : 0;
+        const cancelada = excecao !== undefined || ocorrencia?.situacao === 'cancelada';
+
         lista.push({
           sessao,
           data,
           nomeModalidade: modalidades.find((m) => m.id === sessao.modalidadeId)?.nome ?? 'Modalidade removida',
           nomeEspaco: espacos.find((e) => e.id === sessao.espacoId)?.nome,
-          ocupacao: ocorrencia
-            ? agendamentos.filter((a) => a.ocorrenciaSessaoId === ocorrencia.id && a.situacao === 'ativo').length
-            : 0,
-          cancelada: excecao !== undefined || ocorrencia?.situacao === 'cancelada',
+          ocupacao: alunasAgendadas,
+          cancelada,
           motivoCancelamento: excecao ? excecao.descricao : ocorrencia?.motivoCancelamento,
           substituindo: sessao.professoraId !== minha.id,
           solicitacao: minhasSolicitacoes.find((s) => s.sessaoId === sessao.id && s.data === data),
+          chamadaFinalizada: chamada?.situacao === 'finalizada',
+          chamadaPendente: data < hoje && !cancelada && alunasAgendadas > 0 && chamada?.situacao !== 'finalizada',
         });
       }
     }
@@ -114,5 +137,14 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
     recarregar();
   }, [recarregar]);
 
-  return { professora, aulas, solicitacoes, carregando, recarregar, diasVisiveis: DIAS_VISIVEIS };
+  return {
+    professora,
+    aulas,
+    solicitacoes,
+    carregando,
+    recarregar,
+    diasVisiveis: DIAS_VISIVEIS,
+    diasRetroativos: DIAS_RETROATIVOS,
+    pendentes: aulas.filter((aula) => aula.chamadaPendente),
+  };
 }

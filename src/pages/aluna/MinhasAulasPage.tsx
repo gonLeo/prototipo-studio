@@ -89,6 +89,9 @@ function ModalJustificativa({
 function SituacaoDaAula({ aula }: { aula: AulaDaAluna }) {
   if (aula.canceladaPeloStudio) return <Badge tom="aviso">Cancelada pelo studio</Badge>;
   if (aula.situacao === 'cancelado') return <Badge tom="neutro">Cancelada</Badge>;
+  // Depois da chamada finalizada, o que vale é a presença registrada.
+  if (aula.presenca === 'presente') return <Badge tom="sucesso">Presente</Badge>;
+  if (aula.presenca === 'ausente') return <Badge tom="erro">Falta</Badge>;
   if (aula.situacao === 'realizado') return <Badge tom="sucesso">Realizada</Badge>;
   return <Badge tom="info">Agendada</Badge>;
 }
@@ -201,10 +204,11 @@ export function MinhasAulasPage() {
   }
 
   function podeJustificar(aula: AulaDaAluna): boolean {
-    // Justifica quem perdeu a aula de fato: cancelou abaixo da
-    // antecedência mínima e não recebeu o crédito de volta. A justificativa
-    // por falta registrada na chamada chega junto do M9, na Fase 5.
+    // Justifica quem perdeu a aula de fato (RF-JUS-01): cancelou abaixo da
+    // antecedência mínima sem receber o crédito de volta, ou faltou — o que
+    // só se sabe depois que a chamada é finalizada.
     if (aula.justificativa || aula.experimental || aula.canceladaPeloStudio) return false;
+    if (aula.presenca === 'ausente') return true;
     return aula.situacao === 'cancelado' && aula.creditoDevolvido === false;
   }
 

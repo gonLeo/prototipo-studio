@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useSessao } from '../../hooks/useSessao';
 import { useAgendaDaProfessora } from '../../hooks/useAgendaDaProfessora';
 import type { AulaDaProfessora } from '../../hooks/useAgendaDaProfessora';
@@ -115,11 +116,32 @@ export function MinhasAulasProfessoraPage() {
         administração decide se designa substituta ou cancela.
       </p>
 
+      {agenda.pendentes.length > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">
+            {agenda.pendentes.length} chamada(s) pendente(s)
+          </p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {agenda.pendentes.map((aula) => (
+              <li key={`${aula.sessao.id}-${aula.data}`} className="text-sm">
+                <Link
+                  to={`/professora/chamada/${aula.sessao.id}/${aula.data}`}
+                  className="font-medium text-primary-700 hover:text-primary-800"
+                >
+                  {formatarDataBR(aula.data)} · {aula.nomeModalidade}
+                </Link>
+                <span className="text-amber-800"> — {aula.ocupacao} aluna(s)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-4">
         <NavegadorDeDatas
           dataSelecionada={dataSelecionada}
           onSelecionar={setDataSelecionada}
-          dataMinima={hoje}
+          dataMinima={somarDias(hoje, -agenda.diasRetroativos)}
           dataMaxima={somarDias(hoje, agenda.diasVisiveis)}
         />
       </div>
@@ -141,16 +163,33 @@ export function MinhasAulasProfessoraPage() {
               esmaecido={aula.cancelada}
               aviso={aula.cancelada ? aula.motivoCancelamento : undefined}
               acao={
-                aula.solicitacao ? (
-                  <Badge tom={TOM_SOLICITACAO[aula.solicitacao.situacao]}>
-                    {ROTULO_SOLICITACAO[aula.solicitacao.situacao]}
-                  </Badge>
-                ) : (
-                  !aula.cancelada && (
-                    <Button variante="secundaria" onClick={() => setSolicitando(aula)}>
-                      Solicitar cancelamento
-                    </Button>
-                  )
+                aula.cancelada ? undefined : (
+                  <div className="flex flex-col items-end gap-2">
+                    {/* A chamada só existe depois que a aula acontece. */}
+                    {aula.data <= hoje && aula.ocupacao > 0 && (
+                      <Link
+                        to={`/professora/chamada/${aula.sessao.id}/${aula.data}`}
+                        className={`rounded-md px-3 py-2 text-sm font-medium ${
+                          aula.chamadaFinalizada
+                            ? 'text-neutral-600 hover:bg-neutral-100'
+                            : 'bg-primary-600 text-white shadow-sm hover:bg-primary-700'
+                        }`}
+                      >
+                        {aula.chamadaFinalizada ? 'Ver chamada' : 'Fazer chamada'}
+                      </Link>
+                    )}
+                    {aula.solicitacao ? (
+                      <Badge tom={TOM_SOLICITACAO[aula.solicitacao.situacao]}>
+                        {ROTULO_SOLICITACAO[aula.solicitacao.situacao]}
+                      </Badge>
+                    ) : (
+                      aula.data >= hoje && (
+                        <Button variante="secundaria" onClick={() => setSolicitando(aula)}>
+                          Solicitar cancelamento
+                        </Button>
+                      )
+                    )}
+                  </div>
                 )
               }
             />

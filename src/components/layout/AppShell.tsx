@@ -34,6 +34,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
         { to: '/administracao/excecoes', label: 'Exceções' },
         { to: '/administracao/justificativas', label: 'Justificativas' },
         { to: '/administracao/solicitacoes', label: 'Solicitações' },
+        { to: '/administracao/comissoes', label: 'Comissões' },
       ],
     },
     {
@@ -50,7 +51,14 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
       ],
     },
   ],
-  professora: [{ itens: [{ to: '/professora', label: 'Minhas aulas', fim: true }] }],
+  professora: [
+    {
+      itens: [
+        { to: '/professora', label: 'Minhas aulas', fim: true },
+        { to: '/professora/pagamentos', label: 'Meus pagamentos' },
+      ],
+    },
+  ],
   aluna: [
     {
       itens: [

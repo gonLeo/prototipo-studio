@@ -156,6 +156,34 @@ export function gradeDoMes(ano: number, mesZeroIndexado: number): string[] {
   return datas;
 }
 
+/** Último dia do mês, como `YYYY-MM-DD`. */
+export function ultimoDiaDoMes(ano: number, mesZeroIndexado: number): string {
+  return paraISO(new Date(Date.UTC(ano, mesZeroIndexado, quantidadeDeDiasNoMes(ano, mesZeroIndexado))));
+}
+
+/**
+ * Quinto dia útil do mês — data em que as professoras são pagas, referente
+ * ao período do mês anterior (definido na reunião, seção 5.10 do escopo).
+ *
+ * Considera apenas fins de semana: feriados nacionais não entram, porque o
+ * sistema não tem calendário de feriados bancários. O calendário de
+ * exceções do studio (M6) é outra coisa — fecha o studio, não o banco.
+ */
+export function quintoDiaUtil(ano: number, mesZeroIndexado: number): string {
+  let uteisEncontrados = 0;
+  const totalDeDias = quantidadeDeDiasNoMes(ano, mesZeroIndexado);
+
+  for (let dia = 1; dia <= totalDeDias; dia++) {
+    const data = new Date(Date.UTC(ano, mesZeroIndexado, dia));
+    const diaDaSemana = data.getUTCDay();
+    if (diaDaSemana !== 0 && diaDaSemana !== 6) {
+      uteisEncontrados++;
+      if (uteisEncontrados === 5) return paraISO(data);
+    }
+  }
+  return ultimoDiaDoMes(ano, mesZeroIndexado);
+}
+
 export function ehDoMes(iso: string, ano: number, mesZeroIndexado: number): boolean {
   const [anoData, mesData] = iso.split('-').map(Number);
   return anoData === ano && mesData - 1 === mesZeroIndexado;

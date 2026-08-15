@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   agendamentoRepositorio,
   alunaRepositorio,
+  chamadaRepositorio,
   contratoRepositorio,
   justificativaRepositorio,
   modalidadeRepositorio,
   ocorrenciaSessaoRepositorio,
   pacoteRepositorio,
   professoraRepositorio,
+  registroPresencaRepositorio,
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
@@ -33,6 +35,8 @@ export interface AulaDaAluna extends Agendamento {
   motivoCancelamento: string | undefined;
   justificativa: Justificativa | undefined;
   horasAteAAula: number;
+  /** Presença registrada na chamada, quando ela já foi finalizada (RF-PRE-07). */
+  presenca: 'presente' | 'ausente' | undefined;
 }
 
 /**
@@ -58,19 +62,33 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
     }
     setCarregando(true);
 
-    const [alunas, contratos, pacotes, agendamentos, ocorrencias, sessoes, modalidades, professoras, usuarios, justificativas] =
-      await Promise.all([
-        alunaRepositorio.listar(),
-        contratoRepositorio.listar(),
-        pacoteRepositorio.listar(),
-        agendamentoRepositorio.listar(),
-        ocorrenciaSessaoRepositorio.listar(),
-        sessaoRepositorio.listar(),
-        modalidadeRepositorio.listar(),
-        professoraRepositorio.listar(),
-        usuarioRepositorio.listar(),
-        justificativaRepositorio.listar(),
-      ]);
+    const [
+      alunas,
+      contratos,
+      pacotes,
+      agendamentos,
+      ocorrencias,
+      sessoes,
+      modalidades,
+      professoras,
+      usuarios,
+      justificativas,
+      chamadas,
+      registrosPresenca,
+    ] = await Promise.all([
+      alunaRepositorio.listar(),
+      contratoRepositorio.listar(),
+      pacoteRepositorio.listar(),
+      agendamentoRepositorio.listar(),
+      ocorrenciaSessaoRepositorio.listar(),
+      sessaoRepositorio.listar(),
+      modalidadeRepositorio.listar(),
+      professoraRepositorio.listar(),
+      usuarioRepositorio.listar(),
+      justificativaRepositorio.listar(),
+      chamadaRepositorio.listar(),
+      registroPresencaRepositorio.listar(),
+    ]);
 
     const minha = alunas.find((a) => a.usuarioId === usuarioId);
     const meuContrato = contratos.find((c) => c.alunaId === minha?.id && c.situacao !== 'encerrado');
@@ -98,9 +116,15 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
         const professora = professoras.find((p) => p.id === (ocorrencia?.professoraEfetivaId ?? sessao?.professoraId));
         const usuarioProfessora = usuarios.find((u) => u.id === professora?.usuarioId);
         const data = ocorrencia?.data ?? '';
+        const chamada = chamadas.find((c) => c.ocorrenciaSessaoId === agendamento.ocorrenciaSessaoId);
+        const registro =
+          chamada?.situacao === 'finalizada'
+            ? registrosPresenca.find((r) => r.chamadaId === chamada.id && r.alunaId === minha.id)
+            : undefined;
 
         return {
           ...agendamento,
+          presenca: registro?.situacao,
           data,
           horarioInicio: sessao?.horarioInicio ?? '',
           horarioFim: sessao?.horarioFim ?? '',
