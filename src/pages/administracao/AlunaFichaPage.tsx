@@ -25,6 +25,8 @@ import { PERGUNTAS_ANAMNESE } from '../../data/anamnese';
 import { diferencaEmDias, formatarDataBR } from '../../utils/data';
 import { ehIsencaoTotal, formatarMoeda, valorComBolsa } from '../../utils/contrato';
 import { ModalAlterarPlano, ModalBolsa, ModalEncerrar, ModalPausa, ModalReativar } from './aluna/ModaisContrato';
+import { ModalAgendarPelaAdministracao } from './aluna/ModalAgendarPelaAdministracao';
+import { agendarAula } from '../../hooks/agendamentoDeAulas';
 
 const TOM_POR_SITUACAO: Record<SituacaoAluna, 'sucesso' | 'erro' | 'aviso' | 'neutro' | 'info'> = {
   ativa: 'sucesso',
@@ -56,7 +58,7 @@ function Dado({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
   );
 }
 
-type ModalAberto = 'plano' | 'bolsa' | 'pausa' | 'encerrar' | 'reativar' | null;
+type ModalAberto = 'plano' | 'bolsa' | 'pausa' | 'encerrar' | 'reativar' | 'agendar' | null;
 
 export function AlunaFichaPage() {
   const { alunaId } = useParams<{ alunaId: string }>();
@@ -127,6 +129,9 @@ export function AlunaFichaPage() {
         <div className="flex flex-wrap items-center gap-2">
           {contrato && !encerrado && (
             <>
+              <Button onClick={() => setModalAberto('agendar')} disabled={contrato.situacao !== 'ativo'}>
+                Agendar aula
+              </Button>
               <Button variante="secundaria" onClick={abrirAlteracaoDePlano} disabled={contrato.situacao !== 'ativo'}>
                 Alterar plano
               </Button>
@@ -481,6 +486,30 @@ export function AlunaFichaPage() {
                 agendamentosCancelados > 0
                   ? `Contrato encerrado. ${agendamentosCancelados} aula(s) futura(s) cancelada(s).`
                   : 'Contrato encerrado.',
+                'sucesso',
+              );
+            }}
+            onFechar={() => setModalAberto(null)}
+          />
+        </Modal>
+      )}
+
+      {modalAberto === 'agendar' && (
+        <Modal titulo={`Agendar aula — ${dadosUsuario.nome}`} largura="larga" onFechar={() => setModalAberto(null)}>
+          <ModalAgendarPelaAdministracao
+            aluna={aluna}
+            contrato={contrato}
+            onAgendar={async (aula) => {
+              const resultado = await agendarAula({
+                aluna,
+                sessao: aula.sessao,
+                data: aula.data,
+                origem: 'administracao',
+                autorId: usuario!.id,
+              });
+              await recarregar();
+              mostrarToast(
+                `Aula agendada para ${formatarDataBR(aula.data)}. Saldo restante: ${resultado.novoSaldo} aula(s).`,
                 'sucesso',
               );
             }}

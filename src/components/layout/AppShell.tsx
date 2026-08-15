@@ -32,6 +32,8 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
         { to: '/administracao/alunas', label: 'Alunas' },
         { to: '/administracao/grade', label: 'Grade de horários' },
         { to: '/administracao/excecoes', label: 'Exceções' },
+        { to: '/administracao/justificativas', label: 'Justificativas' },
+        { to: '/administracao/solicitacoes', label: 'Solicitações' },
       ],
     },
     {
@@ -48,8 +50,16 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
       ],
     },
   ],
-  professora: [{ itens: [{ to: '/professora', label: 'Painel' }] }],
-  aluna: [{ itens: [{ to: '/aluna', label: 'Painel' }] }],
+  professora: [{ itens: [{ to: '/professora', label: 'Minhas aulas', fim: true }] }],
+  aluna: [
+    {
+      itens: [
+        { to: '/aluna', label: 'Painel', fim: true },
+        { to: '/aluna/grade', label: 'Grade disponível' },
+        { to: '/aluna/minhas-aulas', label: 'Minhas aulas' },
+      ],
+    },
+  ],
 };
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -62,7 +72,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const gruposNav = perfilAtivo ? NAV_POR_PERFIL[perfilAtivo] : [];
+  // Enquanto o termo não é aceito, a aluna só tem o painel — é lá que ela
+  // conclui o aceite e o pagamento (RF-ALU-08).
+  const aguardandoAceite = usuario?.situacao === 'aguardando_aceite';
+  const gruposNav = !perfilAtivo
+    ? []
+    : perfilAtivo === 'aluna' && aguardandoAceite
+      ? [{ itens: [{ to: '/aluna', label: 'Painel', fim: true }] }]
+      : NAV_POR_PERFIL[perfilAtivo];
   const outrosPerfis = usuario?.perfis.filter((p) => p !== perfilAtivo) ?? [];
 
   return (

@@ -6,7 +6,7 @@ Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança 
 - [x] Fase 1 — M1 Configuração Base + M4 Professoras e Categorias
 - [x] Fase 2 — M5 Grade de Horários + M6 Calendário de Exceções
 - [x] Fase 3 — M2 Cadastro de Alunas + M3 Pacotes e Contratos
-- [ ] Fase 4 — M7 Agendamento de Aulas + M8 Cancelamento e Justificativa
+- [x] Fase 4 — M7 Agendamento de Aulas + M8 Cancelamento e Justificativa
 - [ ] Fase 5 — M9 Presença e Chamada + M10 Comissão e Fechamento
 - [ ] Fase 6 — M11 Cobranças e Financeiro
 - [ ] Fase 7 — M12 Aula Experimental + M13 Convênios Corporativos
@@ -187,3 +187,46 @@ Novas telas na Administração: **Alunas** e **Pacotes** (mais **Termo de aceite
 - O botão de conclusão do aceite só exigia a marcação do termo — dava para liberar o acesso com a anamnese em branco, contrariando RF-ALU-08 ("o acesso permanece bloqueado até que o termo seja aceito **e a anamnese preenchida**"). Agora as perguntas de saúde (sim/não) são obrigatórias, marcadas com asterisco, e o botão fica desabilitado enquanto faltarem, com um aviso dizendo exatamente o que falta em vez de um botão mudo. As perguntas abertas seguem opcionais. A mesma trava foi aplicada ao passo do termo na auto-matrícula pelo site, que tinha a mesma brecha.
 
 Próxima fase (Fase 4) usa estes contratos e saldos para o agendamento de aulas (M7) e o cancelamento com justificativa (M8) — é ela que passa a consumir o saldo, preencher a ocupação da grade e dar efeito visível às devoluções de crédito já implementadas nas fases 2 e 3.
+
+## Fase 4 — o que foi entregue
+
+**Agendamento (M7) e cancelamento com justificativa (M8). Os três perfis passam a ter tela real** — a professora deixou de ser placeholder e a aluna ganhou grade e histórico.
+
+### M7 — Agendamento de Aulas
+
+- **Grade da aluna** (RF-AGD-01/02): sessões agrupadas por dia dentro da janela de agendamento, com modalidade, horário, professora, espaço e vagas restantes. A janela é parametrizada e diferente para matriculada (30 dias) e convênio (7 dias).
+- **Reserva de vaga** (RF-AGD-03): confirmar desconta uma aula do saldo e materializa a ocorrência daquela data.
+- **Bloqueios com o motivo na própria tela** (RF-AGD-04/05/06/07/08): sem saldo, contrato pausado, inadimplência ou termo pendente aparecem como aviso no topo da grade com os botões desabilitados; turma lotada, aula já iniciada, data após o término do contrato e "você já está agendada" aparecem na própria aula. A aluna nunca descobre o impedimento só ao clicar.
+- **Agendamento pela administração** (RF-AGD-09): botão "Agendar aula" na ficha da aluna, usando a mesma listagem e as mesmas validações do portal — muda só a autoria, que fica registrada na auditoria.
+- **Agendamento na matrícula** (RF-AGD-10): a auto-matrícula ganhou um quinto passo, "Primeira aula", logo após o pagamento, com a opção de deixar para depois.
+- **Confirmação** (RF-AGD-11): o toast e o e-mail trazem o novo saldo e a regra de cancelamento aplicável.
+
+### M8 — Cancelamento e Justificativa
+
+- **Cancelamento pela aluna** (RF-CAN-01/02/03): acima da antecedência mínima o crédito volta ao saldo; abaixo dela a aula é consumida — e o aviso disso aparece **antes** da confirmação, junto da oferta de justificar. O prazo é o parâmetro configurável (referência: 4h).
+- **Reagendamento livre** (RF-CAN-04/05): sem limite de vezes, o crédito devolvido serve para qualquer sessão dentro da vigência.
+- **Justificativa de falta** (RF-JUS-01 a 05): envio com texto e comprovante dentro do prazo parametrizado (referência: 7 dias), fila de análise no painel administrativo com aluna, aula, data e anexo, aprovação que devolve o crédito ou recusa que mantém o desconto, e o parecer visível no histórico da aluna.
+- **Cancelamento pela professora** (RF-CPR-01 a 07): a professora **solicita** e a aula continua na grade até a decisão. A administração escolhe entre designar substituta (a aula acontece, as alunas são avisadas da troca), cancelar (crédito de volta com dias adicionais de vigência) ou recusar com motivo. A professora acompanha a situação de cada pedido na própria tela.
+
+### Decisões de arquitetura desta fase
+
+- **`Agendamento` ganhou `creditoDevolvido`.** Não está entre os atributos essenciais da seção 8 do escopo, mas é o que distingue um cancelamento dentro do prazo de um fora dele depois que a aula já passou — e é essa distinção que define quem pode justificar (RF-JUS-01). Sem gravar, a informação se perderia junto com a passagem do tempo.
+- **A professora substituta fica na ocorrência, não na sessão** (`professoraEfetivaId`): a troca vale só para aquela data, e é de lá que o M10 vai tirar a comissão daquela aula (RF-CPR-03).
+- O cancelamento por decisão do studio reaproveita `cancelamentoDeAulas.ts` das fases 2 e 3 — exceção de calendário, exclusão de sessão e aprovação de cancelamento aplicam exatamente a mesma regra de devolução com prazo adicional.
+- Cancelamento **pela administração** devolve o crédito independentemente da antecedência: a regra das 4h existe para disciplinar a aluna, não o studio.
+- A ocorrência continua sendo materializada só quando a data precisa existir como registro próprio — agora também quando recebe o primeiro agendamento.
+- Backfill expandido com o que dá conteúdo às novas filas: uma aula futura já agendada pela Larissa, uma aula que ela perdeu cancelando em cima da hora (com justificativa pendente) e uma solicitação de cancelamento pendente da Beatriz.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"** para carregar os dados novos.
+2. Entrar como **Larissa Prado** (Aluna) → **Grade disponível**: saldo e validade ficam no topo; agendar uma aula e conferir o toast com o novo saldo.
+3. **Minhas aulas**: cancelar uma aula com bastante antecedência (crédito volta) e outra com menos de 4h (a confirmação avisa que a aula será consumida) — depois usar **Justificar** na que foi consumida.
+4. Entrar como **Administração** → **Justificativas**: analisar a justificativa pendente da Larissa; aprovar devolve o crédito e o parecer aparece no histórico dela.
+5. Entrar como **Beatriz Nogueira** (Professora) → **Minhas aulas**: solicitar o cancelamento de uma aula e acompanhar a situação em "Minhas solicitações".
+6. Como **Administração** → **Solicitações**: decidir a solicitação pendente — testar as três saídas (substituta, cancelamento, recusa) e conferir o efeito na grade e no saldo das alunas.
+7. Na **ficha de uma aluna** → **Agendar aula**: agendar em nome dela e conferir o desconto do saldo.
+8. Testar os bloqueios: suspender o contrato de uma aluna e conferir que a grade dela mostra o aviso com os botões desabilitados; zerar o saldo agendando tudo e conferir a mensagem de saldo esgotado.
+9. Abrir a **matrícula pública** e percorrer o fluxo até o novo passo "Primeira aula".
+
+Próxima fase (Fase 5) usa estes agendamentos para a chamada e o registro de presença (M9) e para a apuração de comissão das professoras (M10) — é ela que passa a marcar as aulas como realizadas e a produzir os valores que a professora acompanha.

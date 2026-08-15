@@ -235,6 +235,14 @@ export interface Agendamento {
   situacao: SituacaoAgendamento;
   origemCancelamento?: OrigemCancelamento;
   experimental: boolean;
+  /**
+   * Se o cancelamento devolveu a aula ao saldo. Não está na lista de
+   * atributos essenciais da seção 8 do escopo, mas é o que distingue um
+   * cancelamento dentro do prazo de um fora dele depois que a aula já
+   * passou — e é essa distinção que define quem pode enviar justificativa
+   * (RF-JUS-01). Sem gravar, a informação se perderia.
+   */
+  creditoDevolvido?: boolean;
 }
 
 export type TipoExcecao = 'feriado' | 'recesso' | 'manutencao' | 'fechamento';

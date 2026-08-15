@@ -4,6 +4,16 @@ const CARTOES_OPERACAO = [
   { to: '/administracao/alunas', titulo: 'Alunas', descricao: 'Cadastro, pacote, saldo, bolsa e ficha completa.' },
   { to: '/administracao/grade', titulo: 'Grade de horários', descricao: 'Sessões recorrentes, conflitos e ocupação.' },
   { to: '/administracao/excecoes', titulo: 'Calendário de exceções', descricao: 'Feriados, recessos e fechamentos.' },
+  {
+    to: '/administracao/justificativas',
+    titulo: 'Justificativas de falta',
+    descricao: 'Fila de análise: aprovar devolve o crédito à aluna.',
+  },
+  {
+    to: '/administracao/solicitacoes',
+    titulo: 'Solicitações de cancelamento',
+    descricao: 'Pedidos das professoras: designar substituta ou cancelar.',
+  },
 ];
 
 const CARTOES = [

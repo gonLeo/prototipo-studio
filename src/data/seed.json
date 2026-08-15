@@ -497,8 +497,44 @@
       "situacao": "ativo"
     }
   ],
-  "ocorrenciasSessao": [],
-  "agendamentos": [],
+  "ocorrenciasSessao": [
+    {
+      "id": "oco-futura",
+      "sessaoId": "ses-1",
+      "data": "2026-08-17",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    },
+    {
+      "id": "oco-passada",
+      "sessaoId": "ses-1",
+      "data": "2026-08-12",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    }
+  ],
+  "agendamentos": [
+    {
+      "id": "agd-futuro",
+      "alunaId": "alu-larissa",
+      "ocorrenciaSessaoId": "oco-futura",
+      "origem": "portal",
+      "dataHora": "2026-08-13T10:15:00.000Z",
+      "situacao": "ativo",
+      "experimental": false
+    },
+    {
+      "id": "agd-perdido",
+      "alunaId": "alu-larissa",
+      "ocorrenciaSessaoId": "oco-passada",
+      "origem": "portal",
+      "dataHora": "2026-08-10T09:00:00.000Z",
+      "situacao": "cancelado",
+      "origemCancelamento": "aluna",
+      "creditoDevolvido": false,
+      "experimental": false
+    }
+  ],
   "excecoesCalendario": [
     {
       "id": "exc-1",
@@ -511,8 +547,26 @@
   ],
   "chamadas": [],
   "registrosPresenca": [],
-  "justificativas": [],
-  "solicitacoesCancelamento": [],
+  "justificativas": [
+    {
+      "id": "jus-1",
+      "agendamentoId": "agd-perdido",
+      "alunaId": "alu-larissa",
+      "texto": "Tive um imprevisto no trabalho e não consegui avisar com antecedência.",
+      "situacao": "pendente",
+      "data": "2026-08-12"
+    }
+  ],
+  "solicitacoesCancelamento": [
+    {
+      "id": "sol-1",
+      "sessaoId": "ses-3",
+      "data": "2026-08-20",
+      "professoraSolicitanteId": "prof-2",
+      "motivo": "Consulta médica marcada para esse horário.",
+      "situacao": "pendente"
+    }
+  ],
   "comissoes": [],
   "fechamentosComissao": [],
   "cobrancas": [],

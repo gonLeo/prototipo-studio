@@ -95,6 +95,24 @@ export function datasDaSemana(inicioISO: string): string[] {
   return Array.from({ length: 7 }, (_, i) => somarDias(inicioISO, i));
 }
 
+/**
+ * Momento da aula no relógio de quem está usando o sistema.
+ *
+ * Aqui o fuso **local** é proposital, ao contrário do resto do arquivo: a
+ * antecedência de cancelamento é contada contra o relógio da aluna, não
+ * contra UTC.
+ */
+export function dataHoraLocal(dataISO: string, horaHHMM: string): Date {
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  const [hora, minuto] = horaHHMM.split(':').map(Number);
+  return new Date(ano, mes - 1, dia, hora, minuto, 0, 0);
+}
+
+/** Horas até o início da aula. Negativo quando ela já começou. */
+export function horasAteAula(dataISO: string, horaHHMM: string, agora = new Date()): number {
+  return (dataHoraLocal(dataISO, horaHHMM).getTime() - agora.getTime()) / 3_600_000;
+}
+
 /** `14/08/2026` */
 export function formatarDataBR(iso: string): string {
   const [ano, mes, dia] = iso.split('-');

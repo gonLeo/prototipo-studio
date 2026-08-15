@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { usePacotes } from '../hooks/usePacotes';
 import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../hooks/useTermos';
 import { matricularAlunaPeloSite, registrarPagamentoDaPrimeiraCobranca } from '../hooks/contratosDeAluna';
 import type { DadosCadastraisAluna } from '../hooks/contratosDeAluna';
-import type { TipoContrato } from '../types/domain';
+import { agendarAula, listarAulasDisponiveis } from '../hooks/agendamentoDeAulas';
+import type { AulaDisponivel } from '../hooks/agendamentoDeAulas';
+import type { Aluna, Contrato, TipoContrato } from '../types/domain';
 import { Button } from '../components/ui/Button';
 import { TextField, SelectField } from '../components/ui/Field';
 import { TermoEAnamnese } from '../components/TermoEAnamnese';
@@ -13,13 +15,14 @@ import { perguntasNaoRespondidas } from '../data/anamnese';
 import { formatarMoeda } from '../utils/contrato';
 import { formatarDataBR, hojeISO } from '../utils/data';
 
-type Passo = 'dados' | 'pacote' | 'termo' | 'pagamento' | 'concluido';
+type Passo = 'dados' | 'pacote' | 'termo' | 'pagamento' | 'primeira_aula' | 'concluido';
 
 const PASSOS: Array<{ id: Passo; rotulo: string }> = [
   { id: 'dados', rotulo: 'Seus dados' },
   { id: 'pacote', rotulo: 'Pacote' },
   { id: 'termo', rotulo: 'Termo e anamnese' },
   { id: 'pagamento', rotulo: 'Pagamento' },
+  { id: 'primeira_aula', rotulo: 'Primeira aula' },
 ];
 
 function Trilha({ atual }: { atual: Passo }) {
@@ -80,6 +83,22 @@ export function MatriculaPage() {
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string>();
   const [processando, setProcessando] = useState(false);
+  const [matriculada, setMatriculada] = useState<{ aluna: Aluna; contrato: Contrato } | undefined>();
+  const [aulasDisponiveis, setAulasDisponiveis] = useState<AulaDisponivel[]>([]);
+  const [agendandoChave, setAgendandoChave] = useState<string>();
+  const [primeiraAula, setPrimeiraAula] = useState<AulaDisponivel>();
+
+  // Carrega a grade só quando a matrícula termina e o acesso é liberado.
+  useEffect(() => {
+    if (passo !== 'primeira_aula' || !matriculada) return;
+    let valido = true;
+    listarAulasDisponiveis({ aluna: matriculada.aluna, contrato: matriculada.contrato }).then((lista) => {
+      if (valido) setAulasDisponiveis(lista.filter((a) => a.impedimento === undefined));
+    });
+    return () => {
+      valido = false;
+    };
+  }, [passo, matriculada]);
 
   const pacotesAtivos = pacotes.filter((p) => p.situacao === 'ativo');
   const pacoteEscolhido = pacotesAtivos.find((p) => p.id === pacoteId);
@@ -111,7 +130,10 @@ export function MatriculaPage() {
       });
       await registrarPagamentoDaPrimeiraCobranca(contrato);
       await liberarAcessoDaAluna({ usuarioId: usuario.id, alunaId: aluna.id });
-      setPasso('concluido');
+      // RF-AGD-10: com o acesso liberado, a aluna já agenda a primeira
+      // aula sem sair do fluxo.
+      setMatriculada({ aluna: { ...aluna, situacao: 'ativa' }, contrato });
+      setPasso('primeira_aula');
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
     } finally {
@@ -355,6 +377,76 @@ export function MatriculaPage() {
             </form>
           )}
 
+          {passo === 'primeira_aula' && matriculada && (
+            <div className="flex flex-col gap-4">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-sm font-semibold text-emerald-900">Pagamento confirmado e acesso liberado.</p>
+                <p className="mt-1 text-sm text-emerald-800">
+                  Seu saldo de {matriculada.contrato.saldoAulas} aulas já está creditado. Escolha sua primeira aula —
+                  ou deixe para depois, pelo painel.
+                </p>
+              </div>
+
+              {aulasDisponiveis.length === 0 ? (
+                <p className="text-sm text-neutral-500">
+                  Nenhuma aula disponível para agendar agora. Você pode agendar depois pelo seu painel.
+                </p>
+              ) : (
+                <ul className="max-h-72 divide-y divide-neutral-100 overflow-y-auto rounded-lg border border-neutral-200">
+                  {aulasDisponiveis.map((aula) => {
+                    const chave = `${aula.sessao.id}-${aula.data}`;
+                    return (
+                      <li key={chave} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink">
+                            {formatarDataBR(aula.data)} · {aula.sessao.horarioInicio}–{aula.sessao.horarioFim}
+                          </p>
+                          <p className="text-xs text-neutral-500">
+                            {aula.modalidade?.nome ?? 'Modalidade'} · {aula.nomeProfessora} · {aula.vagas} vaga(s)
+                          </p>
+                        </div>
+                        <Button
+                          disabled={agendandoChave !== undefined}
+                          onClick={async () => {
+                            setErro(undefined);
+                            setAgendandoChave(chave);
+                            try {
+                              await agendarAula({
+                                aluna: matriculada.aluna,
+                                sessao: aula.sessao,
+                                data: aula.data,
+                                origem: 'portal',
+                                autorId: matriculada.aluna.usuarioId,
+                              });
+                              setPrimeiraAula(aula);
+                              setPasso('concluido');
+                            } catch (erroCapturado) {
+                              setErro(
+                                erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.',
+                              );
+                            } finally {
+                              setAgendandoChave(undefined);
+                            }
+                          }}
+                        >
+                          {agendandoChave === chave ? 'Agendando…' : 'Agendar'}
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
+
+              <div className="flex justify-end">
+                <Button variante="secundaria" onClick={() => setPasso('concluido')}>
+                  Agendar depois
+                </Button>
+              </div>
+            </div>
+          )}
+
           {passo === 'concluido' && (
             <div className="text-center">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-lg text-emerald-700">
@@ -365,6 +457,12 @@ export function MatriculaPage() {
                 Enviamos o acesso para <span className="font-medium text-ink">{dados.email}</span>. Seu saldo de{' '}
                 {pacoteEscolhido?.aulasPorCiclo} aulas já está creditado e o agendamento está liberado.
               </p>
+              {primeiraAula && (
+                <p className="mt-2 text-sm font-medium text-ink">
+                  Sua primeira aula: {primeiraAula.modalidade?.nome} em {formatarDataBR(primeiraAula.data)} às{' '}
+                  {primeiraAula.sessao.horarioInicio}.
+                </p>
+              )}
               <Link
                 to="/login"
                 className="mt-4 inline-block rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"

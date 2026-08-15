@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { SessaoProvider, useSessao } from './hooks/useSessao';
 import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
-import { PainelPlaceholder } from './pages/PainelPlaceholder';
 import { AdministracaoLayout } from './pages/administracao/AdministracaoLayout';
 import { AdministracaoHome } from './pages/administracao/AdministracaoHome';
 import { ModalidadesPage } from './pages/administracao/ModalidadesPage';
@@ -21,7 +20,12 @@ import { AlunasPage } from './pages/administracao/AlunasPage';
 import { AlunaFichaPage } from './pages/administracao/AlunaFichaPage';
 import { TermosPage } from './pages/administracao/TermosPage';
 import { MatriculaPage } from './pages/MatriculaPage';
+import { JustificativasPage } from './pages/administracao/JustificativasPage';
+import { SolicitacoesCancelamentoPage } from './pages/administracao/SolicitacoesCancelamentoPage';
 import { PainelAlunaPage } from './pages/aluna/PainelAlunaPage';
+import { GradeDaAlunaPage } from './pages/aluna/GradeDaAlunaPage';
+import { MinhasAulasPage } from './pages/aluna/MinhasAulasPage';
+import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfessoraPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -75,18 +79,14 @@ function App() {
                 <Route path="alunas/:alunaId" element={<AlunaFichaPage />} />
                 <Route path="pacotes" element={<PacotesPage />} />
                 <Route path="termos" element={<TermosPage />} />
+                <Route path="justificativas" element={<JustificativasPage />} />
+                <Route path="solicitacoes" element={<SolicitacoesCancelamentoPage />} />
               </Route>
               <Route
                 path="/professora"
                 element={
                   <RotaComPerfil perfilExigido="professora">
-                    <PainelPlaceholder
-                      titulo="Painel da Professora"
-                      proximasFases={[
-                        'Fase 2 — grade de horários com as próprias sessões',
-                        'Fase 5 — chamada, presença e acompanhamento de comissão',
-                      ]}
-                    />
+                    <MinhasAulasProfessoraPage />
                   </RotaComPerfil>
                 }
               />
@@ -94,10 +94,14 @@ function App() {
                 path="/aluna"
                 element={
                   <RotaComPerfil perfilExigido="aluna">
-                    <PainelAlunaPage />
+                    <Outlet />
                   </RotaComPerfil>
                 }
-              />
+              >
+                <Route index element={<PainelAlunaPage />} />
+                <Route path="grade" element={<GradeDaAlunaPage />} />
+                <Route path="minhas-aulas" element={<MinhasAulasPage />} />
+              </Route>
               {/* Link público de auto-matrícula (RF-ALU-04): fora da casca do sistema e sem sessão. */}
               <Route path="/matricula" element={<MatriculaPage />} />
               <Route path="/" element={<RotaInicial />} />
