@@ -83,7 +83,7 @@ export function ChamadaPage() {
     );
   }
 
-  const voltarPara = ehAdministracao ? '/administracao/comissoes' : '/professora';
+  const voltarPara = ehAdministracao ? '/administracao/comissoes' : '/professora/aulas';
   const finalizada = chamada?.situacao === 'finalizada';
   const bloqueada = finalizada && !dentroDoPrazo && !ehAdministracao;
 

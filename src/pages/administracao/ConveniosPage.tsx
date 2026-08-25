@@ -35,6 +35,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { SelectField, TextField } from '../../components/ui/Field';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
+import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
 import { rotularDias } from '../../utils/grade';
 
@@ -397,6 +398,29 @@ export function ConveniosPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variante="secundaria"
+            disabled={reservas.length === 0}
+            onClick={() =>
+              baixarCSV({
+                nomeArquivo: 'convenios',
+                itens: reservas,
+                colunas: [
+                  { cabecalho: 'Convênio', valor: (item) => rotuloDoConvenio(item.convenio) },
+                  { cabecalho: 'Identificador', valor: (item) => item.identificadorExterno },
+                  { cabecalho: 'Aluna', valor: (item) => item.nomeAluna },
+                  { cabecalho: 'Data da aula', valor: (item) => item.dataAula },
+                  { cabecalho: 'Aula', valor: (item) => item.descricaoAula },
+                  { cabecalho: 'Situação', valor: (item) => item.situacao },
+                  { cabecalho: 'Check-in', valor: (item) => (item.checkinValidado ? 'validado' : 'pendente') },
+                  { cabecalho: 'Presença', valor: (item) => item.presenca ?? '' },
+                  { cabecalho: 'Origem do registro', valor: (item) => item.origemRegistro ?? 'integracao' },
+                ],
+              })
+            }
+          >
+            Exportar CSV
+          </Button>
           <Button variante="secundaria" onClick={() => setModal({ tipo: 'aluna' })}>
             Nova aluna de convênio
           </Button>

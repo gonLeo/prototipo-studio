@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useSessao } from '../../hooks/useSessao';
+import { useAgendaDaAluna } from '../../hooks/useAgendaDaAluna';
 import { usePacotes } from '../../hooks/usePacotes';
 import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../../hooks/useTermos';
 import { contratarPacoteParaAluna, registrarPagamentoDaPrimeiraCobranca } from '../../hooks/contratosDeAluna';
@@ -148,6 +150,7 @@ function ContratarPacote({
 export function PainelAlunaPage() {
   const { usuario, recarregarUsuario } = useSessao();
   const { vigente: termoVigente, carregando: carregandoTermo } = useTermos();
+  const { minhasAulas } = useAgendaDaAluna(usuario?.id);
   const mostrarToast = useToast();
 
   const [aluna, setAluna] = useState<Aluna | undefined>();
@@ -387,6 +390,17 @@ export function PainelAlunaPage() {
   const percentualBolsa = aluna?.percentualBolsa ?? 0;
   const pausado = contrato?.situacao === 'trancado' || contrato?.situacao === 'suspenso';
 
+  // RF-PNL-05: as próximas aulas e a frequência recente ficam no painel,
+  // junto do saldo e da situação financeira.
+  const proximasAulas = minhasAulas
+    .filter((aula) => aula.situacao === 'ativo' && aula.data >= hojeISO())
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .slice(0, 3);
+  const ultimasPresencas = minhasAulas
+    .filter((aula) => aula.presenca !== undefined)
+    .sort((a, b) => b.data.localeCompare(a.data))
+    .slice(0, 3);
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold text-ink">Olá, {usuario.nome.split(' ')[0]}</h1>
@@ -448,6 +462,71 @@ export function PainelAlunaPage() {
                 Seu agendamento está pausado neste período. Fale com a administração para registrar o retorno.
               </p>
             </div>
+          )}
+
+          {!ehIsencaoTotal(percentualBolsa) && (
+            <p className="mt-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm text-neutral-600 shadow-sm">
+              Próxima cobrança em{' '}
+              <span className="font-medium text-ink">{formatarDataBR(contrato.dataVencimentoCiclo)}</span>
+              {pacote && (
+                <>
+                  , no valor de{' '}
+                  <span className="font-medium text-ink">
+                    {formatarMoeda(valorComBolsa(pacote.valorMensal, percentualBolsa))}
+                  </span>
+                </>
+              )}
+              . A renovação é automática — para ajustar o plano, fale com a administração.
+            </p>
+          )}
+
+          <section className="mt-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-ink">Próximas aulas</h2>
+              <Link to="/aluna/minhas-aulas" className="text-sm font-medium text-primary-700 hover:text-primary-800">
+                Ver todas →
+              </Link>
+            </div>
+            {proximasAulas.length === 0 ? (
+              <p className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-500">
+                Nenhuma aula agendada.{' '}
+                <Link to="/aluna/grade" className="font-medium text-primary-700 hover:text-primary-800">
+                  Ver a grade disponível
+                </Link>
+                .
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+                {proximasAulas.map((aula) => (
+                  <li key={aula.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                    <span className="text-ink">
+                      {formatarDataBR(aula.data)} · {aula.nomeModalidade}
+                    </span>
+                    <span className="text-neutral-500">
+                      {aula.horarioInicio}–{aula.horarioFim} · {aula.nomeProfessora}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {ultimasPresencas.length > 0 && (
+            <section className="mt-6">
+              <h2 className="text-sm font-semibold text-ink">Frequência recente</h2>
+              <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+                {ultimasPresencas.map((aula) => (
+                  <li key={aula.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                    <span className="text-ink">
+                      {formatarDataBR(aula.data)} · {aula.nomeModalidade}
+                    </span>
+                    <Badge tom={aula.presenca === 'presente' ? 'sucesso' : 'erro'}>
+                      {aula.presenca === 'presente' ? 'Presente' : 'Falta'}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           {debito && (

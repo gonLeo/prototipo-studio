@@ -4,12 +4,12 @@ import {
   contratoRepositorio,
   historicoBolsaRepositorio,
   historicoPlanoRepositorio,
-  notificacaoRepositorio,
   pacoteRepositorio,
   pausaRepositorio,
   registroAuditoriaRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type { Aluna, Cobranca, Contrato, Pacote, TipoContrato, TipoPausa, Usuario } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO, somarDias, somarMeses } from '../utils/data';
 import {
@@ -164,13 +164,10 @@ export async function matricularAlunaPelaAdministracao(params: {
 
   const contrato = await criarContrato(aluna.id, pacote, contratacao);
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: usuario.id,
+  await notificar({
+    destinatario: { tipo: 'usuario', id: usuario.id },
     evento: 'acesso_de_primeiro_login',
-    canal: 'email',
     conteudo: mensagemDeAcesso(pacote, contratacao, true),
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   await registroAuditoriaRepositorio.criar({
@@ -223,13 +220,10 @@ export async function matricularAlunaPeloSite(params: {
 
   const contrato = await criarContrato(aluna.id, pacote, { ...contratacao, percentualBolsa: 0 });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: usuario.id,
+  await notificar({
+    destinatario: { tipo: 'usuario', id: usuario.id },
     evento: 'matricula_concluida_pelo_site',
-    canal: 'email',
     conteudo: mensagemDeAcesso(pacote, { ...contratacao, percentualBolsa: 0 }, false),
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   return { aluna, usuario, contrato };
@@ -301,13 +295,10 @@ export async function contratarPacoteParaAluna(params: {
     percentualBolsa: contratacao.percentualBolsa,
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: aluna.usuarioId,
+  await notificar({
+    destinatario: { tipo: 'usuario', id: aluna.usuarioId },
     evento: 'pacote_contratado',
-    canal: 'email',
     conteudo: mensagemDeAcesso(pacote, contratacao, false),
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   await registroAuditoriaRepositorio.criar({
@@ -421,16 +412,13 @@ export async function alterarPlano(params: {
     data: hojeISO(),
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: contrato.alunaId,
+  await notificar({
+    destinatario: { tipo: 'aluna', id: contrato.alunaId },
     evento: 'plano_alterado',
-    canal: 'email',
     conteudo:
       diferencaApurada >= 0
         ? `Seu plano foi alterado. Diferença de ${formatarMoeda(diferencaApurada)} cobrada nesta alteração. Novo saldo: ${saldoAulasResultante} aulas.`
         : `Seu plano foi alterado. Crédito de ${formatarMoeda(Math.abs(diferencaApurada))} será aplicado na próxima cobrança. Novo saldo: ${saldoAulasResultante} aulas.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 }
 
@@ -639,13 +627,10 @@ export async function encerrarContrato(params: {
     valorNovo: { situacao: 'encerrado', motivo: motivo.trim() },
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: aluna.id,
+  await notificar({
+    destinatario: { tipo: 'aluna', id: aluna.id },
     evento: 'contrato_encerrado',
-    canal: 'email',
     conteudo: `Seu contrato foi encerrado. Motivo: ${motivo.trim()}. Seu histórico permanece no studio e você pode voltar contratando um novo pacote.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   return { agendamentosCancelados };

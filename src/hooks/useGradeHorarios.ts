@@ -10,6 +10,7 @@ import {
   studioRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type {
   Agendamento,
   Espaco,
@@ -18,7 +19,7 @@ import type {
   OcorrenciaSessao,
   Sessao,
 } from '../types/domain';
-import { hojeISO, somarDias } from '../utils/data';
+import { formatarDataBR, hojeISO, somarDias } from '../utils/data';
 import {
   diasEmConflito,
   rotularDias,
@@ -45,6 +46,32 @@ export interface DadosSessao {
   descricao?: string;
   /** RF-CNV-02: a sessão é publicada nos aplicativos dos convênios. */
   espelhadaConvenio: boolean;
+}
+
+/**
+ * Avisa as alunas com agendamento futuro quando a sessão muda de dia ou
+ * horário (RF-GRD-07, RF-NOT-05). Elas seguem agendadas na sessão
+ * alterada, então precisam saber da mudança.
+ */
+async function notificarAlunasDaAlteracao(sessaoId: string, faixa: FaixaHorario): Promise<void> {
+  const [ocorrencias, agendamentos] = await Promise.all([
+    ocorrenciaSessaoRepositorio.listar(),
+    agendamentoRepositorio.listar(),
+  ]);
+
+  const hoje = hojeISO();
+  const futuras = ocorrencias.filter((o) => o.sessaoId === sessaoId && o.data >= hoje && o.situacao !== 'cancelada');
+
+  for (const ocorrencia of futuras) {
+    const ativos = agendamentos.filter((a) => a.ocorrenciaSessaoId === ocorrencia.id && a.situacao === 'ativo');
+    for (const agendamento of ativos) {
+      await notificar({
+        destinatario: { tipo: 'aluna', id: agendamento.alunaId },
+        evento: 'sessao_alterada',
+        conteudo: `A aula que você tem agendada em ${formatarDataBR(ocorrencia.data)} foi alterada na grade. O novo horário é ${faixa.horarioInicio}–${faixa.horarioFim}, em ${rotularDias(faixa.diasSemana)}. Seu agendamento continua válido.`,
+      });
+    }
+  }
 }
 
 export function useGradeHorarios() {
@@ -201,6 +228,7 @@ export function useGradeHorarios() {
       descricao: dados.descricao,
       espelhadaConvenio: dados.espelhadaConvenio,
     });
+    await notificarAlunasDaAlteracao(sessaoId, faixa);
     await recarregar();
   }
 

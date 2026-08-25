@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { TextField, SelectField } from '../../components/ui/Field';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
+import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, hojeISO } from '../../utils/data';
 import { ehIsencaoTotal, formatarMoeda, valorComBolsa } from '../../utils/contrato';
 
@@ -212,7 +213,33 @@ export function AlunasPage() {
             {alunas.length} cadastrada(s). O acesso ao agendamento só abre depois do aceite do termo e da anamnese.
           </p>
         </div>
-        <Button onClick={() => setModalAberto(true)}>Nova aluna</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variante="secundaria"
+            disabled={filtradas.length === 0}
+            onClick={() =>
+              baixarCSV({
+                nomeArquivo: 'alunas',
+                itens: filtradas,
+                colunas: [
+                  { cabecalho: 'Nome', valor: (item) => item.usuario.nome },
+                  { cabecalho: 'E-mail', valor: (item) => item.usuario.email },
+                  { cabecalho: 'CPF', valor: (item) => item.usuario.cpf },
+                  { cabecalho: 'Telefone', valor: (item) => item.telefone },
+                  { cabecalho: 'Situação', valor: (item) => ROTULO_SITUACAO_ALUNA[item.situacao] },
+                  { cabecalho: 'Origem', valor: (item) => (item.origem === 'convenio' ? 'Convênio' : 'Direta') },
+                  { cabecalho: 'Pacote', valor: (item) => item.pacote?.nome ?? '' },
+                  { cabecalho: 'Saldo de aulas', valor: (item) => item.contrato?.saldoAulas ?? '' },
+                  { cabecalho: 'Validade do ciclo', valor: (item) => item.contrato?.dataVencimentoCiclo ?? '' },
+                  { cabecalho: 'Bolsa (%)', valor: (item) => item.percentualBolsa ?? 0 },
+                ],
+              })
+            }
+          >
+            Exportar CSV
+          </Button>
+          <Button onClick={() => setModalAberto(true)}>Nova aluna</Button>
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-1">

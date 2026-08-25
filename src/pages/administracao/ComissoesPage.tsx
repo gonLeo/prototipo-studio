@@ -25,6 +25,7 @@ import type { Comissao, FechamentoComissao } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/contrato';
 
@@ -197,9 +198,34 @@ export function ComissoesPage() {
             {formatarDataBR(dataPrevistaDePagamento(periodo))}.
           </p>
         </div>
-        <Button onClick={fechar} disabled={resumos.length === 0}>
-          Fechar período
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variante="secundaria"
+            disabled={resumos.length === 0}
+            onClick={() =>
+              baixarCSV({
+                nomeArquivo: 'comissoes',
+                itens: resumos.flatMap((resumo) => resumo.aulas.map((aula) => ({ resumo, aula }))),
+                colunas: [
+                  { cabecalho: 'Professora', valor: ({ resumo }) => resumo.nome },
+                  { cabecalho: 'Data da aula', valor: ({ aula }) => aula.dataAula },
+                  { cabecalho: 'Aula', valor: ({ aula }) => aula.descricaoAula },
+                  { cabecalho: 'Presenças', valor: ({ aula }) => aula.presencas },
+                  { cabecalho: 'Valor', valor: ({ aula }) => aula.valor },
+                  {
+                    cabecalho: 'Lançamento',
+                    valor: ({ aula }) => (aula.situacao === 'ajuste' ? 'Ajuste de período anterior' : 'Período atual'),
+                  },
+                ],
+              })
+            }
+          >
+            Exportar CSV
+          </Button>
+          <Button onClick={fechar} disabled={resumos.length === 0}>
+            Fechar período
+          </Button>
+        </div>
       </div>
 
       {pendencias.length > 0 && (

@@ -4,7 +4,6 @@ import {
   espacoRepositorio,
   excecaoCalendarioRepositorio,
   modalidadeRepositorio,
-  notificacaoRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   professoraRepositorio,
@@ -12,6 +11,7 @@ import {
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type {
   Agendamento,
   Aluna,
@@ -299,13 +299,10 @@ export async function agendarAula(params: {
 
   const antecedenciaMinimaHoras = await antecedenciaMinimaEmHoras();
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: aluna.id,
+  await notificar({
+    destinatario: { tipo: 'aluna', id: aluna.id },
     evento: 'agendamento_confirmado',
-    canal: 'email',
     conteudo: `Aula agendada para ${formatarDataBR(data)} às ${sessao.horarioInicio}. Saldo restante: ${novoSaldo} aula(s). Cancelamentos com ${antecedenciaMinimaHoras}h ou mais de antecedência devolvem o crédito.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   if (origem === 'administracao') {
@@ -370,15 +367,12 @@ export async function cancelarAgendamentoDaAluna(params: {
     await contratoRepositorio.atualizar(contrato.id, { saldoAulas: novoSaldo });
   }
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: agendamento.alunaId,
+  await notificar({
+    destinatario: { tipo: 'aluna', id: agendamento.alunaId },
     evento: 'agendamento_cancelado',
-    canal: 'email',
     conteudo: creditoDevolvido
       ? `Aula de ${formatarDataBR(dataAula)} cancelada. O crédito voltou ao seu saldo (${novoSaldo} aula(s)).`
       : `Aula de ${formatarDataBR(dataAula)} cancelada com menos de ${antecedencia}h de antecedência, então a aula foi consumida. Você pode enviar uma justificativa para análise.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   if (origemCancelamento === 'administracao') {

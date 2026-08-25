@@ -9,6 +9,7 @@ import {
   tentativaCobrancaRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import { cobrarNoGateway, linkDePagamento } from '../services/gatewayPagamento';
 import type {
   Aluna,
@@ -72,16 +73,10 @@ async function notificarAluna(params: {
   evento: string;
   conteudo: string;
 }): Promise<void> {
-  const alunas = await alunaRepositorio.listar();
-  const aluna = alunas.find((a) => a.id === params.alunaId);
-
-  await notificacaoRepositorio.criar({
-    destinatarioId: aluna?.usuarioId ?? params.alunaId,
+  await notificar({
+    destinatario: { tipo: 'aluna', id: params.alunaId },
     evento: params.evento,
-    canal: 'email',
     conteudo: params.conteudo,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 }
 

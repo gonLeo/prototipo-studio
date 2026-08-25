@@ -5,7 +5,6 @@ import {
   espacoRepositorio,
   excecaoCalendarioRepositorio,
   modalidadeRepositorio,
-  notificacaoRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   professoraRepositorio,
@@ -13,6 +12,7 @@ import {
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type { Agendamento, Aluna, Modalidade, Sessao, Usuario } from '../types/domain';
 import { formatarDataBR, hojeISO, horasAteAula, somarDias } from '../utils/data';
 import { formatarMoeda } from '../utils/contrato';
@@ -261,13 +261,10 @@ export async function agendarAulaExperimental(params: {
     experimental: true,
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: usuario.id,
+  await notificar({
+    destinatario: { tipo: 'usuario', id: usuario.id },
     evento: 'aula_experimental_confirmada',
-    canal: 'email',
     conteudo: `Sua aula experimental está confirmada para ${formatarDataBR(data)} às ${sessao.horarioInicio}. Pagamento de ${formatarMoeda(parametros.valor)} recebido. Chegue com 10 minutos de antecedência.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   return { aluna, usuario, agendamento, valorPago: parametros.valor };

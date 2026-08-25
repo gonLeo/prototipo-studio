@@ -855,6 +855,78 @@
       "origemRegistro": "integracao"
     }
   ],
-  "notificacoes": [],
-  "registrosAuditoria": []
+  "notificacoes": [
+    {
+      "id": "not-larissa-acesso",
+      "destinatarioId": "usr-aluna-1",
+      "evento": "acesso_de_primeiro_login",
+      "canal": "email",
+      "conteudo": "Bem-vinda ao studio! Seu pacote \"Pacote 8 aulas\" foi ativado com 8 aulas creditadas. Mensalidade de R$ 380,00, com primeira cobrança em 10/08/2026. Acesse o sistema com o link enviado para assinar o termo de aceite e preencher a ficha de anamnese — o agendamento é liberado logo depois.",
+      "dataEnvio": "2026-08-10T13:00:00.000Z",
+      "situacaoEnvio": "enviada"
+    },
+    {
+      "id": "not-larissa-agendamento",
+      "destinatarioId": "usr-aluna-1",
+      "evento": "agendamento_confirmado",
+      "canal": "email",
+      "conteudo": "Aula agendada para 17/08/2026 às 08:00. Saldo restante: 6 aula(s). Cancelamentos com 4h ou mais de antecedência devolvem o crédito.",
+      "dataEnvio": "2026-08-13T10:15:00.000Z",
+      "situacaoEnvio": "enviada"
+    },
+    {
+      "id": "not-patricia-falha",
+      "destinatarioId": "usr-aluna-3",
+      "evento": "cobranca_com_falha",
+      "canal": "email",
+      "conteudo": "Não conseguimos processar o pagamento de R$ 220,00 com vencimento em 30/07/2026. Vamos tentar novamente amanhã — você também pode pagar pelo link.",
+      "dataEnvio": "2026-07-30T03:00:00.000Z",
+      "situacaoEnvio": "enviada"
+    },
+    {
+      "id": "not-juliana-experimental",
+      "destinatarioId": "usr-aluna-5",
+      "evento": "aula_experimental_confirmada",
+      "canal": "email",
+      "conteudo": "Sua aula experimental está confirmada para 13/08/2026 às 15:00. Pagamento de R$ 30,00 recebido. Chegue com 10 minutos de antecedência.",
+      "dataEnvio": "2026-08-11T21:05:00.000Z",
+      "situacaoEnvio": "enviada"
+    },
+    {
+      "id": "not-admin-solicitacao",
+      "destinatarioId": "usr-admin",
+      "evento": "solicitacao_de_cancelamento_recebida",
+      "canal": "email",
+      "conteudo": "Beatriz Nogueira solicitou o cancelamento da aula de 20/08/2026 às 15:00. Motivo: Consulta médica marcada para esse horário. A aula segue na grade até a decisão.",
+      "dataEnvio": "2026-08-14T09:30:00.000Z",
+      "situacaoEnvio": "enviada"
+    }
+  ],
+  "registrosAuditoria": [
+    {
+      "id": "aud-matricula-larissa",
+      "entidadeAfetada": "Aluna",
+      "operacao": "matricula_administrativa",
+      "autorId": "usr-admin",
+      "dataHora": "2026-08-10T13:00:00.000Z",
+      "valorNovo": {
+        "alunaId": "alu-larissa",
+        "pacote": "Pacote 8 aulas",
+        "percentualBolsa": 0
+      }
+    },
+    {
+      "id": "aud-espelhamento",
+      "entidadeAfetada": "Sessao",
+      "operacao": "espelhamento_convenio",
+      "autorId": "usr-admin",
+      "dataHora": "2026-08-14T11:00:00.000Z",
+      "valorAnterior": {
+        "espelhadaConvenio": false
+      },
+      "valorNovo": {
+        "espelhadaConvenio": true
+      }
+    }
+  ]
 }

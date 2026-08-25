@@ -1,12 +1,12 @@
 import {
   agendamentoRepositorio,
   contratoRepositorio,
-  notificacaoRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   registroAuditoriaRepositorio,
   sessaoRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type { Agendamento, OcorrenciaSessao, Sessao } from '../types/domain';
 import { hojeISO, somarDias, formatarDataBR } from '../utils/data';
 import { sessaoOcorreEm } from '../utils/grade';
@@ -104,15 +104,12 @@ export async function cancelarOcorrencia(
       });
     }
 
-    await notificacaoRepositorio.criar({
-      destinatarioId: agendamento.alunaId,
+    await notificar({
+      destinatario: { tipo: 'aluna', id: agendamento.alunaId },
       evento: 'aula_cancelada_pelo_studio',
-      canal: 'email',
       conteudo: `Sua aula de ${formatarDataBR(data)} foi cancelada. Motivo: ${motivo}. O crédito voltou ao seu saldo${
         diasAdicionais > 0 ? ` e a validade do pacote foi estendida em ${diasAdicionais} dias` : ''
       }.`,
-      dataEnvio: new Date().toISOString(),
-      situacaoEnvio: 'enviada',
     });
   }
 
@@ -192,13 +189,10 @@ export async function cancelarAgendamentosDaAlunaNoPeriodo(params: {
         saldoAulas: contrato.saldoAulas + 1,
       });
     }
-    await notificacaoRepositorio.criar({
-      destinatarioId: alunaId,
+    await notificar({
+      destinatario: { tipo: 'aluna', id: alunaId },
       evento: 'agendamento_cancelado_pela_administracao',
-      canal: 'email',
       conteudo: `Seu agendamento foi cancelado. Motivo: ${motivo}. A aula voltou para o seu saldo.`,
-      dataEnvio: new Date().toISOString(),
-      situacaoEnvio: 'enviada',
     });
   }
 

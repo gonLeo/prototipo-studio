@@ -10,7 +10,7 @@ Controle de fases do desenvolvimento. Uma fase por ciclo; cada fase só avança 
 - [x] Fase 5 — M9 Presença e Chamada + M10 Comissão e Fechamento
 - [x] Fase 6 — M11 Cobranças e Financeiro
 - [x] Fase 7 — M12 Aula Experimental + M13 Convênios Corporativos
-- [ ] Fase 8 — M14 Painéis e Indicadores + M15 Notificações + M16 Perfis e Permissões (fechamento)
+- [x] Fase 8 — M14 Painéis e Indicadores + M15 Notificações + M16 Perfis e Permissões (fechamento)
 
 ## Decisões fixadas
 
@@ -380,3 +380,54 @@ Próxima fase (Fase 7) usa este financeiro para a aula experimental (M12), que �
 10. Volte em Convênios → **Relatório do período** e confira reservas, check-ins, sem check-in e ausências por convênio.
 
 Próxima fase (Fase 8) fecha o protótipo com painéis e indicadores (M14), notificações (M15) e perfis e permissões (M16).
+
+## Fase 8 — o que foi entregue
+
+**Painéis e indicadores (M14), notificações (M15) e perfis e permissões (M16).** Fecha o escopo contratado: os três perfis passam a abrir num painel, e o que o sistema comunicou e alterou fica consultável.
+
+### M14 — Painéis e Indicadores
+
+- **Painel administrativo** (RF-PNL-01) na tela inicial da administração: alunas ativas e inadimplentes, receita recebida e em aberto, aulas realizadas, comissão gerada e contratos a vencer nos próximos 30 dias, com link direto para a ficha de cada aluna.
+- **Bloco de pendências primeiro** (RF-PNL-03): solicitações de cancelamento, justificativas a analisar, chamadas não finalizadas e cobranças em atraso ou com falha. Cada cartão leva à fila correspondente e fica destacado só quando há algo a fazer — a decisão de UX do escopo é justamente abrir pelo que exige ação, não pelos números.
+- **Ocupação das sessões** (RF-PNL-02): média de alunas por aula nos próximos 30 dias, com barra e classificação em lotada, saudável ou baixa procura — as duas pontas que apoiam abrir turma nova ou promover horário ocioso.
+- **Painel da professora** (RF-PNL-04): virou a tela inicial dela, com as aulas de hoje, chamadas pendentes, aulas do período, valor por aula da categoria vigente, total acumulado, data de fechamento e data prevista de pagamento. A agenda completa passou para "Minhas aulas".
+- **Painel da aluna** (RF-PNL-05): além de saldo, validade e mensalidade, agora traz a data da próxima cobrança, as próximas aulas agendadas, a frequência recente e o débito em aberto quando existe.
+- **Exportação em CSV** (RF-PNL-06) nas listagens de alunas, cobranças, comissões e convênios — mais notificações e auditoria. Exporta o que está filtrado na tela, com separador `;` e BOM UTF-8 para abrir direto no Excel em português.
+
+### M15 — Notificações
+
+- **Camada de notificação independente de canal** (RF-NOT-10): `src/services/notificador.ts`. Nenhuma regra grava `Notificacao` direto — todas chamam `notificar({ destinatario, evento, conteudo })`, e a camada resolve quem recebe e por qual canal. Trocar ou acrescentar canal é mudar uma função.
+- **Todos os disparos migrados** para essa camada: primeiro acesso (RF-NOT-01), confirmação de agendamento (RF-NOT-02), cancelamento pelo studio (RF-NOT-03), substituição de professora (RF-NOT-04), cobrança, inadimplência e pagamento (RF-NOT-07), aviso de término de contrato (RF-NOT-06), resultado de justificativa (RF-NOT-08) e solicitação de cancelamento (RF-NOT-09).
+- **Duas lacunas fechadas**: a alteração de sessão passou a notificar as alunas com agendamento futuro (RF-NOT-05) — antes a confirmação prometia o aviso e nada era enviado —, e a nova solicitação de cancelamento passou a avisar a administração (RF-NOT-09), que só recebia a metade "decisão para a professora".
+- **Registro de envio** (RF-NOT-11): tela com destinatária, evento, canal, data, situação e o conteúdo integral, com filtro por evento, busca e exportação.
+
+### M16 — Perfis e Permissões
+
+- **Trilha de auditoria** (RF-PER-05) ganhou tela: autor, data, hora, entidade, operação e os valores antes/depois de cada alteração de contrato, saldo, financeiro, chamada ou comissão. Somente leitura, com filtro por entidade e exportação.
+- **Perfis e acúmulo** (RF-PER-01/02) já vinham da Fase 0 e seguem: rota protegida por perfil e troca de contexto sem novo login.
+- **Operações críticas** (RF-PER-03) continuam exclusivas da administração — trancamento, suspensão, encerramento, bolsa e alteração de plano existem apenas nas telas sob `/administracao`, protegidas por `RotaComPerfil`.
+
+### Decisões desta fase
+
+- **A camada de notificação resolve o destinatário, não as regras.** Antes cada regra gravava `destinatarioId` com o que tinha em mãos — ora o id da aluna, ora o da professora, ora o da usuária —, o que deixava o registro inconsistente e impedia mostrar o nome de quem recebeu. Agora as regras dizem "aluna X" e a camada traduz para a usuária.
+- **`canalDoEvento` é o único ponto que decide canal.** Está trivial hoje (tudo e-mail) de propósito: é o encaixe do WhatsApp da Fase 2, e deixá-lo explícito agora é o que cumpre o RF-NOT-10 sem inventar configuração que o escopo não pede.
+- **O catálogo de eventos vive junto do notificador**, com rótulo e requisito de origem. É ele que dá nome legível ao registro de envios e serve de contrato: evento novo entra ali junto com a regra.
+- **O painel da professora virou a tela inicial dela** e a agenda foi para `/professora/aulas`. O RF-PNL-04 pede uma visão consolidada, e ela é o melhor ponto de partida: mostra o que é de hoje e o quanto já rendeu, com um clique para a agenda inteira.
+- **Autenticação real (RF-PER-04) segue fora do escopo do protótipo**, como registrado desde a Fase 0 — os perfis são simulados por seleção de usuária na tela de login. É o único requisito do M16 não exercitável aqui, e é assim por decisão de escopo, não por lacuna.
+- Backfill expandido com notificações e registros de auditoria de exemplo, para que as duas telas novas nasçam com conteúdo em vez de vazias.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. Entrar como **Camila Duarte** → Administração: o painel abre pelas pendências (solicitação da Beatriz, justificativa da Larissa, chamadas do dia 13 e a cobrança em atraso da Patrícia). Clicar em cada cartão leva à fila.
+3. Conferir os **indicadores** e a **ocupação das sessões** logo abaixo — a barra e a etiqueta mostram turma lotada e baixa procura.
+4. **Notificações** (Configuração): filtrar por evento, buscar por destinatária e abrir "Ver conteúdo" para ler o e-mail exatamente como foi enviado. Exportar CSV.
+5. **Auditoria** (Configuração): filtrar por entidade e abrir "Ver valores" para comparar antes e depois. Exportar CSV.
+6. Gerar comunicação nova para ver a trilha crescer: agendar uma aula pela ficha de uma aluna, ou alterar o horário de uma sessão com aluna agendada — as alunas afetadas recebem o aviso (RF-NOT-05).
+7. Entrar como **Beatriz Nogueira** (Professora): o **Painel** mostra as aulas de hoje, chamadas pendentes e o resumo do período; "Minhas aulas" continua com a agenda completa.
+8. Entrar como **Larissa Prado** (Aluna): o painel traz saldo, validade, mensalidade, próxima cobrança, próximas aulas e frequência recente.
+9. Exportar CSV em **Alunas**, **Cobranças**, **Comissões** e **Convênios** — o arquivo respeita o filtro aplicado na tela.
+
+---
+
+**Escopo contratado concluído.** Os 16 módulos (M1 a M16) do documento de escopo estão implementados no protótipo. Fora de escopo, como registrado desde o início: testes automatizados, autenticação real (RF-PER-04), banco de dados real, integrações reais de gateway (RF-FIN-14 / PA-04) e de convênios, e os itens do capítulo "Evoluções Futuras" (EV-01 a EV-12).

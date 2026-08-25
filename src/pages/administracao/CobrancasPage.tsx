@@ -22,6 +22,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { SelectField, TextField } from '../../components/ui/Field';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
+import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, hojeISO, nomeDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/contrato';
 
@@ -427,9 +428,35 @@ export function CobrancasPage() {
             {prazoBloqueio} dias de atraso.
           </p>
         </div>
-        <Button onClick={rodarRotina} disabled={processando}>
-          {processando ? 'Processando…' : 'Executar rotina do dia'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variante="secundaria"
+            disabled={cobrancas.length === 0}
+            onClick={() =>
+              baixarCSV({
+                nomeArquivo: 'cobrancas',
+                itens: visiveis,
+                colunas: [
+                  { cabecalho: 'Aluna', valor: (item) => item.nomeAluna },
+                  { cabecalho: 'Referência', valor: (item) => item.nomePacote },
+                  { cabecalho: 'Vencimento', valor: (item) => item.dataVencimento },
+                  { cabecalho: 'Valor original', valor: (item) => item.valorLiquido },
+                  { cabecalho: 'Multa', valor: (item) => item.multa },
+                  { cabecalho: 'Juros', valor: (item) => item.juros },
+                  { cabecalho: 'Valor atualizado', valor: (item) => item.valorAtualizado },
+                  { cabecalho: 'Situação', valor: (item) => ROTULO_SITUACAO[item.situacao] },
+                  { cabecalho: 'Quitação', valor: (item) => item.dataQuitacao ?? '' },
+                  { cabecalho: 'Tentativas', valor: (item) => item.tentativas.length },
+                ],
+              })
+            }
+          >
+            Exportar CSV
+          </Button>
+          <Button onClick={rodarRotina} disabled={processando}>
+            {processando ? 'Processando…' : 'Executar rotina do dia'}
+          </Button>
+        </div>
       </div>
 
       {carregando ? (

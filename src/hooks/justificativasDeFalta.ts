@@ -2,9 +2,9 @@ import {
   agendamentoRepositorio,
   contratoRepositorio,
   justificativaRepositorio,
-  notificacaoRepositorio,
   ocorrenciaSessaoRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type { Justificativa } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
@@ -99,15 +99,12 @@ export async function analisarJustificativa(params: {
     }
   }
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: justificativa.alunaId,
+  await notificar({
+    destinatario: { tipo: 'aluna', id: justificativa.alunaId },
     evento: aprovada ? 'justificativa_aprovada' : 'justificativa_recusada',
-    canal: 'email',
     conteudo: aprovada
       ? `Sua justificativa foi aprovada. ${novoSaldo !== undefined ? `O crédito voltou ao seu saldo (${novoSaldo} aula(s)).` : ''} Parecer: ${parecer.trim()}`
       : `Sua justificativa foi recusada e a aula segue consumida. Parecer: ${parecer.trim()}`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 }
 

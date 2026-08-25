@@ -26,6 +26,7 @@ import { PainelAlunaPage } from './pages/aluna/PainelAlunaPage';
 import { GradeDaAlunaPage } from './pages/aluna/GradeDaAlunaPage';
 import { MinhasAulasPage } from './pages/aluna/MinhasAulasPage';
 import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfessoraPage';
+import { PainelProfessoraPage } from './pages/professora/PainelProfessoraPage';
 import { ChamadaPage } from './pages/professora/ChamadaPage';
 import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
 import { ComissoesPage } from './pages/administracao/ComissoesPage';
@@ -33,6 +34,8 @@ import { CobrancasPage } from './pages/administracao/CobrancasPage';
 import { ConveniosPage } from './pages/administracao/ConveniosPage';
 import { ExperimentaisPage } from './pages/administracao/ExperimentaisPage';
 import { ExperimentalPage } from './pages/ExperimentalPage';
+import { NotificacoesPage } from './pages/administracao/NotificacoesPage';
+import { AuditoriaPage } from './pages/administracao/AuditoriaPage';
 import type { PerfilAcesso } from './types/domain';
 
 const ROTA_PERFIL: Record<PerfilAcesso, string> = {
@@ -92,6 +95,8 @@ function App() {
                 <Route path="cobrancas" element={<CobrancasPage />} />
                 <Route path="experimentais" element={<ExperimentaisPage />} />
                 <Route path="convenios" element={<ConveniosPage />} />
+                <Route path="notificacoes" element={<NotificacoesPage />} />
+                <Route path="auditoria" element={<AuditoriaPage />} />
                 {/* A administração ajusta chamada fora do prazo (RF-PRE-06). */}
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
               </Route>
@@ -103,7 +108,8 @@ function App() {
                   </RotaComPerfil>
                 }
               >
-                <Route index element={<MinhasAulasProfessoraPage />} />
+                <Route index element={<PainelProfessoraPage />} />
+                <Route path="aulas" element={<MinhasAulasProfessoraPage />} />
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
                 <Route path="pagamentos" element={<MeusPagamentosPage />} />
               </Route>

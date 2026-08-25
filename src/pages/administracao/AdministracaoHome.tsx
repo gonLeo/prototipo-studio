@@ -1,4 +1,15 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  indicadoresAdministrativos,
+  ocupacaoDasSessoes,
+  pendenciasDeAcao,
+} from '../../hooks/indicadores';
+import type { IndicadoresAdministrativos, OcupacaoDaSessao, PendenciasDeAcao } from '../../hooks/indicadores';
+import { periodoAtual } from '../../hooks/comissoes';
+import { Badge } from '../../components/ui/Badge';
+import { formatarDataBR, nomeDoMes } from '../../utils/data';
+import { formatarMoeda } from '../../utils/contrato';
 
 const CARTOES_OPERACAO = [
   { to: '/administracao/alunas', titulo: 'Alunas', descricao: 'Cadastro, pacote, saldo, bolsa e ficha completa.' },
@@ -45,6 +56,8 @@ const CARTOES = [
   { to: '/administracao/parametros', titulo: 'Parâmetros operacionais', descricao: 'Janelas de agendamento, antecedências, multa, juros e mais.' },
   { to: '/administracao/professoras', titulo: 'Professoras', descricao: 'Cadastro, categoria vigente e histórico.' },
   { to: '/administracao/categorias', titulo: 'Categorias de professora', descricao: 'Nome e valor por aula.' },
+  { to: '/administracao/notificacoes', titulo: 'Notificações', descricao: 'Registro de tudo que foi disparado, por evento e canal.' },
+  { to: '/administracao/auditoria', titulo: 'Trilha de auditoria', descricao: 'Quem alterou contrato, saldo, financeiro, chamada ou comissão.' },
 ];
 
 function GrupoDeCartoes({ titulo, cartoes }: { titulo: string; cartoes: typeof CARTOES }) {
@@ -67,15 +80,220 @@ function GrupoDeCartoes({ titulo, cartoes }: { titulo: string; cartoes: typeof C
   );
 }
 
-export function AdministracaoHome() {
+function CartaoDePendencia({ to, rotulo, quantidade }: { to: string; rotulo: string; quantidade: number }) {
+  const temPendencia = quantidade > 0;
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Administração</p>
-      <h1 className="mt-1 text-2xl font-semibold text-ink">Visão geral</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        A grade e o calendário de exceções operam o dia a dia; a configuração sustenta tudo que vem nas próximas
-        fases — alunas, agendamento e financeiro dependem destes cadastros.
+    <Link
+      to={to}
+      className={`rounded-xl border p-4 shadow-sm transition-colors ${
+        temPendencia
+          ? 'border-amber-300 bg-amber-50 hover:bg-amber-100'
+          : 'border-neutral-200 bg-white hover:bg-neutral-50'
+      }`}
+    >
+      <p className={`text-2xl font-semibold ${temPendencia ? 'text-amber-900' : 'text-neutral-400'}`}>
+        {quantidade}
       </p>
+      <p className={`mt-0.5 text-xs ${temPendencia ? 'text-amber-800' : 'text-neutral-500'}`}>{rotulo}</p>
+    </Link>
+  );
+}
+
+function Indicador({ rotulo, valor, detalhe }: { rotulo: string; valor: string; detalhe?: string }) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-neutral-500">{rotulo}</p>
+      <p className="mt-1 text-xl font-semibold text-ink">{valor}</p>
+      {detalhe && <p className="text-xs text-neutral-500">{detalhe}</p>}
+    </div>
+  );
+}
+
+/**
+ * Painel administrativo (RF-PNL-01/02/03).
+ *
+ * Abre pelo bloco de pendências, e não pelos indicadores: por decisão de UX
+ * do escopo, a primeira informação da tela é o que exige ação agora, para
+ * que solicitação e justificativa não fiquem esperando.
+ */
+export function AdministracaoHome() {
+  const [pendencias, setPendencias] = useState<PendenciasDeAcao>();
+  const [indicadores, setIndicadores] = useState<IndicadoresAdministrativos>();
+  const [ocupacao, setOcupacao] = useState<OcupacaoDaSessao[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  // `periodoAtual()` cria um objeto novo a cada chamada: sem memoizar, o
+  // efeito de carregamento entraria em laço.
+  const periodo = useMemo(() => periodoAtual(), []);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    const [listaPendencias, listaIndicadores, listaOcupacao] = await Promise.all([
+      pendenciasDeAcao(),
+      indicadoresAdministrativos(periodo),
+      ocupacaoDasSessoes(),
+    ]);
+    setPendencias(listaPendencias);
+    setIndicadores(listaIndicadores);
+    setOcupacao(listaOcupacao);
+    setCarregando(false);
+  }, [periodo]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const lotadas = ocupacao.filter((o) => o.faixa === 'lotada');
+  const baixaProcura = ocupacao.filter((o) => o.faixa === 'baixa' && o.ocorrenciasAnalisadas > 0);
+
+  return (
+    <div className="max-w-5xl">
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Administração</p>
+      <h1 className="mt-1 text-2xl font-semibold text-ink">Painel</h1>
+      <p className="mt-1 text-sm text-neutral-500 first-letter:uppercase">
+        {nomeDoMes(periodo.mes)} de {periodo.ano} · o que precisa de ação vem primeiro.
+      </p>
+
+      {carregando || !pendencias || !indicadores ? (
+        <p className="mt-6 text-sm text-neutral-500">Carregando…</p>
+      ) : (
+        <>
+          <section className="mt-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-ink">Pendências</h2>
+              <Badge tom={pendencias.total > 0 ? 'aviso' : 'sucesso'}>
+                {pendencias.total > 0 ? `${pendencias.total} item(ns)` : 'Tudo em dia'}
+              </Badge>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <CartaoDePendencia
+                to="/administracao/solicitacoes"
+                rotulo="Solicitações de cancelamento"
+                quantidade={pendencias.solicitacoesDeCancelamento}
+              />
+              <CartaoDePendencia
+                to="/administracao/justificativas"
+                rotulo="Justificativas a analisar"
+                quantidade={pendencias.justificativas}
+              />
+              <CartaoDePendencia
+                to="/administracao/comissoes"
+                rotulo="Chamadas não finalizadas"
+                quantidade={pendencias.chamadasNaoFinalizadas}
+              />
+              <CartaoDePendencia
+                to="/administracao/cobrancas"
+                rotulo="Cobranças em atraso ou com falha"
+                quantidade={pendencias.cobrancasEmAtraso}
+              />
+            </div>
+          </section>
+
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold text-ink">Indicadores do período</h2>
+            <div className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <Indicador
+                rotulo="Alunas ativas"
+                valor={String(indicadores.alunasAtivas)}
+                detalhe={`${indicadores.alunasInadimplentes} inadimplente(s)`}
+              />
+              <Indicador
+                rotulo="Receita recebida"
+                valor={formatarMoeda(indicadores.receitaRecebida)}
+                detalhe={`${formatarMoeda(indicadores.aReceber)} em aberto`}
+              />
+              <Indicador rotulo="Aulas realizadas" valor={String(indicadores.aulasRealizadas)} />
+              <Indicador rotulo="Comissão gerada" valor={formatarMoeda(indicadores.comissaoGerada)} />
+              <Indicador
+                rotulo="Contratos a vencer"
+                valor={String(indicadores.contratosAVencer.length)}
+                detalhe="Próximos 30 dias"
+              />
+              <Indicador
+                rotulo="Turmas lotadas"
+                valor={String(lotadas.length)}
+                detalhe={`${baixaProcura.length} com baixa procura`}
+              />
+            </div>
+
+            {indicadores.contratosAVencer.length > 0 && (
+              <ul className="mt-3 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+                {indicadores.contratosAVencer.map((contrato) => (
+                  <li
+                    key={contrato.contratoId}
+                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
+                  >
+                    <Link
+                      to={`/administracao/alunas/${contrato.alunaId}`}
+                      className="font-medium text-primary-700 hover:text-primary-800"
+                    >
+                      {contrato.nomeAluna}
+                    </Link>
+                    <span className="text-neutral-500">
+                      Vence em {formatarDataBR(contrato.dataTermino)} · {contrato.diasRestantes} dia(s)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold text-ink">Ocupação das sessões</h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              Média de alunas por aula nos próximos 30 dias. Turma lotada é candidata a nova turma; baixa procura é
+              horário a promover.
+            </p>
+
+            {ocupacao.length === 0 ? (
+              <p className="mt-2 text-sm text-neutral-500">Nenhuma sessão ativa na grade.</p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-2">
+                {ocupacao.map((item) => (
+                  <li
+                    key={item.sessaoId}
+                    className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-ink">
+                          {item.modalidade} · {item.horario}
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          {item.professora} · média de {item.mediaDeAlunas} de {item.capacidade} vagas
+                        </p>
+                      </div>
+                      <Badge
+                        tom={item.faixa === 'lotada' ? 'erro' : item.faixa === 'baixa' ? 'aviso' : 'sucesso'}
+                      >
+                        {item.faixa === 'lotada'
+                          ? 'Lotada'
+                          : item.faixa === 'baixa'
+                            ? 'Baixa procura'
+                            : 'Saudável'}
+                        {' · '}
+                        {item.percentual}%
+                      </Badge>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                      <div
+                        className={`h-full rounded-full ${
+                          item.faixa === 'lotada'
+                            ? 'bg-rose-500'
+                            : item.faixa === 'baixa'
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${Math.min(100, item.percentual)}%` }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
 
       <GrupoDeCartoes titulo="Operação" cartoes={CARTOES_OPERACAO} />
       <GrupoDeCartoes titulo="Configuração" cartoes={CARTOES} />

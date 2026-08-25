@@ -1,12 +1,12 @@
 import {
   agendamentoRepositorio,
-  notificacaoRepositorio,
   ocorrenciaSessaoRepositorio,
   professoraRepositorio,
   sessaoRepositorio,
   solicitacaoCancelamentoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type { SolicitacaoCancelamento } from '../types/domain';
 import { formatarDataBR, hojeISO } from '../utils/data';
 import { sessaoOcorreEm } from '../utils/grade';
@@ -45,13 +45,30 @@ export async function solicitarCancelamento(params: {
     throw new RegraNegocioError('Já existe uma solicitação pendente para esta aula.');
   }
 
-  return solicitacaoCancelamentoRepositorio.criar({
+  const solicitacao = await solicitacaoCancelamentoRepositorio.criar({
     sessaoId,
     data,
     professoraSolicitanteId,
     motivo: motivo.trim(),
     situacao: 'pendente',
   });
+
+  // RF-NOT-09: a administração é avisada da nova solicitação; a decisão
+  // volta para a professora pela mesma camada, mais adiante.
+  const [professoras, usuarios] = await Promise.all([
+    professoraRepositorio.listar(),
+    usuarioRepositorio.listar(),
+  ]);
+  const professora = professoras.find((p) => p.id === professoraSolicitanteId);
+  const nomeProfessora = usuarios.find((u) => u.id === professora?.usuarioId)?.nome ?? 'Uma professora';
+
+  await notificar({
+    destinatario: { tipo: 'administracao' },
+    evento: 'solicitacao_de_cancelamento_recebida',
+    conteudo: `${nomeProfessora} solicitou o cancelamento da aula de ${formatarDataBR(data)} às ${sessao.horarioInicio}. Motivo: ${motivo.trim()}. A aula segue na grade até a decisão.`,
+  });
+
+  return solicitacao;
 }
 
 /** Quantas alunas seriam afetadas por uma solicitação (RF-CPR-02). */
@@ -70,13 +87,10 @@ async function notificarAlunasDaOcorrencia(ocorrenciaId: string, evento: string,
   const ativos = agendamentos.filter((a) => a.ocorrenciaSessaoId === ocorrenciaId && a.situacao === 'ativo');
 
   for (const agendamento of ativos) {
-    await notificacaoRepositorio.criar({
-      destinatarioId: agendamento.alunaId,
+    await notificar({
+      destinatario: { tipo: 'aluna', id: agendamento.alunaId },
       evento,
-      canal: 'email',
       conteudo,
-      dataEnvio: new Date().toISOString(),
-      situacaoEnvio: 'enviada',
     });
   }
   return ativos.length;
@@ -131,13 +145,10 @@ export async function aprovarComSubstituta(params: {
     dataDecisao: hojeISO(),
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: solicitacao.professoraSolicitanteId,
+  await notificar({
+    destinatario: { tipo: 'professora', id: solicitacao.professoraSolicitanteId },
     evento: 'solicitacao_aprovada_com_substituta',
-    canal: 'email',
     conteudo: `Sua solicitação para ${formatarDataBR(solicitacao.data)} foi aprovada. ${nomeSubstituta} assume a aula.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   return { alunasNotificadas };
@@ -174,13 +185,10 @@ export async function aprovarComCancelamento(params: {
     dataDecisao: hojeISO(),
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: solicitacao.professoraSolicitanteId,
+  await notificar({
+    destinatario: { tipo: 'professora', id: solicitacao.professoraSolicitanteId },
     evento: 'solicitacao_aprovada_com_cancelamento',
-    canal: 'email',
     conteudo: `Sua solicitação para ${formatarDataBR(solicitacao.data)} foi aprovada e a aula foi cancelada.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 
   return { alunasAfetadas };
@@ -203,12 +211,9 @@ export async function recusarSolicitacao(params: {
     dataDecisao: hojeISO(),
   });
 
-  await notificacaoRepositorio.criar({
-    destinatarioId: solicitacao.professoraSolicitanteId,
+  await notificar({
+    destinatario: { tipo: 'professora', id: solicitacao.professoraSolicitanteId },
     evento: 'solicitacao_recusada',
-    canal: 'email',
     conteudo: `Sua solicitação de cancelamento para ${formatarDataBR(solicitacao.data)} foi recusada. Motivo: ${motivoDaRecusa.trim()}. A aula segue na grade.`,
-    dataEnvio: new Date().toISOString(),
-    situacaoEnvio: 'enviada',
   });
 }

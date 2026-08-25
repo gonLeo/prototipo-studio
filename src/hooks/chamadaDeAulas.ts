@@ -2,7 +2,6 @@ import {
   agendamentoRepositorio,
   alunaRepositorio,
   chamadaRepositorio,
-  notificacaoRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   registroAuditoriaRepositorio,
@@ -11,6 +10,7 @@ import {
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
+import { notificar } from '../services/notificador';
 import type { Chamada, RegistroPresenca, Sessao } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
@@ -307,13 +307,10 @@ export async function corrigirChamada(params: {
   });
 
   for (const aluna of alunas.filter((a) => !a.presente)) {
-    await notificacaoRepositorio.criar({
-      destinatarioId: aluna.alunaId,
+    await notificar({
+      destinatario: { tipo: 'aluna', id: aluna.alunaId },
       evento: 'presenca_corrigida',
-      canal: 'email',
       conteudo: `A chamada da aula de ${formatarDataBR(dataAula)} foi corrigida e você consta como ausente. Se houver um motivo, você pode enviar uma justificativa.`,
-      dataEnvio: new Date().toISOString(),
-      situacaoEnvio: 'enviada',
     });
   }
 
