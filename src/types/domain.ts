@@ -135,6 +135,8 @@ export type SituacaoContrato = 'ativo' | 'trancado' | 'suspenso' | 'encerrado';
 export interface Pacote {
   id: ID;
   nome: string;
+  /** Duração contratual do plano — definida no cadastro do pacote (RF-PAC-04). */
+  tipo: TipoContrato;
   valorMensal: number;
   aulasPorCiclo: number;
   aulasPorSemana: number;

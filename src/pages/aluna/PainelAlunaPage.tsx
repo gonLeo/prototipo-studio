@@ -16,14 +16,13 @@ import {
   contratoRepositorio,
   pacoteRepositorio,
 } from '../../services/repositorios';
-import type { Aluna, Contrato, Pacote, TipoContrato } from '../../types/domain';
+import type { Aluna, Contrato, Pacote } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { SelectField } from '../../components/ui/Field';
 import { TermoEAnamnese } from '../../components/TermoEAnamnese';
 import { perguntasNaoRespondidas } from '../../data/anamnese';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../../utils/data';
-import { ehIsencaoTotal, formatarMoeda, valorComBolsa } from '../../utils/contrato';
+import { ehIsencaoTotal, formatarMoeda, rotuloTipoContrato, valorComBolsa } from '../../utils/contrato';
 
 /**
  * Contratação de pacote pela própria aluna (RF-EXP-07).
@@ -41,7 +40,6 @@ function ContratarPacote({
 }) {
   const { pacotes, carregando } = usePacotes();
   const [pacoteId, setPacoteId] = useState('');
-  const [tipo, setTipo] = useState<TipoContrato>('mensal');
   const [erro, setErro] = useState<string>();
   const [processando, setProcessando] = useState(false);
 
@@ -56,7 +54,7 @@ function ContratarPacote({
     try {
       const contrato = await contratarPacoteParaAluna({
         aluna,
-        contratacao: { pacoteId: escolhido.id, tipo, dataPrimeiraCobranca: hojeISO(), percentualBolsa: 0 },
+        contratacao: { pacoteId: escolhido.id, dataPrimeiraCobranca: hojeISO(), percentualBolsa: 0 },
         autorId: aluna.usuarioId,
       });
       await registrarPagamentoDaPrimeiraCobranca(contrato);
@@ -104,7 +102,8 @@ function ContratarPacote({
               <span>
                 <span className="block text-sm font-semibold text-ink">{pacote.nome}</span>
                 <span className="block text-xs text-neutral-500">
-                  {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana
+                  {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana · contrato{' '}
+                  {rotuloTipoContrato(pacote.tipo).toLowerCase()}
                 </span>
               </span>
             </span>
@@ -113,16 +112,6 @@ function ContratarPacote({
         ))}
         {ativos.length === 0 && <p className="text-sm text-neutral-500">Nenhum pacote disponível no momento.</p>}
       </div>
-
-      <SelectField
-        label="Duração do contrato"
-        value={tipo}
-        onChange={(e) => setTipo(e.target.value as TipoContrato)}
-        dica="Em ambos os casos a cobrança é mensal e recorrente."
-      >
-        <option value="mensal">Mensal</option>
-        <option value="semestral">Semestral</option>
-      </SelectField>
 
       {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
 

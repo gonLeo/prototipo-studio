@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { contratoRepositorio, pacoteRepositorio } from '../services/repositorios';
-import type { Pacote } from '../types/domain';
+import type { Pacote, TipoContrato } from '../types/domain';
 import { RegraNegocioError } from './useModalidades';
+import { MESES_CONTRATO_SEMESTRAL } from '../utils/contrato';
 
 export interface DadosPacote {
   nome: string;
+  tipo: TipoContrato;
   valorMensal: number;
   aulasPorCiclo: number;
   aulasPorSemana: number;
@@ -37,21 +39,35 @@ export function usePacotes() {
     if (dados.valorMensal <= 0) throw new RegraNegocioError('O valor mensal deve ser maior que zero.');
     if (dados.aulasPorCiclo <= 0) throw new RegraNegocioError('O pacote precisa ter ao menos uma aula por ciclo.');
     if (dados.aulasPorSemana <= 0) throw new RegraNegocioError('Informe quantas aulas por semana o pacote permite.');
-    if (dados.duracaoMeses <= 0) throw new RegraNegocioError('A duração do contrato deve ser de ao menos um mês.');
+    if (dados.tipo === 'mensal' && dados.duracaoMeses <= 0) {
+      throw new RegraNegocioError('A duração do contrato deve ser de ao menos um mês.');
+    }
     if (dados.validadeCicloDias <= 0) throw new RegraNegocioError('Informe a validade do ciclo em dias.');
     if (dados.limiteDiasPausa < 0) throw new RegraNegocioError('O limite de dias de pausa não pode ser negativo.');
     return nome;
   }
 
+  /**
+   * Pacote semestral vale sempre 6 meses (RF-PAC-04): a duração informada
+   * no formulário só vale para o pacote mensal.
+   */
+  function normalizar(dados: DadosPacote, nome: string): DadosPacote {
+    return {
+      ...dados,
+      nome,
+      duracaoMeses: dados.tipo === 'semestral' ? MESES_CONTRATO_SEMESTRAL : dados.duracaoMeses,
+    };
+  }
+
   async function criar(dados: DadosPacote) {
     const nome = validar(dados);
-    await pacoteRepositorio.criar({ ...dados, nome, situacao: 'ativo' });
+    await pacoteRepositorio.criar({ ...normalizar(dados, nome), situacao: 'ativo' });
     await recarregar();
   }
 
   async function atualizar(id: string, dados: DadosPacote) {
     const nome = validar(dados, id);
-    await pacoteRepositorio.atualizar(id, { ...dados, nome });
+    await pacoteRepositorio.atualizar(id, normalizar(dados, nome));
     await recarregar();
   }
 

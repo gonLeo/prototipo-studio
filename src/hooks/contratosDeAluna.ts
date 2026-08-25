@@ -10,7 +10,7 @@ import {
   usuarioRepositorio,
 } from '../services/repositorios';
 import { notificar } from '../services/notificador';
-import type { Aluna, Cobranca, Contrato, Pacote, TipoContrato, TipoPausa, Usuario } from '../types/domain';
+import type { Aluna, Cobranca, Contrato, Pacote, TipoPausa, Usuario } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO, somarDias, somarMeses } from '../utils/data';
 import {
   calcularDatasDoContrato,
@@ -43,7 +43,6 @@ export interface DadosCadastraisAluna {
 
 export interface DadosContratacao {
   pacoteId: string;
-  tipo: TipoContrato;
   dataPrimeiraCobranca: string;
   percentualBolsa: number;
 }
@@ -89,14 +88,14 @@ async function criarContrato(
 ): Promise<Contrato> {
   const { dataVencimentoCiclo, dataTerminoContrato } = calcularDatasDoContrato(
     contratacao.dataPrimeiraCobranca,
-    contratacao.tipo,
     pacote,
   );
 
   return contratoRepositorio.criar({
     alunaId,
     pacoteId: pacote.id,
-    tipo: contratacao.tipo,
+    // A duração é atributo do pacote (RF-PAC-04) — a aluna não escolhe na contratação.
+    tipo: pacote.tipo,
     dataInicio: contratacao.dataPrimeiraCobranca,
     dataVencimentoCiclo,
     dataTerminoContrato,
@@ -394,9 +393,15 @@ export async function alterarPlano(params: {
     throw new RegraNegocioError('Escolha um pacote diferente do atual.');
   }
 
+  const pacotes = await pacoteRepositorio.listar();
+  const pacoteNovo = pacotes.find((p) => p.id === pacoteNovoId);
+  if (!pacoteNovo) throw new RegraNegocioError('Selecione um pacote válido.');
+
   await contratoRepositorio.atualizar(contrato.id, {
     pacoteId: pacoteNovoId,
     saldoAulas: saldoAulasResultante,
+    // A duração acompanha o pacote novo, porque é ele que define mensal/semestral.
+    tipo: pacoteNovo.tipo,
     // RF-PLN-05: a data de término do contrato não se move.
   });
 

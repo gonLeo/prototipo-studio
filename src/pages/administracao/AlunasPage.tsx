@@ -8,7 +8,7 @@ import { useSessao } from '../../hooks/useSessao';
 import { useToast } from '../../hooks/useToast';
 import { matricularAlunaPelaAdministracao } from '../../hooks/contratosDeAluna';
 import type { DadosCadastraisAluna, DadosContratacao } from '../../hooks/contratosDeAluna';
-import type { SituacaoAluna, TipoContrato } from '../../types/domain';
+import type { SituacaoAluna } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
@@ -16,7 +16,7 @@ import { TextField, SelectField } from '../../components/ui/Field';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, hojeISO } from '../../utils/data';
-import { ehIsencaoTotal, formatarMoeda, valorComBolsa } from '../../utils/contrato';
+import { ehIsencaoTotal, formatarMoeda, rotuloTipoContrato, valorComBolsa } from '../../utils/contrato';
 
 const TOM_POR_SITUACAO: Record<SituacaoAluna, 'sucesso' | 'erro' | 'aviso' | 'neutro' | 'info'> = {
   ativa: 'sucesso',
@@ -45,7 +45,6 @@ function FormularioNovaAluna({
   const [contatoEmergencia, setContatoEmergencia] = useState('');
 
   const [pacoteId, setPacoteId] = useState('');
-  const [tipo, setTipo] = useState<TipoContrato>('mensal');
   const [dataPrimeiraCobranca, setDataPrimeiraCobranca] = useState(hojeISO());
   const [percentualBolsa, setPercentualBolsa] = useState('0');
 
@@ -62,7 +61,7 @@ function FormularioNovaAluna({
     try {
       await onSalvar(
         { nome, email, cpf, telefone, dataNascimento, contatoEmergencia },
-        { pacoteId, tipo, dataPrimeiraCobranca, percentualBolsa: percentual },
+        { pacoteId, dataPrimeiraCobranca, percentualBolsa: percentual },
       );
       onFechar();
     } catch (erroCapturado) {
@@ -120,20 +119,10 @@ function FormularioNovaAluna({
             <option value="">Selecione…</option>
             {pacotesAtivos.map((pacote) => (
               <option key={pacote.id} value={pacote.id}>
-                {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)}
+                {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)} ·{' '}
+                {rotuloTipoContrato(pacote.tipo)}
               </option>
             ))}
-          </SelectField>
-
-          <SelectField
-            label="Duração do contrato"
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value as TipoContrato)}
-            required
-            dica="Em ambos os casos a cobrança é mensal e recorrente."
-          >
-            <option value="mensal">Mensal</option>
-            <option value="semestral">Semestral</option>
           </SelectField>
 
           <TextField
@@ -171,7 +160,8 @@ function FormularioNovaAluna({
                   </span>
                 )}
                 <span className="ml-2 text-neutral-500">
-                  por mês · {pacoteSelecionado.aulasPorCiclo} aulas creditadas no primeiro ciclo
+                  por mês · {pacoteSelecionado.aulasPorCiclo} aulas creditadas no primeiro ciclo · contrato{' '}
+                  {rotuloTipoContrato(pacoteSelecionado.tipo).toLowerCase()}
                 </span>
               </>
             )}

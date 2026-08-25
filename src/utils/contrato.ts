@@ -11,6 +11,9 @@ import { diferencaEmDias, somarDias, somarMeses } from './data';
  * intermediárias mantêm a precisão para o total não escorregar.
  */
 
+/** Contrato semestral vale sempre 6 meses, independente da duração cadastrada. */
+export const MESES_CONTRATO_SEMESTRAL = 6;
+
 export function arredondarMoeda(valor: number): number {
   return Math.round(valor * 100) / 100;
 }
@@ -29,9 +32,14 @@ export function ehIsencaoTotal(percentualBolsa: number): boolean {
   return percentualBolsa >= 100;
 }
 
-/** Duração do contrato em meses conforme o tipo escolhido (RF-PAC-04). */
-export function mesesDeVigencia(tipo: TipoContrato, pacote: Pacote): number {
-  return tipo === 'semestral' ? 6 : pacote.duracaoMeses;
+/** Duração do contrato em meses conforme o tipo do pacote (RF-PAC-04). */
+export function mesesDeVigencia(pacote: Pacote): number {
+  return pacote.tipo === 'semestral' ? MESES_CONTRATO_SEMESTRAL : pacote.duracaoMeses;
+}
+
+/** Rótulo da duração do pacote, usado em telas e resumos. */
+export function rotuloTipoContrato(tipo: TipoContrato): string {
+  return tipo === 'semestral' ? 'Semestral' : 'Mensal';
 }
 
 /**
@@ -41,12 +49,11 @@ export function mesesDeVigencia(tipo: TipoContrato, pacote: Pacote): number {
  */
 export function calcularDatasDoContrato(
   dataInicio: string,
-  tipo: TipoContrato,
   pacote: Pacote,
 ): { dataVencimentoCiclo: string; dataTerminoContrato: string } {
   return {
     dataVencimentoCiclo: somarMeses(dataInicio, 1),
-    dataTerminoContrato: somarMeses(dataInicio, mesesDeVigencia(tipo, pacote)),
+    dataTerminoContrato: somarMeses(dataInicio, mesesDeVigencia(pacote)),
   };
 }
 

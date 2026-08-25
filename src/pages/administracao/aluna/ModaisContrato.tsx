@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import type { Contrato, Pacote, TipoContrato, TipoPausa } from '../../../types/domain';
+import type { Contrato, Pacote, TipoPausa } from '../../../types/domain';
 import type { FichaAluna } from '../../../hooks/useFichaAluna';
 import { Button } from '../../../components/ui/Button';
 import { TextField, SelectField } from '../../../components/ui/Field';
@@ -9,6 +9,7 @@ import {
   calcularPreviaPausa,
   ehIsencaoTotal,
   formatarMoeda,
+  rotuloTipoContrato,
   valorComBolsa,
 } from '../../../utils/contrato';
 import type { PreviaAlteracaoPlano } from '../../../utils/contrato';
@@ -126,7 +127,8 @@ export function ModalAlterarPlano({
         <option value="">Selecione…</option>
         {disponiveis.map((pacote) => (
           <option key={pacote.id} value={pacote.id}>
-            {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)}
+            {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)} ·{' '}
+            {rotuloTipoContrato(pacote.tipo)}
           </option>
         ))}
       </SelectField>
@@ -143,6 +145,11 @@ export function ModalAlterarPlano({
             rotulo="Aulas por ciclo"
             atual={`${pacoteAtual.aulasPorCiclo}`}
             novo={`${pacoteNovo.aulasPorCiclo}`}
+          />
+          <LinhaComparativo
+            rotulo="Duração"
+            atual={rotuloTipoContrato(pacoteAtual.tipo)}
+            novo={rotuloTipoContrato(pacoteNovo.tipo)}
           />
           <LinhaComparativo
             rotulo="Valor mensal"
@@ -427,12 +434,11 @@ export function ModalReativar({
   onFechar,
 }: {
   ficha: FichaAluna;
-  onConfirmar: (dados: { pacoteId: string; tipo: TipoContrato; dataPrimeiraCobranca: string; percentualBolsa: number }) => Promise<void>;
+  onConfirmar: (dados: { pacoteId: string; dataPrimeiraCobranca: string; percentualBolsa: number }) => Promise<void>;
   onFechar: () => void;
 }) {
   const disponiveis = ficha.pacotes.filter((p) => p.situacao === 'ativo');
   const [pacoteId, setPacoteId] = useState('');
-  const [tipo, setTipo] = useState<TipoContrato>('mensal');
   const [dataPrimeiraCobranca, setDataPrimeiraCobranca] = useState(hojeISO());
   const [percentualBolsa, setPercentualBolsa] = useState(String(ficha.aluna.percentualBolsa ?? 0));
   const [erro, setErro] = useState<string>();
@@ -445,7 +451,6 @@ export function ModalReativar({
     try {
       await onConfirmar({
         pacoteId,
-        tipo,
         dataPrimeiraCobranca,
         percentualBolsa: Number(percentualBolsa) || 0,
       });
@@ -473,13 +478,10 @@ export function ModalReativar({
           <option value="">Selecione…</option>
           {disponiveis.map((pacote) => (
             <option key={pacote.id} value={pacote.id}>
-              {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)}
+              {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)} ·{' '}
+              {rotuloTipoContrato(pacote.tipo)}
             </option>
           ))}
-        </SelectField>
-        <SelectField label="Duração" value={tipo} onChange={(e) => setTipo(e.target.value as TipoContrato)} required>
-          <option value="mensal">Mensal</option>
-          <option value="semestral">Semestral</option>
         </SelectField>
         <TextField
           label="Data da primeira cobrança"

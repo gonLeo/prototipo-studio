@@ -431,3 +431,12 @@ Próxima fase (Fase 8) fecha o protótipo com painéis e indicadores (M14), noti
 ---
 
 **Escopo contratado concluído.** Os 16 módulos (M1 a M16) do documento de escopo estão implementados no protótipo. Fora de escopo, como registrado desde o início: testes automatizados, autenticação real (RF-PER-04), banco de dados real, integrações reais de gateway (RF-FIN-14 / PA-04) e de convênios, e os itens do capítulo "Evoluções Futuras" (EV-01 a EV-12).
+
+### Ajustes pós-entrega (mesma fase, antes da validação)
+
+- **A duração do contrato (mensal ou semestral) passou a ser atributo do pacote, não escolha de quem contrata.** Estava errado: a aluna (e a administração, na matrícula) escolhia mensal ou semestral no ato da contratação, sendo que isso é definido na criação do plano.
+  - `Pacote` ganhou o campo `tipo: TipoContrato` (`src/types/domain.ts`), e o formulário de **Pacotes** (Configuração) passou a ter o seletor "Duração do contrato". Em pacote semestral o campo "Duração do contrato (meses)" some do formulário e é gravado como 6 (`MESES_CONTRATO_SEMESTRAL`, normalizado em `usePacotes`); a duração em meses só é editável no pacote mensal.
+  - `DadosContratacao` perdeu o campo `tipo`: `criarContrato` agora copia `pacote.tipo` para o contrato. Os seletores de duração saíram da **matrícula pelo site** (`MatriculaPage`), do **cadastro de aluna pela administração** (`AlunasPage`), da **contratação/conversão pelo painel da aluna** (`PainelAlunaPage`) e do **modal de reativação** (`ModaisContrato`). No lugar deles, cada lista de pacotes e cada resumo mostra a duração que o pacote já define.
+  - `mesesDeVigencia(pacote)` e `calcularDatasDoContrato(dataInicio, pacote)` não recebem mais `tipo` — leem `pacote.tipo`. Novo utilitário `rotuloTipoContrato(tipo)` para os rótulos de tela.
+  - Na **alteração de plano**, `contrato.tipo` passa a acompanhar o pacote novo (é ele que define se a pausa é trancamento ou suspensão); a data de término continua inalterada, como manda o RF-PLN-05. O comparativo do modal ganhou a linha "Duração".
+  - Seed: `pac-4` e `pac-8` são mensais; `pac-12` e `pac-livre` são semestrais (duração 6 meses). Os contratos de exemplo continuam coerentes com o pacote de cada aluna.

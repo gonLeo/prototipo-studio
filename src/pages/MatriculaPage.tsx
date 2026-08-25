@@ -7,12 +7,12 @@ import { matricularAlunaPeloSite, registrarPagamentoDaPrimeiraCobranca } from '.
 import type { DadosCadastraisAluna } from '../hooks/contratosDeAluna';
 import { agendarAula, listarAulasDisponiveis } from '../hooks/agendamentoDeAulas';
 import type { AulaDisponivel } from '../hooks/agendamentoDeAulas';
-import type { Aluna, Contrato, TipoContrato } from '../types/domain';
+import type { Aluna, Contrato } from '../types/domain';
 import { Button } from '../components/ui/Button';
-import { TextField, SelectField } from '../components/ui/Field';
+import { TextField } from '../components/ui/Field';
 import { TermoEAnamnese } from '../components/TermoEAnamnese';
 import { perguntasNaoRespondidas } from '../data/anamnese';
-import { formatarMoeda } from '../utils/contrato';
+import { formatarMoeda, rotuloTipoContrato } from '../utils/contrato';
 import { formatarDataBR, hojeISO } from '../utils/data';
 
 type Passo = 'dados' | 'pacote' | 'termo' | 'pagamento' | 'primeira_aula' | 'concluido';
@@ -79,7 +79,6 @@ export function MatriculaPage() {
     contatoEmergencia: '',
   });
   const [pacoteId, setPacoteId] = useState('');
-  const [tipo, setTipo] = useState<TipoContrato>('mensal');
   const [aceito, setAceito] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string>();
@@ -121,7 +120,7 @@ export function MatriculaPage() {
     try {
       const { aluna, usuario, contrato } = await matricularAlunaPeloSite({
         dados,
-        contratacao: { pacoteId, tipo, dataPrimeiraCobranca: hojeISO() },
+        contratacao: { pacoteId, dataPrimeiraCobranca: hojeISO() },
       });
       await registrarAceiteEAnamnese({
         usuarioId: usuario.id,
@@ -256,8 +255,8 @@ export function MatriculaPage() {
                       <span>
                         <span className="block text-sm font-semibold text-ink">{pacote.nome}</span>
                         <span className="block text-xs text-neutral-500">
-                          {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana · acesso a
-                          todas as modalidades
+                          {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana · contrato{' '}
+                          {rotuloTipoContrato(pacote.tipo).toLowerCase()} · acesso a todas as modalidades
                         </span>
                       </span>
                     </span>
@@ -271,16 +270,6 @@ export function MatriculaPage() {
                   <p className="text-sm text-neutral-500">Nenhum pacote disponível no momento.</p>
                 )}
               </div>
-
-              <SelectField
-                label="Duração do contrato"
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value as TipoContrato)}
-                dica="Em ambos os casos a cobrança é mensal e recorrente."
-              >
-                <option value="mensal">Mensal</option>
-                <option value="semestral">Semestral</option>
-              </SelectField>
 
               <div className="flex justify-between">
                 <Button type="button" variante="secundaria" onClick={() => setPasso('dados')}>
@@ -348,6 +337,12 @@ export function MatriculaPage() {
                   <div className="flex justify-between gap-2">
                     <dt className="text-neutral-500">Aulas creditadas</dt>
                     <dd className="text-ink">{pacoteEscolhido.aulasPorCiclo} aulas</dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-neutral-500">Duração do contrato</dt>
+                    <dd className="text-ink">
+                      {rotuloTipoContrato(pacoteEscolhido.tipo)} · cobrança mensal recorrente
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-neutral-500">Primeira cobrança</dt>

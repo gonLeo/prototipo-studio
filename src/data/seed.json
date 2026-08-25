@@ -427,6 +427,7 @@
   "pacotes": [
     {
       "id": "pac-4",
+      "tipo": "mensal",
       "nome": "Pacote 4 aulas",
       "valorMensal": 220,
       "aulasPorCiclo": 4,
@@ -438,6 +439,7 @@
     },
     {
       "id": "pac-8",
+      "tipo": "mensal",
       "nome": "Pacote 8 aulas",
       "valorMensal": 380,
       "aulasPorCiclo": 8,
@@ -449,22 +451,24 @@
     },
     {
       "id": "pac-12",
+      "tipo": "semestral",
       "nome": "Pacote 12 aulas",
       "valorMensal": 520,
       "aulasPorCiclo": 12,
       "aulasPorSemana": 3,
-      "duracaoMeses": 12,
+      "duracaoMeses": 6,
       "validadeCicloDias": 30,
       "limiteDiasPausa": 45,
       "situacao": "ativo"
     },
     {
       "id": "pac-livre",
+      "tipo": "semestral",
       "nome": "Pacote livre",
       "valorMensal": 690,
       "aulasPorCiclo": 20,
       "aulasPorSemana": 5,
-      "duracaoMeses": 12,
+      "duracaoMeses": 6,
       "validadeCicloDias": 30,
       "limiteDiasPausa": 60,
       "situacao": "ativo"

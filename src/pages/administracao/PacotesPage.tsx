@@ -4,13 +4,13 @@ import { usePacotes } from '../../hooks/usePacotes';
 import type { DadosPacote } from '../../hooks/usePacotes';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
-import type { Pacote } from '../../types/domain';
+import type { Pacote, TipoContrato } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { TextField } from '../../components/ui/Field';
+import { TextField, SelectField } from '../../components/ui/Field';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda, rotuloTipoContrato } from '../../utils/contrato';
 
 function FormularioPacote({
   pacote,
@@ -22,6 +22,7 @@ function FormularioPacote({
   onFechar: () => void;
 }) {
   const [nome, setNome] = useState(pacote?.nome ?? '');
+  const [tipo, setTipo] = useState<TipoContrato>(pacote?.tipo ?? 'mensal');
   const [valorMensal, setValorMensal] = useState(String(pacote?.valorMensal ?? ''));
   const [aulasPorCiclo, setAulasPorCiclo] = useState(String(pacote?.aulasPorCiclo ?? ''));
   const [aulasPorSemana, setAulasPorSemana] = useState(String(pacote?.aulasPorSemana ?? ''));
@@ -38,6 +39,7 @@ function FormularioPacote({
     try {
       await onSalvar({
         nome,
+        tipo,
         valorMensal: Number(valorMensal),
         aulasPorCiclo: Number(aulasPorCiclo),
         aulasPorSemana: Number(aulasPorSemana),
@@ -64,6 +66,16 @@ function FormularioPacote({
           autoFocus
           wrapperClassName="sm:col-span-2"
         />
+        <SelectField
+          label="Duração do contrato"
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as TipoContrato)}
+          required
+          dica="Definida aqui, no pacote. Em ambos os casos a cobrança é mensal e recorrente."
+        >
+          <option value="mensal">Mensal</option>
+          <option value="semestral">Semestral</option>
+        </SelectField>
         <TextField
           label="Valor mensal (R$)"
           type="number"
@@ -89,15 +101,17 @@ function FormularioPacote({
           onChange={(e) => setAulasPorSemana(e.target.value)}
           required
         />
-        <TextField
-          label="Duração do contrato (meses)"
-          type="number"
-          min={1}
-          value={duracaoMeses}
-          onChange={(e) => setDuracaoMeses(e.target.value)}
-          dica="Usada quando o contrato é mensal. Semestral sempre vale 6 meses."
-          required
-        />
+        {tipo === 'mensal' && (
+          <TextField
+            label="Duração do contrato (meses)"
+            type="number"
+            min={1}
+            value={duracaoMeses}
+            onChange={(e) => setDuracaoMeses(e.target.value)}
+            dica="Por quantos meses o contrato mensal vale. Pacote semestral sempre vale 6 meses."
+            required
+          />
+        )}
         <TextField
           label="Validade do ciclo (dias)"
           type="number"
@@ -203,7 +217,10 @@ export function PacotesPage() {
               </CelulaTabela>
               <CelulaTabela>{formatarMoeda(pacote.valorMensal)}</CelulaTabela>
               <CelulaTabela>
-                <p className="text-xs">{pacote.duracaoMeses} mês(es) · ciclo de {pacote.validadeCicloDias} dias</p>
+                <p className="text-xs">
+                  {rotuloTipoContrato(pacote.tipo)} · {pacote.duracaoMeses} mês(es) · ciclo de{' '}
+                  {pacote.validadeCicloDias} dias
+                </p>
                 <p className="text-xs text-neutral-500">
                   {pacote.limiteDiasPausa > 0 ? `Pausa até ${pacote.limiteDiasPausa} dias` : 'Pausa sem limite'}
                 </p>
