@@ -160,7 +160,7 @@ export function VendasPage() {
     ]);
     setVendas(lista);
     setPacotes(catalogo);
-    setResumo(resumirVendas(lista, catalogo));
+    setResumo(resumirVendas(lista, catalogo, aplicados));
     setReembolsos(aplicados);
     setCarregando(false);
   }, []);
@@ -334,6 +334,13 @@ export function VendasPage() {
               <CelulaTabela alinhamento="direita" className="whitespace-nowrap">
                 {venda.bolsa ? (
                   <span className="text-emerald-700">Isenta</span>
+                ) : venda.valorReembolsado !== undefined ? (
+                  <>
+                    {/* O reembolso desconta os créditos já utilizados: o valor
+                        devolvido quase nunca é o preço do pacote. */}
+                    <p>{formatarMoeda(venda.valorReembolsado)}</p>
+                    <p className="text-xs text-neutral-500">de {formatarMoeda(venda.valor)} pagos</p>
+                  </>
                 ) : (
                   formatarMoeda(venda.valor)
                 )}
@@ -424,31 +431,52 @@ export function VendasPage() {
             </Button>
           </div>
 
-          <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-            {reembolsos.map((item) => (
-              <li key={item.id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-2.5 text-sm">
-                <div className="min-w-0">
+          <Tabela
+            rotulo="Reembolsos aplicados"
+            itens={reembolsos}
+            chave={(item) => item.id}
+            busca={{
+              placeholder: 'Buscar por aluna ou motivo',
+              corresponde: (item, termo) =>
+                item.nomeAluna.toLowerCase().includes(termo) || item.motivo.toLowerCase().includes(termo),
+            }}
+            colunas={[
+              { chave: 'aluna', rotulo: 'Aluna' },
+              { chave: 'tipo', rotulo: 'Tipo' },
+              { chave: 'creditos', rotulo: 'Créditos utilizados' },
+              { chave: 'valor', rotulo: 'Reembolsado', alinhamento: 'direita' },
+              { chave: 'autor', rotulo: 'Autor' },
+            ]}
+            renderLinha={(item) => (
+              <LinhaTabela key={item.id}>
+                <CelulaTabela>
                   <Link
                     to={`/administracao/alunas/${item.alunaId}`}
                     className="font-medium text-primary-700 hover:text-primary-800"
                   >
                     {item.nomeAluna}
                   </Link>
-                  <p className="text-xs text-neutral-500">
-                    {formatarDataBR(item.data)} · {ROTULO_TIPO_REEMBOLSO[item.tipo]} · {item.creditosUtilizados} de{' '}
-                    {item.creditosComprados} créditos utilizados · por {item.nomeAutor}
+                  <p className="text-xs text-neutral-500">{formatarDataBR(item.data)}</p>
+                </CelulaTabela>
+                <CelulaTabela>
+                  <p>{ROTULO_TIPO_REEMBOLSO[item.tipo]}</p>
+                  <p className="max-w-xs truncate text-xs text-neutral-500" title={item.motivo}>
+                    {item.motivo}
                   </p>
-                  <p className="text-xs text-neutral-500">{item.motivo}</p>
-                </div>
-                <div className="text-right">
+                </CelulaTabela>
+                <CelulaTabela>
+                  {item.creditosUtilizados} de {item.creditosComprados}
+                </CelulaTabela>
+                <CelulaTabela alinhamento="direita" className="whitespace-nowrap">
                   <p className="font-medium text-ink">{formatarMoeda(item.valorReembolsado)}</p>
                   <p className="text-xs text-neutral-500">
                     de {formatarMoeda(item.valorPago)} · − {formatarMoeda(item.valorDescontado)}
                   </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </CelulaTabela>
+                <CelulaTabela className="text-xs text-neutral-500">{item.nomeAutor}</CelulaTabela>
+              </LinhaTabela>
+            )}
+          />
         </section>
       )}
 

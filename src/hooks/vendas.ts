@@ -2,13 +2,14 @@ import {
   alunaRepositorio,
   pacoteRepositorio,
   parametroRepositorio,
+  reembolsoRepositorio,
   registroAuditoriaRepositorio,
   usuarioRepositorio,
   vendaRepositorio,
 } from '../services/repositorios';
 import { notificar } from '../services/notificador';
 import { cobrarNoGateway, linkDePagamento } from '../services/gatewayPagamento';
-import type { Aluna, FormaPagamento, Pacote, SituacaoVenda, Venda } from '../types/domain';
+import type { Aluna, FormaPagamento, Pacote, Reembolso, SituacaoVenda, Venda } from '../types/domain';
 import { formatarDataBR, hojeISO } from '../utils/data';
 import { formatarCreditos, formatarMoeda, rotuloFormaPagamento } from '../utils/creditos';
 import { RegraNegocioError } from './useModalidades';
@@ -322,14 +323,22 @@ export async function historicoDeComprasDaAluna(alunaId: string): Promise<Venda[
 export interface VendaDetalhada extends Venda {
   nomeAluna: string;
   nomePacote: string;
+  /**
+   * Quanto foi de fato devolvido, quando houve reembolso. Diferente de
+   * `valor`, que é o preço pago: o reembolso desconta os créditos já
+   * utilizados (RF-REE-02), então mostrar o valor do pacote numa venda
+   * reembolsada informaria a quantia errada.
+   */
+  valorReembolsado?: number;
 }
 
 export async function listarVendasDetalhadas(): Promise<VendaDetalhada[]> {
-  const [vendas, alunas, usuarios, pacotes] = await Promise.all([
+  const [vendas, alunas, usuarios, pacotes, reembolsos] = await Promise.all([
     vendaRepositorio.listar(),
     alunaRepositorio.listar(),
     usuarioRepositorio.listar(),
     pacoteRepositorio.listar(),
+    reembolsoRepositorio.listar(),
   ]);
 
   return vendas
@@ -337,10 +346,12 @@ export async function listarVendasDetalhadas(): Promise<VendaDetalhada[]> {
       const aluna = alunas.find((a) => a.id === venda.alunaId);
       const usuario = usuarios.find((u) => u.id === aluna?.usuarioId);
       const pacote = pacotes.find((p) => p.id === venda.pacoteId);
+      const reembolso = reembolsos.find((r) => r.vendaId === venda.id);
       return {
         ...venda,
         nomeAluna: usuario?.nome ?? 'Aluna removida',
         nomePacote: venda.tipo === 'aula_experimental' ? 'Aula experimental' : (pacote?.nome ?? 'Pacote removido'),
+        valorReembolsado: reembolso?.valorReembolsado,
       };
     })
     .sort((a, b) => b.data.localeCompare(a.data));
@@ -350,19 +361,30 @@ export interface ResumoDeVendas {
   confirmado: number;
   pendente: number;
   cancelado: number;
+  /** Soma do que foi efetivamente devolvido, não do preço das vendas reembolsadas. */
   reembolsado: number;
   /** Valor de tabela não faturado nas concessões de bolsa (RF-BOL-08). */
   isentoPorBolsa: number;
   quantidade: Record<SituacaoVenda, number>;
 }
 
-/** RF-VEN-07: visão consolidada do período por situação. */
-export function resumirVendas(vendas: Venda[], pacotes: Pacote[] = []): ResumoDeVendas {
+/**
+ * RF-VEN-07: visão consolidada do período por situação.
+ *
+ * O total reembolsado sai dos registros de reembolso, e não do valor das
+ * vendas marcadas como reembolsadas: o reembolso desconta os créditos já
+ * utilizados, então os dois números quase nunca coincidem.
+ */
+export function resumirVendas(
+  vendas: Venda[],
+  pacotes: Pacote[] = [],
+  reembolsos: Reembolso[] = [],
+): ResumoDeVendas {
   const resumo: ResumoDeVendas = {
     confirmado: 0,
     pendente: 0,
     cancelado: 0,
-    reembolsado: 0,
+    reembolsado: reembolsos.reduce((soma, r) => soma + r.valorReembolsado, 0),
     isentoPorBolsa: 0,
     quantidade: { pendente: 0, confirmada: 0, cancelada: 0, reembolsada: 0 },
   };
@@ -379,7 +401,6 @@ export function resumirVendas(vendas: Venda[], pacotes: Pacote[] = []): ResumoDe
     if (venda.situacao === 'confirmada') resumo.confirmado += venda.valor;
     else if (venda.situacao === 'pendente') resumo.pendente += venda.valor;
     else if (venda.situacao === 'cancelada') resumo.cancelado += venda.valor;
-    else resumo.reembolsado += venda.valor;
   }
 
   return resumo;

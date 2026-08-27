@@ -21,6 +21,7 @@ interface TabelaProps<T> {
   renderLinha: (item: T) => ReactNode;
   rotulo: string;
   busca?: BuscaConfig<T>;
+  /** Precisa ser uma das opções de `OPCOES_ITENS_POR_PAGINA`, senão é ajustado para a mais próxima. */
   itensPorPagina?: number;
   semResultados?: ReactNode;
 }
@@ -37,7 +38,7 @@ export function Tabela<T>({
   renderLinha,
   rotulo,
   busca,
-  itensPorPagina = 8,
+  itensPorPagina = 10,
   semResultados = 'Nenhum registro encontrado.',
 }: TabelaProps<T>) {
   const [termo, setTermo] = useState('');

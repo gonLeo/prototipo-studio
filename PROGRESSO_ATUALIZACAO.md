@@ -233,3 +233,15 @@ Dois defeitos apareceram no teste e foram corrigidos antes da entrega: o acerto 
 ### Observação registrada durante a etapa
 
 - **A notificação de reembolso aplicado (RF-NOT-12) entrou nesta etapa**, e não na Etapa 7 como o plano previa. O reembolso encerra a carteira e cancela aulas já agendadas; deixar a aluna sem aviso até a etapa das notificações seria entregar um fluxo que age sobre ela em silêncio. Os avisos de trancamento e de retorno entraram pelo mesmo motivo. O restante do M16 continua na Etapa 7.
+
+### Ajustes pós-entrega (mesma etapa, antes da validação)
+
+- **A lista de vendas mostrava o preço do pacote nas vendas reembolsadas.** O reembolso desconta os créditos já utilizados (RF-REE-02), então o valor devolvido quase nunca é o que foi pago — a Patrícia recebeu R$ 55,00 de uma compra de R$ 220,00, e a coluna dizia R$ 220,00. `VendaDetalhada` passou a trazer `valorReembolsado`, cruzado com o registro de reembolso, e a coluna exibe o valor devolvido com o valor pago em linha secundária.
+- **O card "Reembolsado" somava o preço das vendas reembolsadas, não o que foi devolvido.** `resumirVendas` passou a receber os reembolsos e somar `valorReembolsado`. Com os quatro reembolsos de exemplo, o card sai de R$ 1.510,00 (soma dos pacotes) para R$ 1.085,00 (soma do que saiu do caixa) — que é o número que a administração precisa conferir.
+- **A lista de reembolsos aplicados virou `Tabela`**, com busca por aluna ou motivo e paginação, no mesmo padrão das outras listagens do sistema. A exportação em CSV continua no cabeçalho da seção.
+
+- **Bug de paginação em todas as tabelas — causa raiz corrigida.** A `Tabela` usava `itensPorPagina = 8` como valor padrão, mas o seletor de itens por página oferece 5, 10, 25 e 50. Um `<select>` cujo `value` não corresponde a nenhuma `<option>` não fica vazio: o navegador exibe a primeira opção. O resultado era a tabela paginando de 8 em 8 enquanto o seletor afirmava 5, e a inconsistência só sumia depois de escolher qualquer valor da lista — aí o estado passava a ser um valor que existe.
+
+  A correção tem duas partes. O padrão da `Tabela` passou a ser 10, que existe nas opções. E `usePaginacao` passou a **normalizar o valor inicial** para a opção mais próxima, de modo que nenhum valor fora da lista consiga criar de novo um estado que a interface não sabe refletir.
+
+  **Alcance:** todas as tabelas do sistema tinham o problema, porque nenhuma delas passava `itensPorPagina` — a única exceção era "Meus pagamentos" da professora, que já passava 10 explicitamente. As listas em cartão de "Minhas aulas" usam `usePaginacao` com 5, que está nas opções, e nunca foram afetadas.
