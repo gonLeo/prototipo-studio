@@ -474,8 +474,19 @@ export function AlunaFichaPage() {
                       <span className="ml-1 text-xs text-neutral-500">· {formatarDataBR(item.data)}</span>
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="font-medium text-ink">
-                        {item.bolsa ? 'Isenta' : formatarMoeda(item.valor)}
+                      <span className="text-right">
+                        {/* Reembolso desconta os créditos já utilizados: o
+                            devolvido quase nunca é o que foi pago. */}
+                        <span className="block font-medium text-ink">
+                          {item.bolsa
+                            ? 'Isenta'
+                            : formatarMoeda(item.valorReembolsado ?? item.valor)}
+                        </span>
+                        {item.valorReembolsado !== undefined && (
+                          <span className="block text-xs font-normal text-neutral-500">
+                            de {formatarMoeda(item.valor)} pagos
+                          </span>
+                        )}
                       </span>
                       <Badge tom={TOM_SITUACAO_VENDA[item.situacao]}>{rotuloSituacaoVenda(item.situacao)}</Badge>
                     </span>

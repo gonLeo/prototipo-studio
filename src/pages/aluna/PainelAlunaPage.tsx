@@ -8,6 +8,7 @@ import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../..
 import { comprarPacoteParaAluna, quitarVendaDoPrimeiroAcesso } from '../../hooks/cadastroDeAlunas';
 import { registrarConversao } from '../../hooks/aulasExperimentais';
 import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS, historicoDeComprasDaAluna } from '../../hooks/vendas';
+import type { CompraDaAluna } from '../../hooks/vendas';
 import { useToast } from '../../hooks/useToast';
 import { aceiteRegistradoRepositorio, alunaRepositorio, pacoteRepositorio } from '../../services/repositorios';
 import type { Aluna, FormaPagamento, Pacote, Venda } from '../../types/domain';
@@ -204,7 +205,7 @@ export function PainelAlunaPage() {
   const [aluna, setAluna] = useState<Aluna | undefined>();
   const [vendaPendente, setVendaPendente] = useState<Venda | undefined>();
   const [pacoteDaVenda, setPacoteDaVenda] = useState<Pacote | undefined>();
-  const [compras, setCompras] = useState<Venda[]>([]);
+  const [compras, setCompras] = useState<CompraDaAluna[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const [aceito, setAceito] = useState(false);
@@ -542,8 +543,17 @@ export function PainelAlunaPage() {
                       </span>
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="text-neutral-700">
-                        {venda.bolsa ? 'Isenta' : formatarMoeda(venda.valor)}
+                      <span className="text-right">
+                        {/* RF-REE-10: o valor devolvido só aparece para quem
+                            teve um reembolso aplicado ao próprio cadastro. */}
+                        <span className="block text-neutral-700">
+                          {venda.bolsa ? 'Isenta' : formatarMoeda(venda.valorReembolsado ?? venda.valor)}
+                        </span>
+                        {venda.valorReembolsado !== undefined && (
+                          <span className="block text-xs text-neutral-500">
+                            reembolsado de {formatarMoeda(venda.valor)}
+                          </span>
+                        )}
                       </span>
                       {venda.situacao !== 'confirmada' && (
                         <Badge tom={venda.situacao === 'pendente' ? 'info' : 'aviso'}>

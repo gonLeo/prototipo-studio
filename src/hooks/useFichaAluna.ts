@@ -17,12 +17,11 @@ import type {
   Reembolso,
   Trancamento,
   Usuario,
-  Venda,
 } from '../types/domain';
 import { hojeISO } from '../utils/data';
 import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
 import { carteirasDaAluna, extratoDaAluna, limiaresFinalizando } from './carteiraDeCreditos';
-import { historicoDeComprasDaAluna } from './vendas';
+import { historicoDeComprasDaAluna, type CompraDaAluna } from './vendas';
 import { trancamentosDaAluna } from './trancamento';
 import { reembolsosDaAluna } from './reembolsos';
 
@@ -43,7 +42,7 @@ export interface FichaAluna {
   /** Extrato de movimentos de crédito de todas as carteiras (RF-CRE-08). */
   movimentos: MovimentoCredito[];
   /** Histórico de compras (RF-VEN-06). */
-  compras: Venda[];
+  compras: CompraDaAluna[];
   /** Trancamentos anteriores, apoio à decisão da administração (RF-TRA-07). */
   trancamentos: Trancamento[];
   /** Trancamento em curso, quando existe. */

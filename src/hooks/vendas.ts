@@ -314,10 +314,25 @@ export async function venderAulaExperimental(params: {
 
 // --- Consulta ------------------------------------------------------------
 
+export interface CompraDaAluna extends Venda {
+  /**
+   * Quanto foi devolvido, quando houve reembolso. Presente só nas compras
+   * que tiveram um aplicado — é o que o RF-REE-10 permite exibir à aluna.
+   */
+  valorReembolsado?: number;
+}
+
 /** RF-VEN-06: histórico de compras da aluna. */
-export async function historicoDeComprasDaAluna(alunaId: string): Promise<Venda[]> {
-  const vendas = await vendaRepositorio.listar();
-  return vendas.filter((v) => v.alunaId === alunaId).sort((a, b) => b.data.localeCompare(a.data));
+export async function historicoDeComprasDaAluna(alunaId: string): Promise<CompraDaAluna[]> {
+  const [vendas, reembolsos] = await Promise.all([vendaRepositorio.listar(), reembolsoRepositorio.listar()]);
+
+  return vendas
+    .filter((v) => v.alunaId === alunaId)
+    .map((venda) => ({
+      ...venda,
+      valorReembolsado: reembolsos.find((r) => r.vendaId === venda.id)?.valorReembolsado,
+    }))
+    .sort((a, b) => b.data.localeCompare(a.data));
 }
 
 export interface VendaDetalhada extends Venda {
