@@ -4,6 +4,7 @@ import type {
   Parametro,
   Modalidade,
   Espaco,
+  CategoriaAula,
   Usuario,
   Aluna,
   Anamnese,
@@ -41,6 +42,7 @@ export const studioRepositorio = criarRepositorio<Studio>('studio');
 export const parametroRepositorio = criarRepositorio<Parametro>('parametros');
 export const modalidadeRepositorio = criarRepositorio<Modalidade>('modalidades');
 export const espacoRepositorio = criarRepositorio<Espaco>('espacos');
+export const categoriaAulaRepositorio = criarRepositorio<CategoriaAula>('categoriasAula');
 export const usuarioRepositorio = criarRepositorio<Usuario>('usuarios');
 export const alunaRepositorio = criarRepositorio<Aluna>('alunas');
 export const anamneseRepositorio = criarRepositorio<Anamnese>('anamneses');

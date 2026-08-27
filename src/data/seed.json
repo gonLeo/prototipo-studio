@@ -178,6 +178,29 @@
       "situacao": "ativo"
     }
   ],
+  "categoriasAula": [
+    {
+      "id": "cat-aula-regular",
+      "nome": "Aula regular",
+      "custoEmCreditos": 1,
+      "excepcional": false,
+      "situacao": "ativo"
+    },
+    {
+      "id": "cat-aula-workshop",
+      "nome": "Workshop",
+      "custoEmCreditos": 2,
+      "excepcional": true,
+      "situacao": "ativo"
+    },
+    {
+      "id": "cat-aula-particular",
+      "nome": "Aula particular",
+      "custoEmCreditos": 4,
+      "excepcional": true,
+      "situacao": "ativo"
+    }
+  ],
   "parametros": [
     {
       "id": "param-janela-matriculadas",
@@ -256,6 +279,54 @@
       "chave": "antecedencia_aviso_vencimento_dias_2",
       "valor": 3,
       "descricao": "Antecedência do 2º aviso de término de contrato"
+    },
+    {
+      "id": "param-limiar-finalizando-creditos",
+      "chave": "limiar_finalizando_creditos",
+      "valor": 2,
+      "descricao": "Limiar de créditos para o status Finalizando"
+    },
+    {
+      "id": "param-limiar-finalizando-dias",
+      "chave": "limiar_finalizando_dias",
+      "valor": 7,
+      "descricao": "Limiar de dias para o status Finalizando"
+    },
+    {
+      "id": "param-prazo-arrependimento",
+      "chave": "prazo_arrependimento_dias",
+      "valor": 7,
+      "descricao": "Prazo de arrependimento para reembolso"
+    },
+    {
+      "id": "param-percentual-maximo-reembolso",
+      "chave": "percentual_maximo_creditos_reembolso",
+      "valor": 50,
+      "descricao": "Percentual máximo de créditos utilizados que ainda admite reembolso"
+    },
+    {
+      "id": "param-beneficio-conversao-tipo",
+      "chave": "beneficio_conversao_tipo",
+      "valor": "credito_adicional",
+      "descricao": "Tipo do benefício de conversão da aula experimental"
+    },
+    {
+      "id": "param-beneficio-conversao-quantidade",
+      "chave": "beneficio_conversao_quantidade",
+      "valor": 1,
+      "descricao": "Quantidade do benefício de conversão da aula experimental"
+    },
+    {
+      "id": "param-beneficio-conversao-validade",
+      "chave": "beneficio_conversao_validade_dias",
+      "valor": 3,
+      "descricao": "Validade do benefício de conversão da aula experimental"
+    },
+    {
+      "id": "param-texto-prazo-reembolso",
+      "chave": "texto_prazo_reembolso",
+      "valor": "O prazo de retorno segue o da operadora do cartão, normalmente entre uma e duas faturas. Em Pix, a devolução costuma ser imediata.",
+      "descricao": "Texto exibido à aluna sobre o prazo de processamento do reembolso"
     }
   ],
   "categoriasProfessora": [
@@ -427,51 +498,48 @@
   "pacotes": [
     {
       "id": "pac-4",
+      "nome": "Starter",
+      "situacao": "ativo",
+      "creditos": 4,
+      "validadeDias": 45,
+      "valor": 220,
       "tipo": "mensal",
-      "nome": "Pacote 4 aulas",
       "valorMensal": 220,
       "aulasPorCiclo": 4,
       "aulasPorSemana": 1,
       "duracaoMeses": 12,
       "validadeCicloDias": 30,
-      "limiteDiasPausa": 15,
-      "situacao": "ativo"
+      "limiteDiasPausa": 15
     },
     {
       "id": "pac-8",
+      "nome": "Flow",
+      "situacao": "ativo",
+      "creditos": 12,
+      "validadeDias": 90,
+      "valor": 380,
       "tipo": "mensal",
-      "nome": "Pacote 8 aulas",
       "valorMensal": 380,
       "aulasPorCiclo": 8,
       "aulasPorSemana": 2,
       "duracaoMeses": 12,
       "validadeCicloDias": 30,
-      "limiteDiasPausa": 30,
-      "situacao": "ativo"
+      "limiteDiasPausa": 30
     },
     {
       "id": "pac-12",
+      "nome": "Premium",
+      "situacao": "ativo",
+      "creditos": 24,
+      "validadeDias": 180,
+      "valor": 690,
       "tipo": "semestral",
-      "nome": "Pacote 12 aulas",
-      "valorMensal": 520,
-      "aulasPorCiclo": 12,
-      "aulasPorSemana": 3,
-      "duracaoMeses": 6,
-      "validadeCicloDias": 30,
-      "limiteDiasPausa": 45,
-      "situacao": "ativo"
-    },
-    {
-      "id": "pac-livre",
-      "tipo": "semestral",
-      "nome": "Pacote livre",
       "valorMensal": 690,
-      "aulasPorCiclo": 20,
+      "aulasPorCiclo": 24,
       "aulasPorSemana": 5,
       "duracaoMeses": 6,
       "validadeCicloDias": 30,
-      "limiteDiasPausa": 60,
-      "situacao": "ativo"
+      "limiteDiasPausa": 45
     }
   ],
   "contratos": [

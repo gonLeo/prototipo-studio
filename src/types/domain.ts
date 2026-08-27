@@ -50,6 +50,21 @@ export interface Espaco {
   situacao: SituacaoAtivoInativo;
 }
 
+/**
+ * RF-CFG-05: a categoria da aula é o que define quanto ela custa em
+ * créditos — aula regular 1, workshop 2, aula particular 4, tudo
+ * configurável. `excepcional` marca as categorias que só existem fora da
+ * grade recorrente (M9): elas são criadas pela administração e não podem
+ * ser agendadas pela aluna.
+ */
+export interface CategoriaAula {
+  id: ID;
+  nome: string;
+  custoEmCreditos: number;
+  excepcional: boolean;
+  situacao: SituacaoAtivoInativo;
+}
+
 export interface Usuario {
   id: ID;
   nome: string;
@@ -135,15 +150,31 @@ export type SituacaoContrato = 'ativo' | 'trancado' | 'suspenso' | 'encerrado';
 export interface Pacote {
   id: ID;
   nome: string;
-  /** Duração contratual do plano — definida no cadastro do pacote (RF-PAC-04). */
-  tipo: TipoContrato;
-  valorMensal: number;
-  aulasPorCiclo: number;
-  aulasPorSemana: number;
-  duracaoMeses: number;
-  validadeCicloDias: number;
-  limiteDiasPausa: number;
   situacao: SituacaoAtivoInativo;
+
+  // --- Escopo v2.0 (RF-PAC-01): pacote de créditos pré-pago. ---
+  /** Quantidade de créditos que a compra concede à carteira. */
+  creditos: number;
+  /** Prazo de uso dos créditos, em dias, contado da ativação da carteira. */
+  validadeDias: number;
+  /** Valor único cobrado no ato da compra. Não há mensalidade. */
+  valor: number;
+
+  // --- Modelo de contrato (escopo v1.0) — legado, sai na Etapa 2. ---
+  /** @deprecated Duração contratual do plano (RF-PAC-04 da v1.0). */
+  tipo: TipoContrato;
+  /** @deprecated Substituído por `valor` (pagamento único). */
+  valorMensal: number;
+  /** @deprecated Substituído por `creditos`. */
+  aulasPorCiclo: number;
+  /** @deprecated O v2.0 não limita aulas por semana (RN-10). */
+  aulasPorSemana: number;
+  /** @deprecated Não existe vigência contratual no modelo de créditos. */
+  duracaoMeses: number;
+  /** @deprecated Substituído por `validadeDias`. */
+  validadeCicloDias: number;
+  /** @deprecated O v2.0 não impõe teto de dias de trancamento (RF-TRA-03). */
+  limiteDiasPausa: number;
 }
 
 export interface Contrato {

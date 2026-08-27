@@ -13,6 +13,7 @@ import { StudioPage } from './pages/administracao/StudioPage';
 import { ParametrosPage } from './pages/administracao/ParametrosPage';
 import { ProfessorasPage } from './pages/administracao/ProfessorasPage';
 import { CategoriasProfessoraPage } from './pages/administracao/CategoriasProfessoraPage';
+import { CategoriasAulaPage } from './pages/administracao/CategoriasAulaPage';
 import { GradePage } from './pages/administracao/GradePage';
 import { ExcecoesPage } from './pages/administracao/ExcecoesPage';
 import { PacotesPage } from './pages/administracao/PacotesPage';
@@ -83,6 +84,7 @@ function App() {
                 <Route path="parametros" element={<ParametrosPage />} />
                 <Route path="professoras" element={<ProfessorasPage />} />
                 <Route path="categorias" element={<CategoriasProfessoraPage />} />
+                <Route path="categorias-aula" element={<CategoriasAulaPage />} />
                 <Route path="grade" element={<GradePage />} />
                 <Route path="excecoes" element={<ExcecoesPage />} />
                 <Route path="alunas" element={<AlunasPage />} />

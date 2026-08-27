@@ -6,6 +6,14 @@ import { MESES_CONTRATO_SEMESTRAL } from '../utils/contrato';
 
 export interface DadosPacote {
   nome: string;
+
+  // Escopo v2.0 — RF-PAC-01: o pacote é uma quantidade de créditos com
+  // validade em dias e um valor único, pago no ato da compra.
+  creditos: number;
+  validadeDias: number;
+  valor: number;
+
+  // Modelo de contrato (v1.0) — legado, sai na Etapa 2 da migração.
   tipo: TipoContrato;
   valorMensal: number;
   aulasPorCiclo: number;
@@ -22,7 +30,7 @@ export function usePacotes() {
   const recarregar = useCallback(async () => {
     setCarregando(true);
     const lista = await pacoteRepositorio.listar();
-    setPacotes(lista.sort((a, b) => a.aulasPorCiclo - b.aulasPorCiclo));
+    setPacotes(lista.sort((a, b) => a.creditos - b.creditos || a.nome.localeCompare(b.nome)));
     setCarregando(false);
   }, []);
 
@@ -36,6 +44,11 @@ export function usePacotes() {
     if (pacotes.some((p) => p.id !== ignorarId && p.nome.toLowerCase() === nome.toLowerCase())) {
       throw new RegraNegocioError(`Já existe um pacote chamado "${nome}".`);
     }
+    if (!Number.isInteger(dados.creditos) || dados.creditos < 1) {
+      throw new RegraNegocioError('O pacote precisa conceder ao menos um crédito, em número inteiro.');
+    }
+    if (dados.validadeDias <= 0) throw new RegraNegocioError('Informe a validade dos créditos em dias.');
+    if (dados.valor <= 0) throw new RegraNegocioError('O valor do pacote deve ser maior que zero.');
     if (dados.valorMensal <= 0) throw new RegraNegocioError('O valor mensal deve ser maior que zero.');
     if (dados.aulasPorCiclo <= 0) throw new RegraNegocioError('O pacote precisa ter ao menos uma aula por ciclo.');
     if (dados.aulasPorSemana <= 0) throw new RegraNegocioError('Informe quantas aulas por semana o pacote permite.');

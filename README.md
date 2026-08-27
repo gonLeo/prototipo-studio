@@ -1,8 +1,8 @@
 # Protótipo — Sistema de Gestão do Studio
 
-Protótipo funcional navegável do sistema de gestão descrito em `escopo_funcional_contratado.md`. Sem backend real: persistência via `json-server` sobre um backfill versionado.
+Protótipo funcional navegável do sistema de gestão descrito em `escopo_funcional_contratado.md` (escopo versão 2.0 — modelo de **pacotes de créditos pré-pagos**). Sem backend real: persistência via `json-server` sobre um backfill versionado.
 
-Progresso do desenvolvimento por fase: [PROGRESSO.md](./PROGRESSO.md).
+Migração para o escopo v2.0: plano em [PLANO_ATUALIZACAO_ESCOPO.md](./PLANO_ATUALIZACAO_ESCOPO.md), progresso em [PROGRESSO_ATUALIZACAO.md](./PROGRESSO_ATUALIZACAO.md). Histórico das Fases 0 a 8, construídas sobre o escopo v1.0: [PROGRESSO.md](./PROGRESSO.md).
 
 ## Rodando localmente
 
@@ -15,7 +15,7 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 
 ## Arquitetura
 
-- `src/types/domain.ts` — entidades do modelo conceitual de dados (seção 8 do escopo).
+- `src/types/domain.ts` — entidades do modelo conceitual de dados (seção 7 do escopo).
 - `src/services/` — camada de acesso a dados. `criarRepositorio<T>` expõe `listar/buscarPorId/criar/atualizar/remover` sobre REST; componentes nunca chamam `fetch`/`localStorage` diretamente. Trocar por uma API real no futuro não deve exigir mudança nas telas.
 - `src/hooks/` — regras de domínio e sessão (perfis simulados).
   - **Carregar uma tela nunca escreve no banco.** Criar registro (`Chamada`, `OcorrenciaSessao`…) é efeito de uma ação explícita da usuária, nunca do efeito de carregamento: o React executa efeitos duas vezes em desenvolvimento (StrictMode) e duplicaria o registro. Pelo mesmo motivo, uma ação de escrita deve resolver o registro pela chave de negócio (sessão + data, por exemplo) em vez de confiar num id guardado no estado da tela — que pode estar obsoleto depois de um "Resetar protótipo".
@@ -48,4 +48,4 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 
 ## Fora de escopo deste protótipo
 
-Testes automatizados, autenticação real, banco de dados real, e tudo listado no capítulo "Evoluções Futuras" do documento de escopo.
+Testes automatizados, autenticação real, banco de dados real, e tudo listado no capítulo "Evoluções Futuras" (EV-01 a EV-15) do documento de escopo.
