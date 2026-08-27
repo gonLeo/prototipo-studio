@@ -1,91 +1,113 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   alunaRepositorio,
-  contratoRepositorio,
+  carteiraRepositorio,
   pacoteRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
-import type { Aluna, Contrato, Pacote, SituacaoAluna, Usuario } from '../types/domain';
-import { diferencaEmDias, hojeISO } from '../utils/data';
+import type { Aluna, Carteira, Pacote, SituacaoAluna, Usuario } from '../types/domain';
+import { hojeISO } from '../utils/data';
+import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
+import { limiaresFinalizando } from './carteiraDeCreditos';
 
 export interface AlunaComDetalhes extends Aluna {
   usuario: Usuario;
-  contrato: Contrato | undefined;
+  /** Carteira vigente; indefinida quando a aluna está sem pacote ativo. */
+  carteira: Carteira | undefined;
+  leitura: LeituraDaCarteira | undefined;
   pacote: Pacote | undefined;
 }
 
 export const ROTULO_SITUACAO_ALUNA: Record<SituacaoAluna, string> = {
   ativa: 'Ativa',
-  inadimplente: 'Inadimplente',
   trancada: 'Trancada',
-  suspensa: 'Suspensa',
-  encerrada: 'Encerrada',
   aguardando_aceite: 'Aguardando aceite',
 };
 
-/** Filtros da lista de alunas (RF-ALU-10, RF-BOL-09). */
-export type FiltroAluna = 'todas' | SituacaoAluna | 'pacote_a_vencer' | 'bolsistas';
+/**
+ * Filtros da lista de alunas (RF-ALU-10, RF-BOL-07).
+ *
+ * "Com pacote ativo" e "sem pacote ativo" são leituras da carteira, não
+ * situações do cadastro: o escopo não distingue carteira consumida de
+ * vencida em lugar nenhum da interface (RF-CRE-11).
+ */
+export type FiltroAluna =
+  | 'todas'
+  | 'com_pacote_ativo'
+  | 'sem_pacote_ativo'
+  | 'trancada'
+  | 'aguardando_aceite'
+  | 'pacote_a_vencer'
+  | 'bolsistas';
 
 export const FILTROS_ALUNA: Array<{ valor: FiltroAluna; rotulo: string }> = [
   { valor: 'todas', rotulo: 'Todas' },
-  { valor: 'ativa', rotulo: 'Ativas' },
-  { valor: 'inadimplente', rotulo: 'Inadimplentes' },
-  { valor: 'aguardando_aceite', rotulo: 'Aguardando aceite' },
+  { valor: 'com_pacote_ativo', rotulo: 'Com pacote ativo' },
+  { valor: 'sem_pacote_ativo', rotulo: 'Sem pacote ativo' },
   { valor: 'trancada', rotulo: 'Trancadas' },
-  { valor: 'suspensa', rotulo: 'Suspensas' },
-  { valor: 'encerrada', rotulo: 'Encerradas' },
+  { valor: 'aguardando_aceite', rotulo: 'Aguardando aceite' },
   { valor: 'pacote_a_vencer', rotulo: 'Pacote a vencer' },
   { valor: 'bolsistas', rotulo: 'Bolsistas' },
 ];
 
-/** Janela usada pelo filtro "pacote a vencer". */
-const DIAS_PARA_VENCER = 7;
-
-export function aplicarFiltroDeAluna(aluna: AlunaComDetalhes, filtro: FiltroAluna, hoje: string): boolean {
-  if (filtro === 'todas') return true;
-  if (filtro === 'bolsistas') return aluna.bolsista;
-  if (filtro === 'pacote_a_vencer') {
-    if (!aluna.contrato || aluna.contrato.situacao !== 'ativo') return false;
-    const dias = diferencaEmDias(hoje, aluna.contrato.dataVencimentoCiclo);
-    return dias >= 0 && dias <= DIAS_PARA_VENCER;
+export function aplicarFiltroDeAluna(aluna: AlunaComDetalhes, filtro: FiltroAluna): boolean {
+  switch (filtro) {
+    case 'todas':
+      return true;
+    case 'bolsistas':
+      return aluna.bolsista;
+    case 'com_pacote_ativo':
+      return Boolean(aluna.carteira);
+    case 'sem_pacote_ativo':
+      return !aluna.carteira;
+    case 'pacote_a_vencer':
+      // Reaproveita o limiar do status Finalizando: é o mesmo conceito de
+      // "está acabando" que dispara o aviso à aluna.
+      return aluna.leitura?.motivoFinalizando !== undefined;
+    default:
+      return aluna.situacao === filtro;
   }
-  return aluna.situacao === filtro;
 }
 
 export function useAlunas() {
   const [alunas, setAlunas] = useState<AlunaComDetalhes[]>([]);
+  const [limiares, setLimiares] = useState<LimiaresFinalizando | undefined>();
   const [carregando, setCarregando] = useState(true);
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
-    const [lista, usuarios, contratos, pacotes] = await Promise.all([
+    const hoje = hojeISO();
+
+    const [lista, usuarios, carteiras, pacotes, limiaresAtuais] = await Promise.all([
       alunaRepositorio.listar(),
       usuarioRepositorio.listar(),
-      contratoRepositorio.listar(),
+      carteiraRepositorio.listar(),
       pacoteRepositorio.listar(),
+      limiaresFinalizando(),
     ]);
 
-    const combinadas = lista
-      .map((aluna) => {
-        const usuario = usuarios.find((u) => u.id === aluna.usuarioId);
-        if (!usuario) return undefined;
-        // Contrato vigente é o que ainda não foi encerrado; se todos
-        // estiverem encerrados, mostra o mais recente para o histórico.
-        const doAluno = contratos.filter((c) => c.alunaId === aluna.id);
-        const contrato =
-          doAluno.find((c) => c.situacao !== 'encerrado') ??
-          doAluno.sort((a, b) => b.dataInicio.localeCompare(a.dataInicio))[0];
-        return {
-          ...aluna,
-          usuario,
-          contrato,
-          pacote: pacotes.find((p) => p.id === contrato?.pacoteId),
-        };
-      })
-      .filter((a): a is AlunaComDetalhes => a !== undefined)
-      .sort((a, b) => a.usuario.nome.localeCompare(b.usuario.nome));
+    const combinadas: AlunaComDetalhes[] = [];
 
-    setAlunas(combinadas);
+    for (const aluna of lista) {
+      const usuario = usuarios.find((u) => u.id === aluna.usuarioId);
+      if (!usuario) continue;
+
+      const daAluna = carteiras.filter((c) => c.alunaId === aluna.id);
+      const carteira = daAluna.find(
+        (c) => c.situacao === 'ativa' && !lerCarteira(c, hoje, limiaresAtuais).encerrada,
+      );
+
+      combinadas.push({
+        ...aluna,
+        usuario,
+        carteira,
+        leitura: carteira ? lerCarteira(carteira, hoje, limiaresAtuais) : undefined,
+        pacote: pacotes.find((p) => p.id === carteira?.pacoteId),
+      });
+    }
+
+    setAlunas(combinadas.sort((a, b) => a.usuario.nome.localeCompare(b.usuario.nome)));
+    setLimiares(limiaresAtuais);
     setCarregando(false);
   }, []);
 
@@ -97,5 +119,5 @@ export function useAlunas() {
     return alunas.find((a) => a.id === alunaId);
   }
 
-  return { alunas, carregando, recarregar, buscarPorId, hoje: hojeISO() };
+  return { alunas, limiares, carregando, recarregar, buscarPorId, hoje: hojeISO() };
 }

@@ -1,6 +1,5 @@
 import {
   agendamentoRepositorio,
-  contratoRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   registroAuditoriaRepositorio,
@@ -8,20 +7,25 @@ import {
 } from '../services/repositorios';
 import { notificar } from '../services/notificador';
 import type { Agendamento, OcorrenciaSessao, Sessao } from '../types/domain';
-import { hojeISO, somarDias, formatarDataBR } from '../utils/data';
+import { hojeISO, formatarDataBR } from '../utils/data';
 import { sessaoOcorreEm } from '../utils/grade';
+import {
+  carteiraVigenteDaAluna,
+  liberarReserva,
+  prorrogarPorCancelamentoDoStudio,
+} from './carteiraDeCreditos';
 
 /**
  * Regras de cancelamento de aula pelo studio, compartilhadas pela exclusão
  * de sessão (RF-GRD-08) e pelo calendário de exceções (RF-EXC-04): ambas
- * cancelam os agendamentos futuros, devolvem o crédito à aluna com prazo
- * adicional de vigência e disparam notificação.
+ * cancelam os agendamentos futuros, liberam os créditos reservados,
+ * prorrogam a validade das carteiras afetadas e disparam notificação.
  *
  * Não é um hook React — é a camada de domínio que os hooks de tela
  * consomem. Fica em `src/hooks/` por ser regra de negócio (ver README).
  */
 
-/** Prazo extra de vigência concedido quando o studio cancela (parâmetro RF-CFG-05). */
+/** Dias de prorrogação concedidos quando o studio cancela (RF-CPR-07, PA-11). */
 async function diasAdicionaisPorCancelamento(): Promise<number> {
   const parametros = await parametroRepositorio.listar();
   const parametro = parametros.find((p) => p.chave === 'dias_adicionais_cancelamento_studio');
@@ -85,30 +89,44 @@ export async function cancelarOcorrencia(
   if (agendamentos.length === 0) return 0;
 
   const diasAdicionais = await diasAdicionaisPorCancelamento();
-  const contratos = await contratoRepositorio.listar();
 
   for (const agendamento of agendamentos) {
     await agendamentoRepositorio.atualizar(agendamento.id, {
       situacao: 'cancelado',
       origemCancelamento: 'studio',
+      creditoDevolvido: true,
     });
 
-    // Aula cancelada pelo studio nunca consome crédito da aluna: devolve a
-    // aula ao saldo e estende a vigência do ciclo pelo prazo parametrizado.
-    const contrato = contratos.find((c) => c.alunaId === agendamento.alunaId && c.situacao === 'ativo');
-    if (contrato && !agendamento.experimental) {
-      await contratoRepositorio.atualizar(contrato.id, {
-        saldoAulas: contrato.saldoAulas + 1,
-        diasAdicionaisConcedidos: contrato.diasAdicionaisConcedidos + diasAdicionais,
-        dataVencimentoCiclo: somarDias(contrato.dataVencimentoCiclo, diasAdicionais),
+    // Aula cancelada pelo studio nunca consome crédito da aluna: libera a
+    // reserva e prorroga a validade da carteira pelo prazo parametrizado.
+    // A prorrogação é cumulativa, uma por ocorrência cancelada (PA-11).
+    let carteira = await carteiraVigenteDaAluna(agendamento.alunaId);
+    const creditos = agendamento.creditosReservados ?? 0;
+
+    if (carteira && creditos > 0) {
+      carteira = await liberarReserva({
+        carteira,
+        quantidade: creditos,
+        origem: `Aula de ${formatarDataBR(data)} cancelada pelo studio: ${motivo}`,
+        referenciaId: agendamento.id,
+        autorId,
+      });
+    }
+    if (carteira && diasAdicionais > 0) {
+      await prorrogarPorCancelamentoDoStudio({
+        carteira,
+        dias: diasAdicionais,
+        origem: `Prorrogação por cancelamento da aula de ${formatarDataBR(data)}`,
+        referenciaId: agendamento.id,
+        autorId,
       });
     }
 
     await notificar({
       destinatario: { tipo: 'aluna', id: agendamento.alunaId },
       evento: 'aula_cancelada_pelo_studio',
-      conteudo: `Sua aula de ${formatarDataBR(data)} foi cancelada. Motivo: ${motivo}. O crédito voltou ao seu saldo${
-        diasAdicionais > 0 ? ` e a validade do pacote foi estendida em ${diasAdicionais} dias` : ''
+      conteudo: `Sua aula de ${formatarDataBR(data)} foi cancelada. Motivo: ${motivo}. Os créditos reservados voltaram ao seu saldo${
+        diasAdicionais > 0 ? ` e a validade dos seus créditos foi estendida em ${diasAdicionais} dias` : ''
       }.`,
     });
   }
@@ -150,10 +168,10 @@ export async function cancelarOcorrenciasFuturasDaSessao(
 }
 
 /**
- * Cancela os agendamentos de uma aluna dentro de um período, devolvendo o
- * crédito ao saldo. Usado quando o contrato é pausado ou encerrado
- * (RF-CTR-04/07): a aluna não pode ocupar vaga em datas que não poderá
- * frequentar, e as aulas já agendadas voltam para o saldo dela.
+ * Cancela os agendamentos de uma aluna dentro de um período, liberando os
+ * créditos reservados. Usado quando a carteira é trancada ou encerrada por
+ * reembolso (RF-TRA-04, RF-REE-05): a aluna não pode ocupar vaga em datas
+ * que não poderá frequentar, e os créditos voltam ao saldo disponível.
  *
  * `dataFim` em branco significa "daqui para a frente, sem limite".
  */
@@ -162,12 +180,12 @@ export async function cancelarAgendamentosDaAlunaNoPeriodo(params: {
   dataInicio: string;
   dataFim?: string;
   motivo: string;
+  autorId?: string;
 }): Promise<number> {
-  const { alunaId, dataInicio, dataFim, motivo } = params;
-  const [agendamentos, ocorrencias, contratos] = await Promise.all([
+  const { alunaId, dataInicio, dataFim, motivo, autorId = 'sistema' } = params;
+  const [agendamentos, ocorrencias] = await Promise.all([
     agendamentoRepositorio.listar(),
     ocorrenciaSessaoRepositorio.listar(),
-    contratoRepositorio.listar(),
   ]);
 
   const noPeriodo = agendamentos.filter((agendamento) => {
@@ -177,47 +195,34 @@ export async function cancelarAgendamentosDaAlunaNoPeriodo(params: {
     return ocorrencia.data >= dataInicio && (!dataFim || ocorrencia.data <= dataFim);
   });
 
-  const contrato = contratos.find((c) => c.alunaId === alunaId && c.situacao !== 'encerrado');
+  let carteira = await carteiraVigenteDaAluna(alunaId);
 
   for (const agendamento of noPeriodo) {
     await agendamentoRepositorio.atualizar(agendamento.id, {
       situacao: 'cancelado',
       origemCancelamento: 'administracao',
+      creditoDevolvido: true,
     });
-    if (contrato && !agendamento.experimental) {
-      await contratoRepositorio.atualizar(contrato.id, {
-        saldoAulas: contrato.saldoAulas + 1,
+
+    const creditos = agendamento.creditosReservados ?? 0;
+    if (carteira && creditos > 0) {
+      carteira = await liberarReserva({
+        carteira,
+        quantidade: creditos,
+        origem: `Cancelamento pela administração: ${motivo}`,
+        referenciaId: agendamento.id,
+        autorId,
       });
     }
+
     await notificar({
       destinatario: { tipo: 'aluna', id: alunaId },
       evento: 'agendamento_cancelado_pela_administracao',
-      conteudo: `Seu agendamento foi cancelado. Motivo: ${motivo}. A aula voltou para o seu saldo.`,
+      conteudo: `Seu agendamento foi cancelado. Motivo: ${motivo}. Os créditos reservados voltaram ao seu saldo disponível.`,
     });
   }
 
   return noPeriodo.length;
-}
-
-/**
- * Aulas efetivamente realizadas por uma aluna dentro de um intervalo —
- * base do recálculo de saldo na alteração de plano (RF-PLN-04).
- */
-export async function contarAulasRealizadasNoPeriodo(
-  alunaId: string,
-  dataInicio: string,
-  dataFim: string,
-): Promise<number> {
-  const [agendamentos, ocorrencias] = await Promise.all([
-    agendamentoRepositorio.listar(),
-    ocorrenciaSessaoRepositorio.listar(),
-  ]);
-
-  return agendamentos.filter((agendamento) => {
-    if (agendamento.alunaId !== alunaId || agendamento.situacao !== 'realizado') return false;
-    const ocorrencia = ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId);
-    return ocorrencia !== undefined && ocorrencia.data >= dataInicio && ocorrencia.data <= dataFim;
-  }).length;
 }
 
 /**

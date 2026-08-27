@@ -18,7 +18,6 @@ type BaseDeDados = Record<string, Registro[]>;
  * junto com a regra de existir em `seed.json` (ver README).
  */
 const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
-  alunas: { usuarioId: 'usuarios' },
   anamneses: { alunaId: 'alunas' },
   professoras: { usuarioId: 'usuarios', categoriaId: 'categoriasProfessora' },
   historicoCategorias: {
@@ -27,15 +26,10 @@ const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
     autorId: 'usuarios',
   },
   aceitesRegistrados: { usuarioId: 'usuarios', termoVersaoId: 'termosAceite' },
-  contratos: { alunaId: 'alunas', pacoteId: 'pacotes' },
-  historicoPlanos: {
-    contratoId: 'contratos',
-    pacoteAnteriorId: 'pacotes',
-    pacoteNovoId: 'pacotes',
-    autorId: 'usuarios',
-  },
-  historicoBolsas: { contratoId: 'contratos', autorId: 'usuarios' },
-  pausas: { contratoId: 'contratos', autorId: 'usuarios' },
+  alunas: { usuarioId: 'usuarios', pacoteConcedidoId: 'pacotes' },
+  carteiras: { alunaId: 'alunas', pacoteId: 'pacotes' },
+  movimentosCredito: { carteiraId: 'carteiras', autorId: 'usuarios' },
+  vendas: { alunaId: 'alunas', pacoteId: 'pacotes', carteiraId: 'carteiras' },
   sessoes: { modalidadeId: 'modalidades', professoraId: 'professoras', espacoId: 'espacos' },
   ocorrenciasSessao: { sessaoId: 'sessoes', professoraEfetivaId: 'professoras' },
   agendamentos: { alunaId: 'alunas', ocorrenciaSessaoId: 'ocorrenciasSessao' },
@@ -56,10 +50,6 @@ const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
     periodoFechamentoId: 'fechamentosComissao',
   },
   fechamentosComissao: { autorId: 'usuarios' },
-  // A cobrança de mensalidade aponta para o contrato; a avulsa da aula
-  // experimental aponta direto para a aluna (RF-EXP-04).
-  cobrancas: { contratoId: 'contratos', alunaId: 'alunas' },
-  tentativasCobranca: { cobrancaId: 'cobrancas' },
   reservasConvenio: { alunaId: 'alunas', ocorrenciaSessaoId: 'ocorrenciasSessao' },
   notificacoes: { destinatarioId: 'usuarios' },
   registrosAuditoria: { autorId: 'usuarios' },

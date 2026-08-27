@@ -3,30 +3,24 @@ import {
   agendamentoRepositorio,
   alunaRepositorio,
   anamneseRepositorio,
-  cobrancaRepositorio,
-  contratoRepositorio,
-  historicoBolsaRepositorio,
-  historicoPlanoRepositorio,
   ocorrenciaSessaoRepositorio,
   pacoteRepositorio,
-  pausaRepositorio,
-  tentativaCobrancaRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
 import type {
   Agendamento,
   Aluna,
   Anamnese,
-  Cobranca,
-  Contrato,
-  HistoricoBolsa,
-  HistoricoPlano,
+  Carteira,
+  MovimentoCredito,
   Pacote,
-  Pausa,
-  TentativaCobranca,
   Usuario,
+  Venda,
 } from '../types/domain';
 import { hojeISO } from '../utils/data';
+import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
+import { carteirasDaAluna, extratoDaAluna, limiaresFinalizando } from './carteiraDeCreditos';
+import { historicoDeComprasDaAluna } from './vendas';
 
 export interface FrequenciaDaAluna extends Agendamento {
   dataAula: string;
@@ -35,29 +29,31 @@ export interface FrequenciaDaAluna extends Agendamento {
 export interface FichaAluna {
   aluna: Aluna;
   usuario: Usuario;
-  /** Contrato vigente (não encerrado); indefinido se a aluna só tem histórico. */
-  contrato: Contrato | undefined;
+  /** Carteira vigente; indefinida quando a aluna está sem pacote ativo (RF-CRE-11). */
+  carteira: Carteira | undefined;
+  leitura: LeituraDaCarteira | undefined;
   pacote: Pacote | undefined;
   anamnese: Anamnese | undefined;
-  contratos: Contrato[];
-  historicoPlanos: HistoricoPlano[];
-  historicoBolsas: HistoricoBolsa[];
-  pausas: Pausa[];
+  /** Histórico permanente de carteiras, inclusive as encerradas (RF-HIS-01). */
+  carteiras: Carteira[];
+  /** Extrato de movimentos de crédito de todas as carteiras (RF-CRE-08). */
+  movimentos: MovimentoCredito[];
+  /** Histórico de compras (RF-VEN-06). */
+  compras: Venda[];
   frequencia: FrequenciaDaAluna[];
-  cobrancas: Cobranca[];
-  /** Tentativas de cobrança por cobrança, para o histórico financeiro (RF-FIN-10). */
-  tentativasPorCobranca: Record<string, TentativaCobranca[]>;
   pacotes: Pacote[];
+  limiares: LimiaresFinalizando;
 }
 
 /**
  * Visão consolidada da aluna (RF-ALU-09): dados cadastrais, anamnese,
- * pacote ativo, saldo, validade, situação financeira e os históricos de
- * contratos, planos, bolsas, pausas, frequência e pagamentos.
+ * pacote vigente, saldo de créditos, validade, histórico de frequência,
+ * histórico de compras e histórico de pacotes.
  *
- * O histórico financeiro traz cada cobrança com suas tentativas
- * (RF-FIN-10): é a trilha que explica por que uma mensalidade está em
- * aberto — recusa do gateway, retentativa, baixa manual ou cancelamento.
+ * A situação da carteira é **derivada** por `lerCarteira`, não lida do
+ * registro: uma carteira cuja validade já passou aparece como expirada
+ * mesmo antes de a rotina de carteiras consolidar o encerramento — e
+ * carregar a ficha continua não escrevendo no banco.
  */
 export function useFichaAluna(alunaId: string | undefined) {
   const [ficha, setFicha] = useState<FichaAluna | undefined>(undefined);
@@ -71,33 +67,21 @@ export function useFichaAluna(alunaId: string | undefined) {
     }
 
     setCarregando(true);
-    const [
-      alunas,
-      usuarios,
-      contratos,
-      pacotes,
-      anamneses,
-      planos,
-      bolsas,
-      pausas,
-      agendamentos,
-      ocorrencias,
-      cobrancas,
-      tentativas,
-    ] = await Promise.all([
-      alunaRepositorio.listar(),
-      usuarioRepositorio.listar(),
-      contratoRepositorio.listar(),
-      pacoteRepositorio.listar(),
-      anamneseRepositorio.listar(),
-      historicoPlanoRepositorio.listar(),
-      historicoBolsaRepositorio.listar(),
-      pausaRepositorio.listar(),
-      agendamentoRepositorio.listar(),
-      ocorrenciaSessaoRepositorio.listar(),
-      cobrancaRepositorio.listar(),
-      tentativaCobrancaRepositorio.listar(),
-    ]);
+    const hoje = hojeISO();
+
+    const [alunas, usuarios, pacotes, anamneses, agendamentos, ocorrencias, carteiras, movimentos, compras, limiares] =
+      await Promise.all([
+        alunaRepositorio.listar(),
+        usuarioRepositorio.listar(),
+        pacoteRepositorio.listar(),
+        anamneseRepositorio.listar(),
+        agendamentoRepositorio.listar(),
+        ocorrenciaSessaoRepositorio.listar(),
+        carteirasDaAluna(alunaId),
+        extratoDaAluna(alunaId),
+        historicoDeComprasDaAluna(alunaId),
+        limiaresFinalizando(),
+      ]);
 
     const aluna = alunas.find((a) => a.id === alunaId);
     const usuario = aluna && usuarios.find((u) => u.id === aluna.usuarioId);
@@ -107,24 +91,7 @@ export function useFichaAluna(alunaId: string | undefined) {
       return;
     }
 
-    const contratosDaAluna = contratos
-      .filter((c) => c.alunaId === aluna.id)
-      .sort((a, b) => b.dataInicio.localeCompare(a.dataInicio));
-    const contrato = contratosDaAluna.find((c) => c.situacao !== 'encerrado');
-    const idsContratos = contratosDaAluna.map((c) => c.id);
-
-    // A cobrança de mensalidade chega pelo contrato; a da aula
-    // experimental é avulsa e aponta direto para a aluna (RF-EXP-04).
-    const cobrancasDaAluna = cobrancas
-      .filter((c) => (c.alunaId ? c.alunaId === aluna.id : c.contratoId !== undefined && idsContratos.includes(c.contratoId)))
-      .sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento));
-
-    const tentativasPorCobranca: Record<string, TentativaCobranca[]> = {};
-    for (const cobranca of cobrancasDaAluna) {
-      tentativasPorCobranca[cobranca.id] = tentativas
-        .filter((t) => t.cobrancaId === cobranca.id)
-        .sort((a, b) => b.dataHora.localeCompare(a.dataHora));
-    }
+    const carteira = carteiras.find((c) => c.situacao === 'ativa' && !lerCarteira(c, hoje, limiares).encerrada);
 
     const frequencia = agendamentos
       .filter((a) => a.alunaId === aluna.id)
@@ -137,23 +104,16 @@ export function useFichaAluna(alunaId: string | undefined) {
     setFicha({
       aluna,
       usuario,
-      contrato,
-      pacote: pacotes.find((p) => p.id === contrato?.pacoteId),
+      carteira,
+      leitura: carteira ? lerCarteira(carteira, hoje, limiares) : undefined,
+      pacote: pacotes.find((p) => p.id === carteira?.pacoteId),
       anamnese: anamneses.find((a) => a.alunaId === aluna.id),
-      contratos: contratosDaAluna,
-      historicoPlanos: planos
-        .filter((p) => idsContratos.includes(p.contratoId))
-        .sort((a, b) => b.data.localeCompare(a.data)),
-      historicoBolsas: bolsas
-        .filter((b) => idsContratos.includes(b.contratoId))
-        .sort((a, b) => b.data.localeCompare(a.data)),
-      pausas: pausas
-        .filter((p) => idsContratos.includes(p.contratoId))
-        .sort((a, b) => b.dataInicio.localeCompare(a.dataInicio)),
+      carteiras,
+      movimentos,
+      compras,
       frequencia,
-      cobrancas: cobrancasDaAluna,
-      tentativasPorCobranca,
       pacotes,
+      limiares,
     });
     setCarregando(false);
   }, [alunaId]);

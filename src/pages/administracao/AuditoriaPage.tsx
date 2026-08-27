@@ -25,7 +25,7 @@ function formatarValor(valor: unknown): string {
 
 /**
  * Trilha de auditoria (RF-PER-05): autor, data e hora de toda operação que
- * alterou contrato, saldo, situação financeira, chamada ou comissão.
+ * alterou carteira, créditos, situação financeira, chamada ou comissão.
  *
  * A tela é só leitura — registro de auditoria não se edita nem se apaga,
  * porque é exatamente isso que o torna confiável.
@@ -96,7 +96,7 @@ export function AuditoriaPage() {
         <p className="mt-6 text-sm text-neutral-500">Carregando…</p>
       ) : registros.length === 0 ? (
         <p className="mt-6 text-sm text-neutral-500">
-          Nenhuma operação auditável registrada ainda. Alterações de contrato, bolsa, financeiro, chamada e comissão
+          Nenhuma operação auditável registrada ainda. Alterações de carteira, créditos, bolsa, vendas, chamada e comissão
           aparecem aqui automaticamente.
         </p>
       ) : (

@@ -6,24 +6,21 @@ import type { FiltroAluna } from '../../hooks/useAlunas';
 import { usePacotes } from '../../hooks/usePacotes';
 import { useSessao } from '../../hooks/useSessao';
 import { useToast } from '../../hooks/useToast';
-import { matricularAlunaPelaAdministracao } from '../../hooks/contratosDeAluna';
-import type { DadosCadastraisAluna, DadosContratacao } from '../../hooks/contratosDeAluna';
+import { cadastrarAlunaPelaAdministracao } from '../../hooks/cadastroDeAlunas';
+import type { DadosCadastraisAluna } from '../../hooks/cadastroDeAlunas';
 import type { SituacaoAluna } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { TextField, SelectField } from '../../components/ui/Field';
+import { TextField, SelectField, CheckboxField } from '../../components/ui/Field';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { baixarCSV } from '../../utils/csv';
-import { formatarDataBR, hojeISO } from '../../utils/data';
-import { ehIsencaoTotal, formatarMoeda, rotuloTipoContrato, valorComBolsa } from '../../utils/contrato';
+import { formatarDataBR } from '../../utils/data';
+import { formatarCreditos, formatarMoeda, rotuloStatusCarteira } from '../../utils/creditos';
 
 const TOM_POR_SITUACAO: Record<SituacaoAluna, 'sucesso' | 'erro' | 'aviso' | 'neutro' | 'info'> = {
   ativa: 'sucesso',
-  inadimplente: 'erro',
-  trancada: 'neutro',
-  suspensa: 'aviso',
-  encerrada: 'neutro',
+  trancada: 'aviso',
   aguardando_aceite: 'info',
 };
 
@@ -31,7 +28,7 @@ function FormularioNovaAluna({
   onSalvar,
   onFechar,
 }: {
-  onSalvar: (dados: DadosCadastraisAluna, contratacao: DadosContratacao) => Promise<void>;
+  onSalvar: (dados: DadosCadastraisAluna, pacoteId: string, bolsista: boolean) => Promise<void>;
   onFechar: () => void;
 }) {
   const { pacotes } = usePacotes();
@@ -45,24 +42,19 @@ function FormularioNovaAluna({
   const [contatoEmergencia, setContatoEmergencia] = useState('');
 
   const [pacoteId, setPacoteId] = useState('');
-  const [dataPrimeiraCobranca, setDataPrimeiraCobranca] = useState(hojeISO());
-  const [percentualBolsa, setPercentualBolsa] = useState('0');
+  const [bolsista, setBolsista] = useState(false);
 
   const [erro, setErro] = useState<string>();
   const [salvando, setSalvando] = useState(false);
 
   const pacoteSelecionado = pacotesAtivos.find((p) => p.id === pacoteId);
-  const percentual = Number(percentualBolsa) || 0;
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
     setErro(undefined);
     setSalvando(true);
     try {
-      await onSalvar(
-        { nome, email, cpf, telefone, dataNascimento, contatoEmergencia },
-        { pacoteId, dataPrimeiraCobranca, percentualBolsa: percentual },
-      );
+      await onSalvar({ nome, email, cpf, telefone, dataNascimento, contatoEmergencia }, pacoteId, bolsista);
       onFechar();
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
@@ -115,53 +107,44 @@ function FormularioNovaAluna({
       <section>
         <h3 className="text-sm font-semibold text-ink">Pacote</h3>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField label="Pacote" value={pacoteId} onChange={(e) => setPacoteId(e.target.value)} required>
+          <SelectField
+            label="Pacote"
+            value={pacoteId}
+            onChange={(e) => setPacoteId(e.target.value)}
+            required
+            wrapperClassName="sm:col-span-2"
+          >
             <option value="">Selecione…</option>
             {pacotesAtivos.map((pacote) => (
               <option key={pacote.id} value={pacote.id}>
-                {pacote.nome} — {pacote.aulasPorCiclo} aulas · {formatarMoeda(pacote.valorMensal)} ·{' '}
-                {rotuloTipoContrato(pacote.tipo)}
+                {pacote.nome} — {formatarCreditos(pacote.creditos)} · {pacote.validadeDias} dias ·{' '}
+                {formatarMoeda(pacote.valor)}
               </option>
             ))}
           </SelectField>
 
-          <TextField
-            label="Data da primeira cobrança"
-            type="date"
-            value={dataPrimeiraCobranca}
-            onChange={(e) => setDataPrimeiraCobranca(e.target.value)}
-            required
-            dica="O vencimento passa a ser sempre este dia do mês."
-          />
-
-          <TextField
-            label="Bolsa (% de desconto)"
-            type="number"
-            min={0}
-            max={100}
-            value={percentualBolsa}
-            onChange={(e) => setPercentualBolsa(e.target.value)}
-            dica="0 = sem bolsa. Recurso exclusivo do cadastro administrativo."
-          />
+          <div className="sm:col-span-2">
+            <CheckboxField label="Aluna bolsista — isenção total do valor do pacote" checked={bolsista} onChange={setBolsista} />
+            <p className="mt-1 text-xs text-neutral-500">
+              Recurso exclusivo do cadastro administrativo (RF-BOL-01). A carteira da bolsista é renovada
+              automaticamente com o mesmo pacote, sem gerar cobrança.
+            </p>
+          </div>
         </div>
 
         {pacoteSelecionado && (
           <p className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-sm ring-1 ring-inset ring-neutral-200">
-            {ehIsencaoTotal(percentual) ? (
-              <span className="font-medium text-emerald-700">Isenta — nenhuma cobrança será gerada.</span>
+            {bolsista ? (
+              <span className="font-medium text-emerald-700">
+                Bolsista — nenhuma cobrança será gerada. {formatarCreditos(pacoteSelecionado.creditos)} concedidos, com
+                validade de {pacoteSelecionado.validadeDias} dias.
+              </span>
             ) : (
               <>
-                <span className="font-medium text-ink">
-                  {formatarMoeda(valorComBolsa(pacoteSelecionado.valorMensal, percentual))}
-                </span>
-                {percentual > 0 && (
-                  <span className="ml-2 text-neutral-400 line-through">
-                    {formatarMoeda(pacoteSelecionado.valorMensal)}
-                  </span>
-                )}
+                <span className="font-medium text-ink">{formatarMoeda(pacoteSelecionado.valor)}</span>
                 <span className="ml-2 text-neutral-500">
-                  por mês · {pacoteSelecionado.aulasPorCiclo} aulas creditadas no primeiro ciclo · contrato{' '}
-                  {rotuloTipoContrato(pacoteSelecionado.tipo).toLowerCase()}
+                  em pagamento único · {formatarCreditos(pacoteSelecionado.creditos)} · validade de{' '}
+                  {pacoteSelecionado.validadeDias} dias. A venda fica pendente até a aluna pagar no primeiro acesso.
                 </span>
               </>
             )}
@@ -184,14 +167,14 @@ function FormularioNovaAluna({
 }
 
 export function AlunasPage() {
-  const { alunas, carregando, recarregar, hoje } = useAlunas();
+  const { alunas, carregando, recarregar } = useAlunas();
   const { usuario } = useSessao();
   const mostrarToast = useToast();
 
   const [filtro, setFiltro] = useState<FiltroAluna>('todas');
   const [modalAberto, setModalAberto] = useState(false);
 
-  const filtradas = alunas.filter((aluna) => aplicarFiltroDeAluna(aluna, filtro, hoje));
+  const filtradas = alunas.filter((aluna) => aplicarFiltroDeAluna(aluna, filtro));
 
   return (
     <div>
@@ -219,9 +202,11 @@ export function AlunasPage() {
                   { cabecalho: 'Situação', valor: (item) => ROTULO_SITUACAO_ALUNA[item.situacao] },
                   { cabecalho: 'Origem', valor: (item) => (item.origem === 'convenio' ? 'Convênio' : 'Direta') },
                   { cabecalho: 'Pacote', valor: (item) => item.pacote?.nome ?? '' },
-                  { cabecalho: 'Saldo de aulas', valor: (item) => item.contrato?.saldoAulas ?? '' },
-                  { cabecalho: 'Validade do ciclo', valor: (item) => item.contrato?.dataVencimentoCiclo ?? '' },
-                  { cabecalho: 'Bolsa (%)', valor: (item) => item.percentualBolsa ?? 0 },
+                  { cabecalho: 'Créditos disponíveis', valor: (item) => item.leitura?.disponiveis ?? '' },
+                  { cabecalho: 'Créditos reservados', valor: (item) => item.leitura?.reservados ?? '' },
+                  { cabecalho: 'Validade', valor: (item) => item.carteira?.dataValidade ?? '' },
+                  { cabecalho: 'Status da carteira', valor: (item) => (item.leitura ? rotuloStatusCarteira(item.leitura.status) : 'Sem pacote ativo') },
+                  { cabecalho: 'Bolsista', valor: (item) => (item.bolsista ? 'Sim' : 'Não') },
                 ],
               })
             }
@@ -273,9 +258,10 @@ export function AlunasPage() {
           colunas={[
             { chave: 'aluna', rotulo: 'Aluna' },
             { chave: 'pacote', rotulo: 'Pacote' },
-            { chave: 'saldo', rotulo: 'Saldo' },
+            { chave: 'saldo', rotulo: 'Créditos' },
             { chave: 'validade', rotulo: 'Validade' },
-            { chave: 'situacao', rotulo: 'Situação' },
+            { chave: 'carteira', rotulo: 'Status do pacote' },
+            { chave: 'situacao', rotulo: 'Acesso' },
             { chave: 'acoes', rotulo: '', alinhamento: 'direita' },
           ]}
           renderLinha={(aluna) => (
@@ -286,16 +272,30 @@ export function AlunasPage() {
               </CelulaTabela>
               <CelulaTabela>
                 <p>{aluna.pacote?.nome ?? '—'}</p>
-                {aluna.bolsista && (
-                  <p className="text-xs text-emerald-700">
-                    Bolsista · {aluna.percentualBolsa ?? 0}%
-                    {ehIsencaoTotal(aluna.percentualBolsa ?? 0) ? ' (isenta)' : ''}
-                  </p>
+                {aluna.bolsista && <p className="text-xs text-emerald-700">Bolsista · isenta</p>}
+              </CelulaTabela>
+              <CelulaTabela>
+                {aluna.leitura ? (
+                  <>
+                    <p>{aluna.leitura.disponiveis} disponíveis</p>
+                    <p className="text-xs text-neutral-500">{aluna.leitura.reservados} reservados</p>
+                  </>
+                ) : (
+                  '—'
                 )}
               </CelulaTabela>
-              <CelulaTabela>{aluna.contrato ? `${aluna.contrato.saldoAulas} aulas` : '—'}</CelulaTabela>
               <CelulaTabela className="whitespace-nowrap">
-                {aluna.contrato ? formatarDataBR(aluna.contrato.dataVencimentoCiclo) : '—'}
+                {aluna.carteira ? formatarDataBR(aluna.carteira.dataValidade) : '—'}
+              </CelulaTabela>
+              <CelulaTabela>
+                {/* RF-CRE-11: consumida e vencida aparecem igual — "sem pacote ativo". */}
+                {aluna.leitura ? (
+                  <Badge tom={aluna.leitura.motivoFinalizando ? 'aviso' : 'sucesso'}>
+                    {rotuloStatusCarteira(aluna.leitura.status)}
+                  </Badge>
+                ) : (
+                  <Badge tom="neutro">Nenhum pacote ativo</Badge>
+                )}
               </CelulaTabela>
               <CelulaTabela>
                 <Badge tom={TOM_POR_SITUACAO[aluna.situacao]}>{ROTULO_SITUACAO_ALUNA[aluna.situacao]}</Badge>
@@ -316,12 +316,14 @@ export function AlunasPage() {
       {modalAberto && (
         <Modal titulo="Nova aluna" largura="larga" onFechar={() => setModalAberto(false)}>
           <FormularioNovaAluna
-            onSalvar={async (dados, contratacao) => {
+            onSalvar={async (dados, pacoteId, bolsista) => {
               if (!usuario) return;
-              await matricularAlunaPelaAdministracao({ dados, contratacao, autorId: usuario.id });
+              await cadastrarAlunaPelaAdministracao({ dados, pacoteId, bolsista, autorId: usuario.id });
               await recarregar();
               mostrarToast(
-                'Aluna cadastrada. E-mail de acesso enviado com o saldo creditado e a orientação para assinar o termo.',
+                bolsista
+                  ? 'Aluna bolsista cadastrada. Os créditos são liberados assim que ela assinar o termo.'
+                  : 'Aluna cadastrada. E-mail de acesso enviado; os créditos são liberados após o aceite e o pagamento.',
                 'sucesso',
               );
             }}

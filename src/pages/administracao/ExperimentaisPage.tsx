@@ -6,12 +6,12 @@ import { periodoAtual } from '../../hooks/comissoes';
 import { Badge } from '../../components/ui/Badge';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda } from '../../utils/creditos';
 
 /**
  * Aulas experimentais do período e taxa de conversão em matrícula
  * (RF-EXP-08). A conversão é contada quando a interessada passou a ter
- * contrato iniciado a partir da data da aula que fez.
+ * comprou um pacote a partir da data da aula que fez.
  */
 export function ExperimentaisPage() {
   const [relatorio, setRelatorio] = useState<RelatorioDeConversao>();
@@ -110,7 +110,7 @@ export function ExperimentaisPage() {
                         Matriculada em {item.dataContratacao ? formatarDataBR(item.dataContratacao) : '—'}
                       </span>
                     ) : (
-                      <span className="text-sm text-neutral-500">Ainda não contratou</span>
+                      <span className="text-sm text-neutral-500">Ainda não comprou pacote</span>
                     )}
                   </CelulaTabela>
                 </LinhaTabela>

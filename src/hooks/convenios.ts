@@ -25,7 +25,7 @@ import { formatarDataBR, hojeISO, horasAteAula, somarDias } from '../utils/data'
 import { sessaoOcorreEm } from '../utils/grade';
 import { RegraNegocioError } from './useModalidades';
 import { garantirOcorrencia } from './cancelamentoDeAulas';
-import { validarIdentificacaoUnica } from './contratosDeAluna';
+import { validarIdentificacaoUnica } from './cadastroDeAlunas';
 
 /**
  * Convênios corporativos (M13).
@@ -168,7 +168,7 @@ export async function alternarEspelhamento(sessao: Sessao, autorId: string): Pro
 
 /**
  * Cadastro de aluna de convênio: existe no studio para ocupar vaga e
- * aparecer na chamada, mas **não tem contrato nem saldo** — o vínculo
+ * aparecer na chamada, mas **não tem carteira nem créditos** — o vínculo
  * financeiro dela é com o parceiro.
  */
 export async function cadastrarAlunaDeConvenio(params: {
@@ -197,7 +197,6 @@ export async function cadastrarAlunaDeConvenio(params: {
     origem: 'convenio',
     situacao: 'ativa',
     bolsista: false,
-    percentualBolsa: 0,
   });
 }
 
@@ -325,6 +324,9 @@ export async function receberReserva(params: {
     dataHora: new Date().toISOString(),
     situacao: 'ativo',
     experimental: false,
+    // A aluna de convênio não tem carteira no studio (RN-33): ocupa a vaga
+    // sem reservar crédito nenhum.
+    creditosReservados: 0,
   });
 
   const reserva = await reservaConvenioRepositorio.criar({

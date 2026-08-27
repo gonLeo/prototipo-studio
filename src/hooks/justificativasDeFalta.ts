@@ -1,6 +1,5 @@
 import {
   agendamentoRepositorio,
-  contratoRepositorio,
   justificativaRepositorio,
   ocorrenciaSessaoRepositorio,
 } from '../services/repositorios';
@@ -8,6 +7,8 @@ import { notificar } from '../services/notificador';
 import type { Justificativa } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
+import { carteiraVigenteDaAluna, estornarConsumo } from './carteiraDeCreditos';
+import { creditosDisponiveis, formatarCreditos } from '../utils/creditos';
 import { prazoDeJustificativaEmDias } from './agendamentoDeAulas';
 
 /**
@@ -61,9 +62,10 @@ export async function enviarJustificativa(params: {
 }
 
 /**
- * Análise da justificativa (RF-JUS-04/05): aprovar devolve o crédito ao
- * saldo, recusar mantém o desconto. Nos dois casos a aluna é notificada e
- * o parecer fica visível no histórico dela.
+ * Análise da justificativa (RF-JUS-04/05): aprovar estorna os créditos
+ * consumidos, devolvendo-os ao saldo disponível; recusar mantém o consumo.
+ * Nos dois casos a aluna é notificada e o parecer fica visível no
+ * histórico dela.
  */
 export async function analisarJustificativa(params: {
   justificativa: Justificativa;
@@ -85,17 +87,23 @@ export async function analisarJustificativa(params: {
   });
 
   let novoSaldo: number | undefined;
-  if (aprovada) {
-    const [agendamentos, contratos] = await Promise.all([
-      agendamentoRepositorio.listar(),
-      contratoRepositorio.listar(),
-    ]);
-    const agendamento = agendamentos.find((a) => a.id === justificativa.agendamentoId);
-    const contrato = contratos.find((c) => c.alunaId === justificativa.alunaId && c.situacao !== 'encerrado');
+  let creditosEstornados = 0;
 
-    if (contrato && agendamento && !agendamento.experimental) {
-      novoSaldo = contrato.saldoAulas + 1;
-      await contratoRepositorio.atualizar(contrato.id, { saldoAulas: novoSaldo });
+  if (aprovada) {
+    const agendamentos = await agendamentoRepositorio.listar();
+    const agendamento = agendamentos.find((a) => a.id === justificativa.agendamentoId);
+    const carteira = await carteiraVigenteDaAluna(justificativa.alunaId);
+    creditosEstornados = agendamento?.creditosReservados ?? 0;
+
+    if (carteira && agendamento && !agendamento.experimental && creditosEstornados > 0) {
+      const atualizada = await estornarConsumo({
+        carteira,
+        quantidade: creditosEstornados,
+        origem: 'Justificativa de falta aprovada',
+        referenciaId: agendamento.id,
+        autorId,
+      });
+      novoSaldo = creditosDisponiveis(atualizada);
     }
   }
 
@@ -103,8 +111,8 @@ export async function analisarJustificativa(params: {
     destinatario: { tipo: 'aluna', id: justificativa.alunaId },
     evento: aprovada ? 'justificativa_aprovada' : 'justificativa_recusada',
     conteudo: aprovada
-      ? `Sua justificativa foi aprovada. ${novoSaldo !== undefined ? `O crédito voltou ao seu saldo (${novoSaldo} aula(s)).` : ''} Parecer: ${parecer.trim()}`
-      : `Sua justificativa foi recusada e a aula segue consumida. Parecer: ${parecer.trim()}`,
+      ? `Sua justificativa foi aprovada. ${novoSaldo !== undefined ? `${formatarCreditos(creditosEstornados)} voltaram ao seu saldo disponível (${formatarCreditos(novoSaldo)}).` : ''} Parecer: ${parecer.trim()}`
+      : `Sua justificativa foi recusada e os créditos seguem consumidos. Parecer: ${parecer.trim()}`,
   });
 }
 

@@ -31,7 +31,7 @@ import { PainelProfessoraPage } from './pages/professora/PainelProfessoraPage';
 import { ChamadaPage } from './pages/professora/ChamadaPage';
 import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
 import { ComissoesPage } from './pages/administracao/ComissoesPage';
-import { CobrancasPage } from './pages/administracao/CobrancasPage';
+import { VendasPage } from './pages/administracao/VendasPage';
 import { ConveniosPage } from './pages/administracao/ConveniosPage';
 import { ExperimentaisPage } from './pages/administracao/ExperimentaisPage';
 import { ExperimentalPage } from './pages/ExperimentalPage';
@@ -94,7 +94,7 @@ function App() {
                 <Route path="justificativas" element={<JustificativasPage />} />
                 <Route path="solicitacoes" element={<SolicitacoesCancelamentoPage />} />
                 <Route path="comissoes" element={<ComissoesPage />} />
-                <Route path="cobrancas" element={<CobrancasPage />} />
+                <Route path="vendas" element={<VendasPage />} />
                 <Route path="experimentais" element={<ExperimentaisPage />} />
                 <Route path="convenios" element={<ConveniosPage />} />
                 <Route path="notificacoes" element={<NotificacoesPage />} />

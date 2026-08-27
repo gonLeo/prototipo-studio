@@ -11,7 +11,7 @@ import {
 import { Badge } from '../../components/ui/Badge';
 import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
 import { formatarDataBR, hojeISO, nomeDoMes, ultimoDiaDoMes } from '../../utils/data';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda } from '../../utils/creditos';
 
 /**
  * Painel da professora (RF-PNL-04): as aulas de hoje e o resumo do período

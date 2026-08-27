@@ -5,7 +5,7 @@ Migração do protótipo do escopo v1.0 (contrato com mensalidade recorrente) pa
 O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0, continua em [PROGRESSO.md](./PROGRESSO.md).
 
 - [x] Etapa 1 — Documento de escopo e configuração base do modelo de créditos
-- [ ] Etapa 2 — Carteira de créditos e venda avulsa (a virada)
+- [x] Etapa 2 — Carteira de créditos e venda avulsa (a virada)
 - [ ] Etapa 3 — Trancamento e reembolso
 - [ ] Etapa 4 — Aulas excepcionais (M9, módulo novo)
 - [ ] Etapa 5 — Agendamento, cancelamento e presença sobre créditos
@@ -74,3 +74,95 @@ O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0,
 
 - **Divergência interna do documento v2.0**: as referências cruzadas entre capítulos estão deslocadas em relação à numeração real. O capítulo 2 remete aos "requisitos do capítulo 5" quando eles estão no capítulo 4; o capítulo 1 remete ao "capítulo 12" para as evoluções, que estão no 11, e ao "capítulo 14" para os pontos em aberto, que estão no 13. A conversão para Markdown preservou o texto como está — não cabe ao protótipo corrigir o documento da cliente. Vale sinalizar à FGC Digital na próxima revisão.
 - **Quatro erros de tipagem preexistentes em `src/hooks/useAlunas.ts`**, anteriores a esta etapa e não introduzidos por ela: `AlunaComDetalhes.contrato` é declarado como obrigatório, mas a busca pode não encontrar contrato algum. Aparecem em `npm run build` (que roda `tsc -b`) e não em `npm run dev`, que é como o protótipo vem sendo validado. Não foram corrigidos aqui porque o arquivo é reescrito na Etapa 2, quando o contrato deixa de existir — o erro morre junto. `npx vite build` compila e o protótipo roda normalmente.
+
+---
+
+## Etapa 2 — o que foi entregue
+
+**A carteira de créditos e a venda com pagamento único substituíram o contrato e a cobrança recorrente.** É a virada do modelo comercial: contrato, mensalidade, inadimplência, alteração de plano, suspensão e bolsa parcial deixaram de existir no protótipo. A partir daqui, tudo que a aluna faz gasta crédito.
+
+### O modelo de dados mudou de núcleo
+
+- **Entidades removidas** (`src/types/domain.ts`, `seed.json`, repositórios e chaves estrangeiras do reset): `Contrato`, `HistoricoPlano`, `HistoricoBolsa`, `Pausa`, `Cobranca` e `TentativaCobranca`.
+- **Entidades novas**: `Carteira`, `MovimentoCredito` e `Venda`.
+- **`Pacote`** perdeu os campos-ponte da Etapa 1 e ficou só com nome, créditos, validade em dias e valor.
+- **`Aluna`** perdeu `percentualBolsa` e ganhou `pacoteConcedidoId`; `SituacaoAluna` passou a ser apenas `ativa`, `trancada` e `aguardando_aceite` — ter ou não pacote é leitura da carteira, não estado do cadastro (RF-CRE-11).
+- **`Agendamento`** ganhou `creditosReservados`, congelado no momento da reserva: alterar o custo da categoria depois não pode mudar o que já foi reservado.
+
+### M3 — Carteira de créditos
+
+- **`src/utils/creditos.ts`** (no lugar de `utils/contrato.ts`): saldo disponível, leitura de status, prévia de compra e formatação. Cálculo puro, conferível.
+- **`src/hooks/carteiraDeCreditos.ts`**: ativação, reserva, liberação, consumo, consumo direto, estorno, expiração, ajuste administrativo e a rotina de encerramento. **Toda escrita de saldo passa por `aplicarMovimento`**, que grava o `MovimentoCredito` na mesma operação — é o que mantém o saldo reconstituível a partir do extrato (RNF-07).
+- **Status derivado, não persistido**: "Finalizando" coexiste com "Ativo" (seção 4.3.3 do escopo) e é calculado pelos limiares configuráveis. Uma carteira vencida já aparece como expirada em todas as telas mesmo antes de a rotina consolidar o encerramento.
+- **Renovação antecipada** com a regra do PA-10: os créditos somam e a validade passa a ser a **mais distante** entre a atual e a do pacote comprado. A prévia diz explicitamente quando a validade vigente foi mantida.
+- **Ajuste administrativo** (RF-CRE-09): conceder, estornar e prorrogar, com motivo obrigatório. Conceder ou prorrogar em carteira encerrada **reabre** a carteira — é justamente o caso que o requisito prevê.
+- **Bolsa integral** (RF-BOL-02/03): a concessão cria uma venda de valor zero, sem gateway, e a carteira é reposta automaticamente pela rotina quando encerra.
+
+### M12 — Vendas e pagamentos
+
+- **`src/hooks/vendas.ts`** (no lugar de `cobrancas.ts`): venda de pacote, confirmação pelo gateway, venda mantida pendente, cancelamento com motivo, registro manual fora do gateway, venda da aula experimental, histórico por aluna e resumo por situação.
+- **`src/services/gatewayPagamento.ts`** reescrito: pagamento único com forma e parcelas, e estorno para o reembolso da Etapa 3. Continua determinístico — aprova sempre, exceto na venda marcada para recusar.
+- **Créditos, validade e valor ficam congelados na venda**: alterar o catálogo depois não altera uma compra já feita.
+- A **venda da aula experimental** entra como `tipo: 'aula_experimental'`, sem pacote e sem créditos, para que a receita do período inclua o que foi cobrado à parte.
+
+### M2 — Cadastro de alunas
+
+- **`src/hooks/cadastroDeAlunas.ts`** (o que sobrou de `contratosDeAluna.ts`): cadastro administrativo, matrícula pelo site, compra por aluna existente, concessão e revogação de bolsa.
+- **Cadastro administrativo** deixa a venda **pendente** e a carteira aguardando ativação; a aluna paga no primeiro acesso. Bolsista não gera cobrança nenhuma.
+- **Matrícula pelo site** confirma o pagamento dentro do fluxo e a carteira nasce ativa.
+- **A carteira é ativada em `liberarAcessoDaAluna`**, não na confirmação do pagamento: o RF-CRE-01 exige as três condições juntas — pagamento confirmado, termo aceito e anamnese preenchida. É também daí que a validade passa a correr.
+
+### Telas
+
+- **Cobranças → Vendas**: totais por situação, confirmação de pagamento, reenvio de link, cancelamento com motivo, simulação de recusa do gateway e exportação. O botão **"Rodar rotina de carteiras"** dispara o encerramento automático e a renovação das bolsistas.
+- **Ficha da aluna** reescrita: carteira com as três dimensões do saldo, extrato de créditos, histórico de pacotes, histórico de compras e as ações de comprar pacote, registrar venda manual, ajustar créditos e conceder bolsa.
+- **Painel da aluna** reescrito: saldo disponível, reservado e utilizado, validade, aviso de "Finalizando", compra de pacote com prévia, próximas aulas, frequência e histórico de compras.
+- **Lista de alunas**: filtros do RF-ALU-10 (com pacote ativo, sem pacote ativo, trancada, aguardando aceite, pacote a vencer, bolsistas), colunas de créditos e validade, e o status da carteira.
+- **Matrícula pelo site**: pacote em créditos, forma de pagamento com parcelamento e resumo com a validade projetada.
+- **Grade da aluna**: o custo em créditos aparece em cada aula (RF-AGD-01) e o resumo de saldo continua persistente na tela (RF-AGD-02).
+- **Painel administrativo**: alunas com pacote ativo, receita confirmada e pendente, créditos em circulação e pacotes a vencer. "Cobranças em atraso" virou "Vendas aguardando pagamento".
+- **Pacotes** e **Parâmetros** perderam os campos e as linhas do modelo antigo.
+
+### Ciclo de créditos ligado ponta a ponta
+
+- **Agendamento** reserva os créditos da categoria (RF-AGD-04, RF-CRE-03) e valida saldo, validade e trancamento.
+- **Cancelamento pela aluna** libera a reserva dentro da antecedência e a converte em consumo fora dela (RF-CAN-01/02).
+- **Chamada finalizada** converte reservado em utilizado (RF-PRE-04, RF-CRE-05), uma única vez — a correção reescreve a presença sem cobrar de novo.
+- **Justificativa aprovada** estorna os créditos consumidos (RF-JUS-04).
+- **Cancelamento pelo studio** libera a reserva e prorroga a validade da carteira, de forma cumulativa por ocorrência cancelada (PA-11).
+
+### Decisões desta etapa
+
+- **Toda escrita de saldo grava o movimento na mesma função.** `aplicarMovimento` é o único caminho que altera os totais da carteira. Sem isso, extrato e saldo divergiriam na primeira regra que esquecesse de registrar, e o RNF-07 — "o saldo é sempre reconstituível a partir do histórico de movimentos" — deixaria de valer na prática.
+- **O encerramento da carteira é derivado na leitura e consolidado por uma rotina explícita.** Carregar uma tela nunca escreve no banco (regra do README), então `lerCarteira` calcula a situação de hoje e as telas mostram a carteira vencida como expirada mesmo antes de a rotina rodar. O que a rotina faz é gravar a situação, anular os créditos remanescentes e conceder a carteira nova da bolsista. É o mesmo padrão que a rotina financeira tinha na Fase 6.
+- **`aguardando_ativacao` entrou como situação da carteira**, embora a seção 7 do escopo liste só ativa, consumida e expirada. O RF-CRE-01 descreve exatamente esse estado — os créditos existem mas não permitem agendamento — e sem ele a carteira comprada e ainda não liberada seria indistinguível de uma ativa.
+- **O agendamento guarda quantos créditos reservou.** Ler o custo da categoria de novo no cancelamento devolveria a quantidade errada se a administração tivesse alterado o custo no meio do caminho.
+- **A venda do cadastro administrativo nasce pendente sem acionar o gateway** (`manterPendente`), em vez de nascer marcada para recusar. As duas alternativas deixam a venda pendente, mas só a primeira diz a verdade sobre o motivo.
+- **"Nenhum pacote ativo" é a única mensagem**, tanto para carteira consumida quanto para vencida, em todas as telas — é o que o RF-CRE-11 determina.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. Entrar como **Camila Duarte** → Administração. O painel mostra 2 alunas com pacote ativo, R$ 630,00 de receita confirmada, 10 créditos em circulação, 1 pacote a vencer e 1 venda aguardando pagamento.
+3. **Alunas**: os filtros novos funcionam. **Aline Martins** aparece como "Nenhum pacote ativo" (carteira expirada) e **Patrícia Lima** como "Finalizando" (1 crédito restante) — a distinção entre consumida e vencida não existe em lugar nenhum da interface.
+4. **Ficha da Larissa Prado**: carteira com 9 disponíveis, 2 reservados, 1 utilizado, validade 08/11/2026. O extrato lista a concessão, as reservas e o consumo do cancelamento fora do prazo. O histórico de pacotes mostra a carteira Starter anterior, já consumida.
+5. **Renovação antecipada com a regra do PA-10**: na ficha da Larissa, "Comprar pacote" e escolher **Starter**. A prévia mostra 13 créditos resultantes e avisa que a validade atual (08/11/2026, mais distante que os 45 dias do Starter) foi **mantida**. Confirme e veja a concessão entrar no extrato.
+6. **Ajustar créditos**: conceder 2 créditos com motivo e conferir o movimento de ajuste no extrato. Tente estornar mais créditos do que os utilizados — deve recusar.
+7. **Vendas**: a venda pendente da Juliana Rocha está marcada como "Gateway simulando recusa". Clique em **"Aprovar no gateway"** e depois em **"Confirmar pagamento"** — a carteira dela nasce com 12 créditos. Ou cancele a venda com motivo.
+8. **Rodar rotina de carteiras**: encerra a carteira expirada da Aline (2 créditos perdidos, registrados como expiração no extrato) e, havendo bolsista com carteira encerrada, concede a carteira nova.
+9. Entrar como **Larissa Prado** (Aluna): o painel traz o saldo em três dimensões e a compra de pacote com a mesma prévia. **Grade disponível** mostra o custo em créditos de cada aula. Agende uma — o disponível cai 1 e o reservado sobe 1.
+10. Entrar como **Fernanda Alves** (bolsista, aguardando aceite): o primeiro acesso termina no aceite do termo, **sem passo de pagamento**, e a carteira de 4 créditos é ativada na hora, com a validade contada dali.
+11. **Chamada** (Administração, pelo cartão de chamadas não finalizadas, ou pelo painel da professora): finalize a chamada de 13/08 da DANÇA. O crédito reservado da Larissa vira utilizado, com o movimento "Aula realizada em 13/08/2026" no extrato.
+12. **Matrícula pública** (`/matricula`): escolha um pacote, veja a validade projetada no resumo, selecione cartão parcelado e conclua — a carteira nasce ativa e a primeira aula pode ser agendada no mesmo fluxo.
+
+### Verificação executada
+
+O ciclo completo foi percorrido no navegador antes da entrega: compra com renovação antecipada (validade mantida pela regra do PA-10), agendamento reservando crédito, finalização da chamada convertendo a reserva em consumo, e **"Resetar protótipo"** restaurando as cinco carteiras, sete vendas e treze movimentos com todas as chaves estrangeiras traduzidas. `tsc` sem erros, `vite build` compilando, `oxlint` apenas com os três avisos preexistentes de fast-refresh.
+
+Os quatro erros de tipagem que existiam em `src/hooks/useAlunas.ts` desde antes da migração desapareceram: o arquivo foi reescrito nesta etapa, e o `Contrato` que os causava não existe mais.
+
+### Observações registradas durante a etapa
+
+- **O texto do termo de aceite foi reescrito** (`src/data/anamnese.ts` e o backfill): saiu a cláusula de cobrança mensal recorrente, entraram as cláusulas de créditos e validade, e uma cláusula de reembolso alinhada ao RF-REE-01. O termo definitivo continua sendo responsabilidade da cliente (capítulo 12 do escopo) — este é o texto provisório do protótipo.
+- **O catálogo de eventos de notificação foi limpo**: saíram os eventos de cobrança, inadimplência, aviso de término de contrato, alteração de plano e encerramento de contrato; entrou a confirmação de compra. Os eventos de pacote finalizando, pacote encerrado, alocação em aula excepcional e reembolso aplicado entram na Etapa 7, junto com o restante do M16.
+- **O trancamento ainda não existe como operação**: a situação `trancada` da aluna já bloqueia o agendamento e a interface já responde a ela, mas a entidade `Trancamento` e a tela de concessão são a Etapa 3.

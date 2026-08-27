@@ -1,22 +1,23 @@
 import {
   agendamentoRepositorio,
   alunaRepositorio,
-  cobrancaRepositorio,
+  carteiraRepositorio,
   comissaoRepositorio,
-  contratoRepositorio,
   justificativaRepositorio,
   modalidadeRepositorio,
   ocorrenciaSessaoRepositorio,
+  pacoteRepositorio,
   professoraRepositorio,
   sessaoRepositorio,
   solicitacaoCancelamentoRepositorio,
   usuarioRepositorio,
+  vendaRepositorio,
 } from '../services/repositorios';
-import type { Cobranca } from '../types/domain';
-import { diferencaEmDias, hojeISO, somarDias } from '../utils/data';
-import { estaEmAberto, valorAtualizadoDaCobranca } from '../utils/financeiro';
+import { hojeISO, somarDias } from '../utils/data';
+import { lerCarteira } from '../utils/creditos';
 import { sessaoOcorreEm } from '../utils/grade';
 import { chamadasPendentes } from './chamadaDeAulas';
+import { limiaresFinalizando } from './carteiraDeCreditos';
 import type { PeriodoDeApuracao } from './comissoes';
 
 /**
@@ -26,14 +27,14 @@ import type { PeriodoDeApuracao } from './comissoes';
  * as telas de operação usam, para que painel e listagem nunca divirjam.
  */
 
-/** Janela usada em "contratos a vencer" e na projeção de ocupação. */
+/** Janela usada na projeção de ocupação. */
 const DIAS_DE_PROJECAO = 30;
 
 export interface PendenciasDeAcao {
   solicitacoesDeCancelamento: number;
   justificativas: number;
   chamadasNaoFinalizadas: number;
-  cobrancasEmAtraso: number;
+  vendasPendentes: number;
   /** Soma de tudo — se for zero, não há nada exigindo ação agora. */
   total: number;
 }
@@ -44,10 +45,10 @@ export interface PendenciasDeAcao {
  * dos indicadores, para que solicitação e justificativa não fiquem paradas.
  */
 export async function pendenciasDeAcao(): Promise<PendenciasDeAcao> {
-  const [solicitacoes, justificativas, cobrancas, pendentesDeChamada] = await Promise.all([
+  const [solicitacoes, justificativas, vendas, pendentesDeChamada] = await Promise.all([
     solicitacaoCancelamentoRepositorio.listar(),
     justificativaRepositorio.listar(),
-    cobrancaRepositorio.listar(),
+    vendaRepositorio.listar(),
     chamadasPendentes(),
   ]);
 
@@ -55,7 +56,7 @@ export async function pendenciasDeAcao(): Promise<PendenciasDeAcao> {
     solicitacoesDeCancelamento: solicitacoes.filter((s) => s.situacao === 'pendente').length,
     justificativas: justificativas.filter((j) => j.situacao === 'pendente').length,
     chamadasNaoFinalizadas: pendentesDeChamada.length,
-    cobrancasEmAtraso: cobrancas.filter((c) => c.situacao === 'atrasada' || c.situacao === 'falha').length,
+    vendasPendentes: vendas.filter((v) => v.situacao === 'pendente').length,
   };
 
   return {
@@ -64,53 +65,69 @@ export async function pendenciasDeAcao(): Promise<PendenciasDeAcao> {
       pendencias.solicitacoesDeCancelamento +
       pendencias.justificativas +
       pendencias.chamadasNaoFinalizadas +
-      pendencias.cobrancasEmAtraso,
+      pendencias.vendasPendentes,
   };
 }
 
-export interface ContratoAVencer {
-  contratoId: string;
+export interface PacoteAVencer {
+  carteiraId: string;
   alunaId: string;
   nomeAluna: string;
-  dataTermino: string;
+  dataValidade: string;
   diasRestantes: number;
+  creditosDisponiveis: number;
+  /** Por que a carteira está em "Finalizando": poucos créditos ou vencimento próximo. */
+  motivo: 'poucos_creditos' | 'vencimento_proximo';
+}
+
+export interface CreditosEmCirculacao {
+  vendidos: number;
+  utilizados: number;
+  reservados: number;
+  disponiveis: number;
 }
 
 export interface IndicadoresAdministrativos {
-  alunasAtivas: number;
-  alunasInadimplentes: number;
-  receitaRecebida: number;
-  aReceber: number;
+  alunasComPacoteAtivo: number;
+  alunasSemPacoteAtivo: number;
+  alunasBolsistas: number;
+  receitaConfirmada: number;
+  receitaPendente: number;
+  /** Valor de tabela não faturado nas bolsas concedidas (RF-BOL-08). */
+  isentoPorBolsa: number;
   aulasRealizadas: number;
   comissaoGerada: number;
-  contratosAVencer: ContratoAVencer[];
+  creditosEmCirculacao: CreditosEmCirculacao;
+  pacotesAVencer: PacoteAVencer[];
 }
 
 /** Visão consolidada do período (RF-PNL-01). */
 export async function indicadoresAdministrativos(periodo: PeriodoDeApuracao): Promise<IndicadoresAdministrativos> {
-  const [alunas, usuarios, contratos, cobrancas, comissoes, agendamentos, ocorrencias] = await Promise.all([
+  const [alunas, usuarios, carteiras, vendas, pacotes, comissoes, agendamentos, ocorrencias, limiares] =
+    await Promise.all([
     alunaRepositorio.listar(),
     usuarioRepositorio.listar(),
-    contratoRepositorio.listar(),
-    cobrancaRepositorio.listar(),
+    carteiraRepositorio.listar(),
+    vendaRepositorio.listar(),
+    pacoteRepositorio.listar(),
     comissaoRepositorio.listar(),
     agendamentoRepositorio.listar(),
     ocorrenciaSessaoRepositorio.listar(),
+    limiaresFinalizando(),
   ]);
 
   const hoje = hojeISO();
-  const limiteDeVencimento = somarDias(hoje, DIAS_DE_PROJECAO);
 
   const noPeriodo = (data: string | undefined) =>
     data !== undefined && data >= periodo.dataInicio && data <= periodo.dataFim;
 
-  const receitaRecebida = cobrancas
-    .filter((c) => c.situacao === 'paga' && noPeriodo(c.dataQuitacao))
-    .reduce((soma, c) => soma + valorAtualizadoDaCobranca(c), 0);
-
-  const aReceber = cobrancas
-    .filter((c: Cobranca) => estaEmAberto(c))
-    .reduce((soma, c) => soma + valorAtualizadoDaCobranca(c), 0);
+  const vendasDoPeriodo = vendas.filter((v) => noPeriodo(v.data));
+  const receitaConfirmada = vendasDoPeriodo
+    .filter((v) => v.situacao === 'confirmada' && !v.bolsa)
+    .reduce((soma, v) => soma + v.valor, 0);
+  const receitaPendente = vendasDoPeriodo
+    .filter((v) => v.situacao === 'pendente')
+    .reduce((soma, v) => soma + v.valor, 0);
 
   const datasDeOcorrencia = new Map(ocorrencias.map((o) => [o.id, o.data]));
   const aulasRealizadas = agendamentos.filter(
@@ -119,33 +136,57 @@ export async function indicadoresAdministrativos(periodo: PeriodoDeApuracao): Pr
 
   const comissaoGerada = comissoes.filter((c) => noPeriodo(c.dataAula)).reduce((soma, c) => soma + c.valor, 0);
 
-  const contratosAVencer: ContratoAVencer[] = contratos
-    .filter(
-      (c) =>
-        c.situacao !== 'encerrado' &&
-        c.dataTerminoContrato >= hoje &&
-        c.dataTerminoContrato <= limiteDeVencimento,
-    )
-    .map((contrato) => {
-      const aluna = alunas.find((a) => a.id === contrato.alunaId);
+  // Carteira vigente é a que está ativa e ainda não venceu — a situação é
+  // derivada, e não lida do registro, para o painel não depender de a
+  // rotina de carteiras ter rodado (RF-CRE-10).
+  const vigentes = carteiras.filter((c) => c.situacao === 'ativa' && !lerCarteira(c, hoje, limiares).encerrada);
+  const alunasComCarteira = new Set(vigentes.map((c) => c.alunaId));
+
+  const creditosEmCirculacao: CreditosEmCirculacao = {
+    vendidos: vigentes.reduce((soma, c) => soma + c.creditosTotais, 0),
+    utilizados: vigentes.reduce((soma, c) => soma + c.creditosUtilizados, 0),
+    reservados: vigentes.reduce((soma, c) => soma + c.creditosReservados, 0),
+    disponiveis: vigentes.reduce((soma, c) => soma + lerCarteira(c, hoje, limiares).disponiveis, 0),
+  };
+
+  // REL-02: carteiras com validade próxima ou poucos créditos, para ação
+  // de renovação. É o mesmo limiar que dispara o status Finalizando.
+  const pacotesAVencer: PacoteAVencer[] = vigentes
+    .map((carteira) => ({ carteira, leitura: lerCarteira(carteira, hoje, limiares) }))
+    .filter(({ leitura }) => leitura.motivoFinalizando !== undefined)
+    .map(({ carteira, leitura }) => {
+      const aluna = alunas.find((a) => a.id === carteira.alunaId);
       return {
-        contratoId: contrato.id,
-        alunaId: contrato.alunaId,
+        carteiraId: carteira.id,
+        alunaId: carteira.alunaId,
         nomeAluna: usuarios.find((u) => u.id === aluna?.usuarioId)?.nome ?? 'Aluna removida',
-        dataTermino: contrato.dataTerminoContrato,
-        diasRestantes: diferencaEmDias(hoje, contrato.dataTerminoContrato),
+        dataValidade: carteira.dataValidade,
+        diasRestantes: leitura.diasParaVencer,
+        creditosDisponiveis: leitura.disponiveis,
+        motivo: leitura.motivoFinalizando!,
       };
     })
-    .sort((a, b) => a.dataTermino.localeCompare(b.dataTermino));
+    .sort((a, b) => a.dataValidade.localeCompare(b.dataValidade));
+
+  const bolsistas = alunas.filter((a) => a.bolsista);
+
+  // RF-BOL-08: o valor mensal não faturado é o preço de tabela do pacote
+  // concedido, que na venda de bolsa fica registrado como zero.
+  const isentoPorBolsa = vendasDoPeriodo
+    .filter((v) => v.bolsa)
+    .reduce((soma, v) => soma + (pacotes.find((p) => p.id === v.pacoteId)?.valor ?? 0), 0);
 
   return {
-    alunasAtivas: alunas.filter((a) => a.situacao === 'ativa').length,
-    alunasInadimplentes: alunas.filter((a) => a.situacao === 'inadimplente').length,
-    receitaRecebida,
-    aReceber,
+    alunasComPacoteAtivo: alunasComCarteira.size,
+    alunasSemPacoteAtivo: alunas.filter((a) => a.origem === 'direta' && !alunasComCarteira.has(a.id)).length,
+    alunasBolsistas: bolsistas.length,
+    receitaConfirmada,
+    receitaPendente,
+    isentoPorBolsa,
     aulasRealizadas,
     comissaoGerada,
-    contratosAVencer,
+    creditosEmCirculacao,
+    pacotesAVencer,
   };
 }
 

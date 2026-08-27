@@ -75,13 +75,13 @@ export interface Usuario {
 }
 
 export type OrigemAluna = 'direta' | 'convenio';
-export type SituacaoAluna =
-  | 'ativa'
-  | 'inadimplente'
-  | 'trancada'
-  | 'suspensa'
-  | 'encerrada'
-  | 'aguardando_aceite';
+
+/**
+ * A situação da aluna diz respeito ao **acesso**, não ao pacote. Ter ou não
+ * pacote ativo é uma leitura da carteira (RF-CRE-11), não um estado do
+ * cadastro — por isso não existe "sem pacote" aqui.
+ */
+export type SituacaoAluna = 'ativa' | 'trancada' | 'aguardando_aceite';
 
 export interface Aluna {
   id: ID;
@@ -91,8 +91,10 @@ export interface Aluna {
   contatoEmergencia: string;
   origem: OrigemAluna;
   situacao: SituacaoAluna;
+  /** RF-BOL-01/02: na Fase 1 a bolsa é sempre integral — não há percentual. */
   bolsista: boolean;
-  percentualBolsa?: number;
+  /** Pacote concedido à bolsista, renovado automaticamente (RF-BOL-03). */
+  pacoteConcedidoId?: ID;
 }
 
 export interface Anamnese {
@@ -144,88 +146,117 @@ export interface AceiteRegistrado {
   conteudoAceito: string;
 }
 
-export type TipoContrato = 'mensal' | 'semestral';
-export type SituacaoContrato = 'ativo' | 'trancado' | 'suspenso' | 'encerrado';
-
+/** RF-PAC-01: pacote de créditos pré-pago, com pagamento único na compra. */
 export interface Pacote {
   id: ID;
   nome: string;
-  situacao: SituacaoAtivoInativo;
-
-  // --- Escopo v2.0 (RF-PAC-01): pacote de créditos pré-pago. ---
   /** Quantidade de créditos que a compra concede à carteira. */
   creditos: number;
   /** Prazo de uso dos créditos, em dias, contado da ativação da carteira. */
   validadeDias: number;
   /** Valor único cobrado no ato da compra. Não há mensalidade. */
   valor: number;
-
-  // --- Modelo de contrato (escopo v1.0) — legado, sai na Etapa 2. ---
-  /** @deprecated Duração contratual do plano (RF-PAC-04 da v1.0). */
-  tipo: TipoContrato;
-  /** @deprecated Substituído por `valor` (pagamento único). */
-  valorMensal: number;
-  /** @deprecated Substituído por `creditos`. */
-  aulasPorCiclo: number;
-  /** @deprecated O v2.0 não limita aulas por semana (RN-10). */
-  aulasPorSemana: number;
-  /** @deprecated Não existe vigência contratual no modelo de créditos. */
-  duracaoMeses: number;
-  /** @deprecated Substituído por `validadeDias`. */
-  validadeCicloDias: number;
-  /** @deprecated O v2.0 não impõe teto de dias de trancamento (RF-TRA-03). */
-  limiteDiasPausa: number;
+  situacao: SituacaoAtivoInativo;
 }
 
-export interface Contrato {
+/**
+ * Situação da carteira (RF-CRE-10).
+ *
+ * `aguardando_ativacao` não está na lista da seção 7 do escopo, mas o
+ * RF-CRE-01 descreve exatamente esse estado: comprados os créditos, eles
+ * "existem mas não permitem agendamento" enquanto o pagamento não é
+ * confirmado, o termo não é aceito e a anamnese não é preenchida. Sem um
+ * estado próprio, essa carteira seria indistinguível de uma ativa.
+ *
+ * "Finalizando" **não** entra aqui: é informativo, coexiste com o estado
+ * ativo (RF-CRE, seção 4.3.3) e por isso é derivado em `statusDaCarteira`.
+ */
+export type SituacaoCarteira = 'aguardando_ativacao' | 'ativa' | 'consumida' | 'expirada';
+
+export type MotivoEncerramentoCarteira = 'consumo_total' | 'vencimento' | 'reembolso';
+
+/**
+ * A carteira é o saldo vivo da aluna (seção 4.3.2 do escopo). Nasce na
+ * primeira compra, é alimentada pelas seguintes e mantém sempre uma única
+ * validade corrente. A aluna tem no máximo uma carteira ativa (RF-CRE-15).
+ */
+export interface Carteira {
   id: ID;
   alunaId: ID;
+  /** Último pacote que alimentou a carteira — o que aparece como "pacote vigente". */
   pacoteId: ID;
-  tipo: TipoContrato;
-  dataInicio: string;
-  dataVencimentoCiclo: string;
-  dataTerminoContrato: string;
-  saldoAulas: number;
-  diasAdicionaisConcedidos: number;
-  situacao: SituacaoContrato;
-  percentualBolsa: number;
+  creditosTotais: number;
+  creditosUtilizados: number;
+  creditosReservados: number;
+  /** Vazia enquanto a carteira aguarda ativação (RF-CRE-01). */
+  dataAtivacao?: string;
+  dataValidade: string;
+  situacao: SituacaoCarteira;
+  motivoEncerramento?: MotivoEncerramentoCarteira;
+  dataEncerramento?: string;
+  /** Carteira concedida por bolsa: sem cobrança e renovada ao encerrar (RF-BOL-02/03). */
+  bolsa: boolean;
 }
 
-export interface HistoricoPlano {
+/** RF-CRE-08: todo movimento de crédito é registrado, e o saldo é reconstituível a partir daqui. */
+export type TipoMovimentoCredito =
+  | 'concessao'
+  | 'reserva'
+  | 'liberacao'
+  | 'consumo'
+  | 'expiracao'
+  | 'estorno'
+  | 'ajuste';
+
+export interface MovimentoCredito {
   id: ID;
-  contratoId: ID;
-  pacoteAnteriorId: ID;
-  pacoteNovoId: ID;
-  valorProporcionalApurado: number;
-  diferencaCobrada: number;
-  saldoAnterior: number;
-  saldoResultante: number;
+  carteiraId: ID;
+  tipo: TipoMovimentoCredito;
+  quantidade: number;
+  /** Descrição legível do que originou o movimento, exibida no extrato. */
+  origem: string;
+  /** Registro que originou o movimento: venda, agendamento, alocação, reembolso. */
+  referenciaId?: ID;
   autorId: ID;
+  dataHora: string;
+}
+
+/** RF-VEN-02: todo pagamento é único, no ato da compra. */
+export type FormaPagamento = 'cartao_avista' | 'cartao_parcelado' | 'pix' | 'manual';
+
+export type SituacaoVenda = 'pendente' | 'confirmada' | 'cancelada' | 'reembolsada';
+
+/** Compra de pacote (RF-VEN-01) ou da aula experimental, que é cobrada à parte (RF-EXP-04). */
+export type TipoVenda = 'pacote' | 'aula_experimental';
+
+export interface Venda {
+  id: ID;
+  alunaId: ID;
+  tipo: TipoVenda;
+  /** Ausente na venda da aula experimental, que não vende pacote. */
+  pacoteId?: ID;
+  /** Créditos e validade copiados do pacote na compra: alterar o catálogo depois não muda a venda. */
+  creditos: number;
+  validadeDias: number;
+  valor: number;
+  formaPagamento: FormaPagamento;
+  /** Só no cartão parcelado. O valor total é debitado do limite na compra (RF-VEN-02). */
+  parcelas?: number;
   data: string;
-}
-
-export interface HistoricoBolsa {
-  id: ID;
-  contratoId: ID;
-  percentualAnterior: number;
-  percentualNovo: number;
-  motivo: string;
-  autorId: ID;
-  data: string;
-}
-
-export type TipoPausa = 'trancamento' | 'suspensao';
-
-export interface Pausa {
-  id: ID;
-  contratoId: ID;
-  tipo: TipoPausa;
-  dataInicio: string;
-  dataTerminoPrevista: string;
-  dataRetornoEfetiva?: string;
-  diasCongelados: number;
-  motivo: string;
-  autorId: ID;
+  situacao: SituacaoVenda;
+  identificadorGateway?: string;
+  /** Venda de bolsa: valor zero, sem passar pelo gateway (RF-BOL-02). */
+  bolsa: boolean;
+  /** Carteira que a venda ativou ou alimentou. */
+  carteiraId?: ID;
+  motivoCancelamento?: string;
+  observacao?: string;
+  /**
+   * Só existe no protótipo: liga a recusa do gateway simulado para esta
+   * venda, para que a venda pendente e o cancelamento possam ser
+   * demonstrados de forma determinística.
+   */
+  simularFalhaGateway?: boolean;
 }
 
 export interface Sessao {
@@ -269,8 +300,16 @@ export interface Agendamento {
   origemCancelamento?: OrigemCancelamento;
   experimental: boolean;
   /**
-   * Se o cancelamento devolveu a aula ao saldo. Não está na lista de
-   * atributos essenciais da seção 8 do escopo, mas é o que distingue um
+   * Créditos reservados por este agendamento (RF-CRE-03), copiados do custo
+   * da categoria da aula no momento da reserva. Guardado no agendamento
+   * porque alterar o custo da categoria depois não pode mudar o que já foi
+   * reservado. Zero em aula experimental e em reserva de convênio, que não
+   * consomem crédito.
+   */
+  creditosReservados: number;
+  /**
+   * Se o cancelamento liberou os créditos reservados. Não está na lista de
+   * atributos essenciais da seção 7 do escopo, mas é o que distingue um
    * cancelamento dentro do prazo de um fora dele depois que a aula já
    * passou — e é essa distinção que define quem pode enviar justificativa
    * (RF-JUS-01). Sem gravar, a informação se perderia.
@@ -365,59 +404,6 @@ export interface FechamentoComissao {
   dataFechamento?: string;
   dataPagamento?: string;
   autorId: ID;
-}
-
-export type SituacaoCobranca =
-  | 'pendente'
-  | 'paga'
-  | 'falha'
-  | 'atrasada'
-  | 'cancelada';
-
-/**
- * Como a cobrança nasceu — a primeira é a da contratação (RF-FIN-01), as
- * seguintes são recorrentes (RF-FIN-02), e a aula experimental é avulsa,
- * cobrada à parte e sem contrato (RF-EXP-04/05).
- */
-export type OrigemCobranca = 'contratacao' | 'recorrencia' | 'experimental';
-
-/** RF-FIN-12: pagamento fora do gateway é registrado com a forma usada. */
-export type FormaPagamento = 'gateway' | 'pix' | 'dinheiro' | 'transferencia' | 'cartao' | 'outro';
-
-export interface Cobranca {
-  id: ID;
-  /** Ausente na cobrança avulsa da aula experimental, que não tem contrato. */
-  contratoId?: ID;
-  /** Preenchido quando a cobrança não vem de um contrato (aula experimental). */
-  alunaId?: ID;
-  valorBruto: number;
-  percentualBolsa: number;
-  valorLiquido: number;
-  multa: number;
-  juros: number;
-  dataVencimento: string;
-  situacao: SituacaoCobranca;
-  dataQuitacao?: string;
-  identificadorGateway?: string;
-  origem?: OrigemCobranca;
-  formaPagamento?: FormaPagamento;
-  observacao?: string;
-  motivoCancelamento?: string;
-  /**
-   * Só existe no protótipo: liga a recusa do gateway simulado para esta
-   * cobrança, para que retentativa, multa/juros e bloqueio por
-   * inadimplência possam ser demonstrados de forma determinística.
-   */
-  simularFalhaGateway?: boolean;
-}
-
-export interface TentativaCobranca {
-  id: ID;
-  cobrancaId: ID;
-  dataHora: string;
-  retornoGateway: string;
-  situacao: 'sucesso' | 'falha';
-  origem: 'automatica' | 'manual';
 }
 
 export type NomeConvenio = 'wellhub' | 'totalpass';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Aluna, Contrato } from '../../../types/domain';
+import type { Aluna, Carteira } from '../../../types/domain';
 import { listarAulasDisponiveis, bloqueioParaAgendar } from '../../../hooks/agendamentoDeAulas';
 import type { AulaDisponivel } from '../../../hooks/agendamentoDeAulas';
 import { Button } from '../../../components/ui/Button';
@@ -14,12 +14,14 @@ import { formatarDataBR } from '../../../utils/data';
  */
 export function ModalAgendarPelaAdministracao({
   aluna,
-  contrato,
+  carteira,
+  custoDaAula,
   onAgendar,
   onFechar,
 }: {
   aluna: Aluna;
-  contrato: Contrato | undefined;
+  carteira: Carteira | undefined;
+  custoDaAula: number;
   onAgendar: (aula: AulaDisponivel) => Promise<void>;
   onFechar: () => void;
 }) {
@@ -28,11 +30,11 @@ export function ModalAgendarPelaAdministracao({
   const [agendando, setAgendando] = useState<string | undefined>();
   const [erro, setErro] = useState<string>();
 
-  const bloqueio = bloqueioParaAgendar(aluna, contrato);
+  const bloqueio = bloqueioParaAgendar({ aluna, carteira, custoDaAula });
 
   useEffect(() => {
     let valido = true;
-    listarAulasDisponiveis({ aluna, contrato }).then((lista) => {
+    listarAulasDisponiveis({ aluna, carteira, custoDaAula }).then((lista) => {
       if (!valido) return;
       setAulas(lista);
       setCarregando(false);
@@ -40,7 +42,7 @@ export function ModalAgendarPelaAdministracao({
     return () => {
       valido = false;
     };
-  }, [aluna, contrato]);
+  }, [aluna, carteira, custoDaAula]);
 
   async function agendar(aula: AulaDisponivel) {
     setErro(undefined);
@@ -72,12 +74,15 @@ export function ModalAgendarPelaAdministracao({
   }
 
   const disponiveis = aulas.filter((aula) => aula.impedimento === undefined);
+  const creditosDisponiveis = carteira
+    ? Math.max(0, carteira.creditosTotais - carteira.creditosUtilizados - carteira.creditosReservados)
+    : 0;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-neutral-600">
-        Saldo atual: {contrato?.saldoAulas ?? 0} aula(s). O agendamento desconta uma aula e fica registrado como feito
-        pela administração.
+        Saldo disponível: {creditosDisponiveis} crédito(s). Cada aula reserva {custoDaAula} crédito(s), e o agendamento
+        fica registrado como feito pela administração.
       </p>
 
       {carregando && <p className="text-sm text-neutral-500">Carregando aulas disponíveis…</p>}
@@ -97,7 +102,8 @@ export function ModalAgendarPelaAdministracao({
                     {formatarDataBR(aula.data)} · {aula.sessao.horarioInicio}–{aula.sessao.horarioFim}
                   </p>
                   <p className="text-xs text-neutral-500">
-                    {aula.modalidade?.nome ?? 'Modalidade'} · {aula.nomeProfessora} · {aula.vagas} vaga(s)
+                    {aula.modalidade?.nome ?? 'Modalidade'} · {aula.nomeProfessora} · {aula.vagas} vaga(s) ·{' '}
+                    {aula.custoEmCreditos} crédito(s)
                   </p>
                 </div>
                 <Button onClick={() => agendar(aula)} disabled={agendando !== undefined}>

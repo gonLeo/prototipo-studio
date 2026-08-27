@@ -84,21 +84,24 @@ export function anamneseEstaCompleta(respostas: Record<string, string>): boolean
 export const TERMO_PADRAO = `TERMO DE PRESTAÇÃO DE SERVIÇOS
 
 1. OBJETO
-O studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote contratado pela aluna.
+O studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.
 
-2. PACOTE E VIGÊNCIA
-O pacote contratado dá direito à quantidade de aulas indicada no ciclo, válidas dentro do prazo de vigência informado no ato da contratação. Aulas não realizadas dentro do ciclo seguem as regras de transferência previstas no contrato.
+2. CRÉDITOS E VALIDADE
+O pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.
 
 3. AGENDAMENTO E CANCELAMENTO
-O agendamento é feito pela aluna dentro do sistema, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos fora do prazo consomem a aula do saldo.
+O agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.
 
 4. SAÚDE E CONDIÇÕES PREEXISTENTES
 A aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.
 
 5. PAGAMENTO
-A cobrança é mensal e recorrente, na data de entrada da aluna, pelo valor do pacote contratado, considerando eventual desconto concedido.
+O pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.
 
-6. IMAGEM
+6. REEMBOLSO
+O cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.
+
+7. IMAGEM
 Eventual uso de imagem em materiais do studio depende de autorização específica da aluna.
 
 Ao aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima.`;

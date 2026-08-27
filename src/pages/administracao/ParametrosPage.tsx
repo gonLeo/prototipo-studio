@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   efeitoDoParametro,
-  ehParametroLegado,
   opcoesDoParametro,
   tipoDoParametro,
   useParametros,
@@ -9,7 +8,6 @@ import {
 } from '../../hooks/useParametros';
 import type { Parametro } from '../../types/domain';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
-import { Badge } from '../../components/ui/Badge';
 
 const CLASSE_CAMPO =
   'rounded-md border border-neutral-300 px-2 py-1 text-sm text-ink focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
@@ -26,7 +24,6 @@ function LinhaParametro({
   const [salvo, setSalvo] = useState(false);
 
   const tipo = tipoDoParametro(parametro);
-  const legado = ehParametroLegado(parametro);
 
   async function salvar(valorASalvar: ValorParametro = valor) {
     setErro(undefined);
@@ -44,12 +41,7 @@ function LinhaParametro({
 
   return (
     <LinhaTabela>
-      <CelulaTabela className="font-medium text-ink">
-        <div className="flex flex-wrap items-center gap-2">
-          <span>{parametro.descricao}</span>
-          {legado && <Badge tom="aviso">Modelo antigo</Badge>}
-        </div>
-      </CelulaTabela>
+      <CelulaTabela className="font-medium text-ink">{parametro.descricao}</CelulaTabela>
       <CelulaTabela>
         <div className="flex items-center gap-2">
           {tipo === 'numero' && (
@@ -107,8 +99,7 @@ export function ParametrosPage() {
       <h1 className="mt-1 text-2xl font-semibold text-ink">Parâmetros operacionais</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Ajustável pela administração, sem depender de suporte técnico. Cada linha mostra o efeito prático do valor
-        informado. Os parâmetros marcados como <strong>modelo antigo</strong> pertencem à cobrança recorrente e saem
-        quando a carteira de créditos substituir o contrato.
+        informado.
       </p>
 
       {carregando && <p className="mt-4 text-sm text-neutral-500">Carregando…</p>}

@@ -7,8 +7,9 @@ import { Badge } from './Badge';
  *
  * O bloco de horário à direita é a área de ação: quando `onAcao` existe,
  * ele vira botão; caso contrário, fica apenas informativo. O espaço do
- * `valor` só é usado onde há preço a exibir — hoje, a aula experimental
- * (M12); nas aulas do pacote não há valor por aula.
+ * `valor` mostra o que a aula custa: o preço em reais na aula experimental
+ * (M13, cobrada à parte) ou o custo em créditos na grade da aluna
+ * (RF-AGD-01).
  */
 export function CartaoDeAula({
   titulo,
@@ -27,7 +28,7 @@ export function CartaoDeAula({
   horario: string;
   /** Linha abaixo do horário no bloco de ação: vagas, ocupação… */
   detalhe?: string;
-  /** Preço, quando a aula é cobrada à parte. */
+  /** Custo da aula: preço em reais na experimental, créditos na grade. */
   valor?: string;
   acao?: ReactNode;
   esmaecido?: boolean;

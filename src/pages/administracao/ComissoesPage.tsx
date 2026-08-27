@@ -27,7 +27,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda } from '../../utils/creditos';
 
 interface AulaDaComissao extends Comissao {
   descricaoAula: string;

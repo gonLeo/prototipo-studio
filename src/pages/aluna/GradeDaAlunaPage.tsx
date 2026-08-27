@@ -8,6 +8,7 @@ import type { AulaDisponivel } from '../../hooks/agendamentoDeAulas';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
+import { formatarCreditos } from '../../utils/creditos';
 import { NavegadorDeDatas } from '../../components/ui/NavegadorDeDatas';
 import { ResumoDoPacote } from './ResumoDoPacote';
 import { formatarDataBR, hojeISO, somarDias } from '../../utils/data';
@@ -41,7 +42,7 @@ export function GradeDaAlunaPage() {
 
     const ok = await confirmar({
       titulo: 'Confirmar agendamento',
-      mensagem: `${aula.modalidade?.nome ?? 'Aula'} em ${formatarDataBR(aula.data)}, às ${aula.sessao.horarioInicio}. Uma aula será descontada do seu saldo. Cancelamentos com ${agenda.antecedenciaHoras}h ou mais de antecedência devolvem o crédito.`,
+      mensagem: `${aula.modalidade?.nome ?? 'Aula'} em ${formatarDataBR(aula.data)}, às ${aula.sessao.horarioInicio}. ${formatarCreditos(aula.custoEmCreditos)} serão reservados do seu saldo. Cancelamentos com ${agenda.antecedenciaHoras}h ou mais de antecedência liberam os créditos reservados.`,
       textoConfirmar: 'Agendar',
     });
     if (!ok) return;
@@ -75,7 +76,7 @@ export function GradeDaAlunaPage() {
       </p>
 
       <div className="mt-4">
-        <ResumoDoPacote contrato={agenda.contrato} pacote={agenda.pacote} aluna={agenda.aluna} />
+        <ResumoDoPacote carteira={agenda.carteira} leitura={agenda.leitura} pacote={agenda.pacote} />
       </div>
 
       {agenda.bloqueio && (
@@ -108,6 +109,7 @@ export function GradeDaAlunaPage() {
               etiqueta={aula.modalidade?.nome}
               horario={`${aula.sessao.horarioInicio} - ${aula.sessao.horarioFim}`}
               detalhe={aula.vagas > 0 ? `${aula.vagas} vaga(s)` : 'Sem vagas'}
+              valor={formatarCreditos(aula.custoEmCreditos)}
               aviso={aula.impedimento}
               esmaecido={aula.impedimento !== undefined && !aula.jaAgendada}
               acao={

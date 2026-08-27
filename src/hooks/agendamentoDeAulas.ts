@@ -1,6 +1,5 @@
 import {
   agendamentoRepositorio,
-  contratoRepositorio,
   espacoRepositorio,
   excecaoCalendarioRepositorio,
   modalidadeRepositorio,
@@ -15,21 +14,29 @@ import { notificar } from '../services/notificador';
 import type {
   Agendamento,
   Aluna,
-  Contrato,
+  Carteira,
   Modalidade,
   OcorrenciaSessao,
   OrigemAgendamento,
   Sessao,
 } from '../types/domain';
 import { formatarDataBR, hojeISO, horasAteAula, somarDias } from '../utils/data';
+import { creditosDisponiveis, formatarCreditos } from '../utils/creditos';
 import { sessaoOcorreEm } from '../utils/grade';
 import { RegraNegocioError } from './useModalidades';
+import {
+  carteiraVigenteDaAluna,
+  consumirReserva,
+  custoDaAulaRegular,
+  liberarReserva,
+  reservarCreditos,
+} from './carteiraDeCreditos';
 
 /**
  * Regras de agendamento (M7) e de cancelamento pela aluna (M8.1).
  *
  * Camada de domínio, consumida pelos hooks de tela — mesmo padrão de
- * `cancelamentoDeAulas.ts` e `contratosDeAluna.ts`.
+ * `cancelamentoDeAulas.ts` e `carteiraDeCreditos.ts`.
  */
 
 export interface AulaDisponivel {
@@ -42,6 +49,8 @@ export interface AulaDisponivel {
   ocupacao: number;
   vagas: number;
   jaAgendada: boolean;
+  /** RF-AGD-01: o custo em créditos aparece em cada aula da grade. */
+  custoEmCreditos: number;
   /** Motivo pelo qual **esta** aula não pode ser agendada agora. */
   impedimento: string | undefined;
 }
@@ -59,11 +68,11 @@ async function parametroNumerico(chave: string, padrao: number): Promise<number>
   return Number.isFinite(valor) ? valor : padrao;
 }
 
-/** Janela de agendamento em dias, diferente para matriculada e convênio (RF-AGD-02). */
+/** Janela de agendamento em dias, distinta para aluna com pacote e de convênio (RF-AGD-03). */
 export async function janelaDeAgendamentoEmDias(aluna: Aluna): Promise<number> {
   return aluna.origem === 'convenio'
     ? parametroNumerico('janela_agendamento_convenio_dias', 7)
-    : parametroNumerico('janela_agendamento_matriculadas_dias', 30);
+    : parametroNumerico('janela_agendamento_com_pacote_dias', 30);
 }
 
 export async function antecedenciaMinimaEmHoras(): Promise<number> {
@@ -75,13 +84,23 @@ export async function prazoDeJustificativaEmDias(): Promise<number> {
 }
 
 /**
- * Impedimento geral da aluna para agendar (RF-AGD-04/07/08). Devolve
+ * Impedimento geral da aluna para agendar (RF-AGD-05/06/07). Devolve
  * `undefined` quando ela pode agendar.
  *
  * A tela usa isso para mostrar a mensagem na própria grade e desabilitar
  * os botões, em vez de deixar a aluna descobrir o bloqueio só ao clicar.
+ *
+ * Não há distinção visual entre carteira consumida e vencida (RF-CRE-11):
+ * nos dois casos a mensagem é a mesma, "nenhum pacote ativo", com o convite
+ * a adquirir um novo.
  */
-export function bloqueioParaAgendar(aluna: Aluna, contrato: Contrato | undefined): BloqueioDaAluna | undefined {
+export function bloqueioParaAgendar(params: {
+  aluna: Aluna;
+  carteira: Carteira | undefined;
+  custoDaAula: number;
+}): BloqueioDaAluna | undefined {
+  const { aluna, carteira, custoDaAula } = params;
+
   // RF-ALU-08: sem termo aceito e anamnese preenchida, não há agendamento.
   if (aluna.situacao === 'aguardando_aceite') {
     return {
@@ -89,9 +108,18 @@ export function bloqueioParaAgendar(aluna: Aluna, contrato: Contrato | undefined
       detalhe: 'Assine o termo e preencha a ficha de anamnese no painel para liberar o agendamento.',
     };
   }
-  if (!contrato || contrato.situacao === 'encerrado') {
-    // A aluna de convênio reserva pelo aplicativo do parceiro (M13): ela
-    // não tem pacote no studio, e dizer "contrate um pacote" seria errado.
+
+  // RF-AGD-07: durante o trancamento a aluna não visualiza a grade.
+  if (aluna.situacao === 'trancada') {
+    return {
+      motivo: 'Seu pacote está trancado.',
+      detalhe: 'Durante o trancamento não é possível agendar. Fale com a administração para registrar seu retorno.',
+    };
+  }
+
+  if (!carteira) {
+    // A aluna de convênio reserva pelo aplicativo do parceiro (M14): ela
+    // não tem pacote no studio, e dizer "compre um pacote" seria errado.
     if (aluna.origem === 'convenio') {
       return {
         motivo: 'Suas reservas acontecem pelo aplicativo do convênio.',
@@ -99,30 +127,44 @@ export function bloqueioParaAgendar(aluna: Aluna, contrato: Contrato | undefined
       };
     }
     return {
-      motivo: 'Você não tem um pacote ativo.',
-      detalhe: 'Contrate um pacote no seu painel para liberar o agendamento.',
+      motivo: 'Nenhum pacote ativo.',
+      detalhe: 'Adquira um pacote no seu painel para liberar o agendamento.',
     };
   }
-  if (contrato.situacao === 'trancado' || contrato.situacao === 'suspenso') {
+
+  // RF-AGD-05 / RF-CRE-06: saldo insuficiente para o custo da aula.
+  if (creditosDisponiveis(carteira) < custoDaAula) {
     return {
-      motivo: contrato.situacao === 'trancado' ? 'Seu contrato está trancado.' : 'Seu contrato está suspenso.',
-      detalhe: 'Durante a pausa não é possível agendar. Fale com a administração para registrar seu retorno.',
+      motivo: 'Saldo de créditos insuficiente.',
+      detalhe: `Esta aula custa ${formatarCreditos(custoDaAula)} e você tem ${formatarCreditos(creditosDisponiveis(carteira))} disponíveis. Adquira um novo pacote para continuar agendando.`,
     };
   }
-  if (aluna.situacao === 'inadimplente') {
-    return {
-      motivo: 'Há uma mensalidade em aberto.',
-      detalhe:
-        'O agendamento de novas aulas fica bloqueado até a regularização. As aulas já agendadas continuam valendo.',
-    };
-  }
-  if (contrato.saldoAulas <= 0) {
-    return {
-      motivo: 'Seu saldo de aulas acabou.',
-      detalhe: 'Aguarde a renovação do ciclo ou fale com a administração para alterar o plano.',
-    };
-  }
+
   return undefined;
+}
+
+export interface SituacaoDeAgendamento {
+  carteira: Carteira | undefined;
+  custoDaAula: number;
+  bloqueio: BloqueioDaAluna | undefined;
+  creditosDisponiveis: number;
+  dataValidade: string | undefined;
+}
+
+/** Reúne o que a grade precisa saber sobre a aluna antes de ofertar aulas. */
+export async function carregarSituacaoDeAgendamento(aluna: Aluna): Promise<SituacaoDeAgendamento> {
+  const [carteira, custoDaAula] = await Promise.all([
+    carteiraVigenteDaAluna(aluna.id),
+    custoDaAulaRegular(),
+  ]);
+
+  return {
+    carteira,
+    custoDaAula,
+    bloqueio: bloqueioParaAgendar({ aluna, carteira, custoDaAula }),
+    creditosDisponiveis: carteira ? creditosDisponiveis(carteira) : 0,
+    dataValidade: carteira?.dataValidade,
+  };
 }
 
 /**
@@ -132,9 +174,10 @@ export function bloqueioParaAgendar(aluna: Aluna, contrato: Contrato | undefined
  */
 export async function listarAulasDisponiveis(params: {
   aluna: Aluna;
-  contrato: Contrato | undefined;
+  carteira: Carteira | undefined;
+  custoDaAula: number;
 }): Promise<AulaDisponivel[]> {
-  const { aluna, contrato } = params;
+  const { aluna, carteira, custoDaAula } = params;
 
   const [sessoes, ocorrencias, agendamentos, excecoes, modalidades, professoras, usuarios, espacos, janela] =
     await Promise.all([
@@ -180,11 +223,11 @@ export async function listarAulasDisponiveis(params: {
       } else if (jaAgendada) {
         impedimento = 'Você já está agendada nesta aula.';
       } else if (ocupacao >= sessao.capacidade) {
-        // RF-AGD-06: sem vaga; lista de espera é evolução futura.
+        // RF-AGD-06: sem vaga; lista de espera é evolução futura (EV-06).
         impedimento = 'Turma lotada. A lista de espera chega em uma fase futura.';
-      } else if (contrato && data > contrato.dataTerminoContrato) {
-        // RF-AGD-05.
-        impedimento = `Depois do término do seu contrato (${formatarDataBR(contrato.dataTerminoContrato)}).`;
+      } else if (carteira && data > carteira.dataValidade) {
+        // RF-CRE-07: não se agenda para depois da validade da carteira.
+        impedimento = `Depois da validade dos seus créditos (${formatarDataBR(carteira.dataValidade)}).`;
       }
 
       disponiveis.push({
@@ -197,6 +240,7 @@ export async function listarAulasDisponiveis(params: {
         ocupacao,
         vagas: Math.max(0, sessao.capacidade - ocupacao),
         jaAgendada,
+        custoEmCreditos: custoDaAula,
         impedimento,
       });
     }
@@ -209,16 +253,21 @@ export async function listarAulasDisponiveis(params: {
 
 export interface ResultadoAgendamento {
   agendamento: Agendamento;
+  /** Créditos disponíveis depois da reserva (RF-AGD-11). */
   novoSaldo: number;
+  creditosReservados: number;
   antecedenciaMinimaHoras: number;
 }
 
 /**
- * Reserva a vaga e desconta a aula do saldo (RF-AGD-03).
+ * Reserva a vaga e reserva os créditos correspondentes (RF-AGD-04,
+ * RF-CRE-03). A reserva bloqueia o crédito, mas ainda não o consome — o
+ * consumo acontece na chamada, no cancelamento fora do prazo ou na falta
+ * sem justificativa aprovada (RF-CRE-05).
  *
- * Revalida tudo no momento da confirmação — saldo, vigência, capacidade,
- * pausa, inadimplência —, porque entre carregar a grade e confirmar o
- * cenário pode ter mudado (outra aluna ocupou a última vaga, por exemplo).
+ * Revalida tudo no momento da confirmação — saldo, validade, capacidade,
+ * trancamento —, porque entre carregar a grade e confirmar o cenário pode
+ * ter mudado (outra aluna ocupou a última vaga, por exemplo).
  */
 export async function agendarAula(params: {
   aluna: Aluna;
@@ -231,18 +280,24 @@ export async function agendarAula(params: {
 }): Promise<ResultadoAgendamento> {
   const { aluna, sessao, data, origem, autorId, experimental = false } = params;
 
-  const contratos = await contratoRepositorio.listar();
-  const contrato = contratos.find((c) => c.alunaId === aluna.id && c.situacao !== 'encerrado');
+  // A aula experimental é cobrada à parte e não consome créditos
+  // (RF-EXP-06), então ela não passa pela validação de carteira.
+  const custoDaAula = experimental ? 0 : await custoDaAulaRegular();
+  const carteira = experimental ? undefined : await carteiraVigenteDaAluna(aluna.id);
 
-  const bloqueio = bloqueioParaAgendar(aluna, contrato);
-  if (bloqueio) throw new RegraNegocioError(`${bloqueio.motivo} ${bloqueio.detalhe ?? ''}`.trim());
-  if (!contrato) throw new RegraNegocioError('Esta aluna não tem contrato ativo.');
+  if (!experimental) {
+    const bloqueio = bloqueioParaAgendar({ aluna, carteira, custoDaAula });
+    if (bloqueio) throw new RegraNegocioError(`${bloqueio.motivo} ${bloqueio.detalhe ?? ''}`.trim());
+    if (!carteira) throw new RegraNegocioError('Esta aluna não tem pacote ativo.');
 
-  if (data > contrato.dataTerminoContrato) {
-    throw new RegraNegocioError(
-      `Esta data é posterior ao término do contrato (${formatarDataBR(contrato.dataTerminoContrato)}).`,
-    );
+    // RF-CRE-07: o agendamento é bloqueado para datas posteriores à validade.
+    if (data > carteira.dataValidade) {
+      throw new RegraNegocioError(
+        `Esta data é posterior à validade dos créditos (${formatarDataBR(carteira.dataValidade)}).`,
+      );
+    }
   }
+
   if (!sessaoOcorreEm(sessao, data)) {
     throw new RegraNegocioError('Esta sessão não acontece na data escolhida.');
   }
@@ -290,11 +345,19 @@ export async function agendarAula(params: {
     dataHora: new Date().toISOString(),
     situacao: 'ativo',
     experimental,
+    creditosReservados: custoDaAula,
   });
 
-  const novoSaldo = experimental ? contrato.saldoAulas : contrato.saldoAulas - 1;
-  if (!experimental) {
-    await contratoRepositorio.atualizar(contrato.id, { saldoAulas: novoSaldo });
+  let novoSaldo = 0;
+  if (carteira && custoDaAula > 0) {
+    const atualizada = await reservarCreditos({
+      carteira,
+      quantidade: custoDaAula,
+      origem: `Agendamento de ${formatarDataBR(data)} às ${sessao.horarioInicio}`,
+      referenciaId: agendamento.id,
+      autorId,
+    });
+    novoSaldo = creditosDisponiveis(atualizada);
   }
 
   const antecedenciaMinimaHoras = await antecedenciaMinimaEmHoras();
@@ -302,7 +365,9 @@ export async function agendarAula(params: {
   await notificar({
     destinatario: { tipo: 'aluna', id: aluna.id },
     evento: 'agendamento_confirmado',
-    conteudo: `Aula agendada para ${formatarDataBR(data)} às ${sessao.horarioInicio}. Saldo restante: ${novoSaldo} aula(s). Cancelamentos com ${antecedenciaMinimaHoras}h ou mais de antecedência devolvem o crédito.`,
+    conteudo: experimental
+      ? `Aula experimental agendada para ${formatarDataBR(data)} às ${sessao.horarioInicio}.`
+      : `Aula agendada para ${formatarDataBR(data)} às ${sessao.horarioInicio}. ${formatarCreditos(custoDaAula)} reservados; saldo disponível: ${formatarCreditos(novoSaldo)}. Cancelamentos com ${antecedenciaMinimaHoras}h ou mais de antecedência liberam os créditos reservados.`,
   });
 
   if (origem === 'administracao') {
@@ -315,22 +380,24 @@ export async function agendarAula(params: {
     });
   }
 
-  return { agendamento, novoSaldo, antecedenciaMinimaHoras };
+  return { agendamento, novoSaldo, creditosReservados: custoDaAula, antecedenciaMinimaHoras };
 }
 
 export interface ResultadoCancelamento {
   creditoDevolvido: boolean;
   novoSaldo: number;
-  /** A aluna pode justificar a falta quando o crédito não voltou (RF-CAN-02, RF-JUS-01). */
+  creditosEnvolvidos: number;
+  /** A aluna pode justificar a falta quando os créditos foram consumidos (RF-CAN-02, RF-JUS-01). */
   podeJustificar: boolean;
 }
 
 /**
  * Cancelamento pela aluna (RF-CAN-01/02).
  *
- * Acima da antecedência mínima o crédito volta ao saldo; abaixo dela a
- * aula é consumida, e a aluna pode enviar justificativa. A tela avisa
- * disso **antes** de confirmar — aqui só aplicamos a regra.
+ * Acima da antecedência mínima a reserva é liberada e os créditos voltam
+ * ao disponível; abaixo dela a reserva vira consumo, e a aluna pode enviar
+ * justificativa. A tela avisa disso **antes** de confirmar — aqui só
+ * aplicamos a regra.
  */
 export async function cancelarAgendamentoDaAluna(params: {
   agendamento: Agendamento;
@@ -358,21 +425,37 @@ export async function cancelarAgendamentoDaAluna(params: {
     creditoDevolvido,
   });
 
-  const contratos = await contratoRepositorio.listar();
-  const contrato = contratos.find((c) => c.alunaId === agendamento.alunaId && c.situacao !== 'encerrado');
+  const creditosEnvolvidos = agendamento.creditosReservados ?? 0;
+  const carteira = await carteiraVigenteDaAluna(agendamento.alunaId);
 
-  let novoSaldo = contrato?.saldoAulas ?? 0;
-  if (contrato && creditoDevolvido && !agendamento.experimental) {
-    novoSaldo = contrato.saldoAulas + 1;
-    await contratoRepositorio.atualizar(contrato.id, { saldoAulas: novoSaldo });
+  let novoSaldo = carteira ? creditosDisponiveis(carteira) : 0;
+
+  if (carteira && creditosEnvolvidos > 0) {
+    const descricao = `Cancelamento da aula de ${formatarDataBR(dataAula)}`;
+    const atualizada = creditoDevolvido
+      ? await liberarReserva({
+          carteira,
+          quantidade: creditosEnvolvidos,
+          origem: `${descricao} — dentro da antecedência`,
+          referenciaId: agendamento.id,
+          autorId,
+        })
+      : await consumirReserva({
+          carteira,
+          quantidade: creditosEnvolvidos,
+          origem: `${descricao} — fora da antecedência`,
+          referenciaId: agendamento.id,
+          autorId,
+        });
+    novoSaldo = creditosDisponiveis(atualizada);
   }
 
   await notificar({
     destinatario: { tipo: 'aluna', id: agendamento.alunaId },
     evento: 'agendamento_cancelado',
     conteudo: creditoDevolvido
-      ? `Aula de ${formatarDataBR(dataAula)} cancelada. O crédito voltou ao seu saldo (${novoSaldo} aula(s)).`
-      : `Aula de ${formatarDataBR(dataAula)} cancelada com menos de ${antecedencia}h de antecedência, então a aula foi consumida. Você pode enviar uma justificativa para análise.`,
+      ? `Aula de ${formatarDataBR(dataAula)} cancelada. ${formatarCreditos(creditosEnvolvidos)} voltaram ao saldo disponível (${formatarCreditos(novoSaldo)}).`
+      : `Aula de ${formatarDataBR(dataAula)} cancelada com menos de ${antecedencia}h de antecedência, então ${formatarCreditos(creditosEnvolvidos)} foram consumidos. Você pode enviar uma justificativa para análise.`,
   });
 
   if (origemCancelamento === 'administracao') {
@@ -389,6 +472,7 @@ export async function cancelarAgendamentoDaAluna(params: {
   return {
     creditoDevolvido,
     novoSaldo,
+    creditosEnvolvidos,
     podeJustificar: !creditoDevolvido && !agendamento.experimental,
   };
 }

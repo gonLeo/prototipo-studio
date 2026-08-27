@@ -19,7 +19,7 @@ import type { Comissao, FechamentoComissao } from '../../types/domain';
 import { Badge } from '../../components/ui/Badge';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { formatarDataBR, hojeISO, nomeDoMes, ultimoDiaDoMes } from '../../utils/data';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda } from '../../utils/creditos';
 
 interface ComissaoDetalhada extends Comissao {
   descricaoAula: string;

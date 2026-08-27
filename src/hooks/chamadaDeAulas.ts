@@ -14,6 +14,7 @@ import { notificar } from '../services/notificador';
 import type { Chamada, RegistroPresenca, Sessao } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
+import { carteiraVigenteDaAluna, consumirReserva } from './carteiraDeCreditos';
 import { garantirOcorrencia } from './cancelamentoDeAulas';
 import { categoriaVigenteNaData, estornarComissaoDaChamada, lancarComissao } from './comissoes';
 
@@ -176,8 +177,8 @@ export interface ResultadoFinalizacao {
 
 /**
  * Finaliza a chamada (RF-PRE-04): grava os registros de presença, marca os
- * agendamentos como realizados e lança a comissão da professora que
- * conduziu a aula.
+ * agendamentos como realizados, **converte os créditos reservados em
+ * utilizados** e lança a comissão da professora que conduziu a aula.
  */
 export async function finalizarChamada(params: {
   sessao: Sessao;
@@ -192,7 +193,7 @@ export async function finalizarChamada(params: {
     throw new RegraNegocioError('Esta chamada já foi finalizada. Use a correção para alterá-la.');
   }
 
-  await gravarRegistrosDePresenca({ chamada, alunas, autorId });
+  await gravarRegistrosDePresenca({ chamada, dataAula, alunas, autorId });
 
   await chamadaRepositorio.atualizar(chamada.id, {
     situacao: 'finalizada',
@@ -219,11 +220,15 @@ export async function finalizarChamada(params: {
 
 async function gravarRegistrosDePresenca(params: {
   chamada: Chamada;
+  dataAula: string;
   alunas: AlunaNaChamada[];
   autorId: string;
 }): Promise<void> {
-  const { chamada, alunas, autorId } = params;
-  const registros = await registroPresencaRepositorio.listar();
+  const { chamada, dataAula, alunas, autorId } = params;
+  const [registros, agendamentos] = await Promise.all([
+    registroPresencaRepositorio.listar(),
+    agendamentoRepositorio.listar(),
+  ]);
 
   for (const aluna of alunas) {
     const situacao: RegistroPresenca['situacao'] = aluna.presente ? 'presente' : 'ausente';
@@ -245,8 +250,27 @@ async function gravarRegistrosDePresenca(params: {
       });
     }
 
-    // Presença e falta consomem a aula, que já foi descontada no
-    // agendamento — o crédito só volta por justificativa aprovada (M8).
+    // RF-CRE-05: presença confirmada e ausência sem justificativa aprovada
+    // convertem a reserva em consumo. A conversão acontece uma única vez —
+    // a correção da chamada reescreve a presença, mas não cobra de novo. O
+    // crédito só volta por justificativa aprovada (RF-JUS-04).
+    const agendamento = agendamentos.find((a) => a.id === aluna.agendamentoId);
+    const jaConsumido = agendamento?.situacao === 'realizado';
+    const creditos = agendamento?.creditosReservados ?? 0;
+
+    if (agendamento && !jaConsumido && creditos > 0) {
+      const carteira = await carteiraVigenteDaAluna(aluna.alunaId);
+      if (carteira) {
+        await consumirReserva({
+          carteira,
+          quantidade: creditos,
+          origem: `Aula realizada em ${formatarDataBR(dataAula)}`,
+          referenciaId: agendamento.id,
+          autorId,
+        });
+      }
+    }
+
     await agendamentoRepositorio.atualizar(aluna.agendamentoId, { situacao: 'realizado' });
   }
 }
@@ -280,7 +304,7 @@ export async function corrigirChamada(params: {
     throw new RegraNegocioError('Registre a justificativa do ajuste fora do prazo.');
   }
 
-  await gravarRegistrosDePresenca({ chamada, alunas, autorId });
+  await gravarRegistrosDePresenca({ chamada, dataAula, alunas, autorId });
 
   // A comissão é recalculada do zero: estorna a anterior (se ainda não foi
   // paga) e lança de novo pela categoria vigente na data da aula.

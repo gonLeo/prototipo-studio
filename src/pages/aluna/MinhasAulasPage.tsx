@@ -220,7 +220,7 @@ export function MinhasAulasPage() {
       </p>
 
       <div className="mt-4">
-        <ResumoDoPacote contrato={agenda.contrato} pacote={agenda.pacote} aluna={agenda.aluna} />
+        <ResumoDoPacote carteira={agenda.carteira} leitura={agenda.leitura} pacote={agenda.pacote} />
       </div>
 
       <h2 className="mt-6 text-sm font-semibold text-ink">Próximas aulas</h2>

@@ -3,7 +3,6 @@ import {
   agendamentoRepositorio,
   alunaRepositorio,
   chamadaRepositorio,
-  contratoRepositorio,
   justificativaRepositorio,
   modalidadeRepositorio,
   ocorrenciaSessaoRepositorio,
@@ -13,11 +12,13 @@ import {
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
-import type { Agendamento, Aluna, Contrato, Justificativa, Pacote } from '../types/domain';
+import type { Agendamento, Aluna, Carteira, Justificativa, Pacote } from '../types/domain';
 import { hojeISO, horasAteAula } from '../utils/data';
+import { lerCarteira, type LeituraDaCarteira } from '../utils/creditos';
+import { limiaresFinalizando } from './carteiraDeCreditos';
 import {
   antecedenciaMinimaEmHoras,
-  bloqueioParaAgendar,
+  carregarSituacaoDeAgendamento,
   janelaDeAgendamentoEmDias,
   listarAulasDisponiveis,
   prazoDeJustificativaEmDias,
@@ -45,8 +46,10 @@ export interface AulaDaAluna extends Agendamento {
  */
 export function useAgendaDaAluna(usuarioId: string | undefined) {
   const [aluna, setAluna] = useState<Aluna | undefined>();
-  const [contrato, setContrato] = useState<Contrato | undefined>();
+  const [carteira, setCarteira] = useState<Carteira | undefined>();
+  const [leitura, setLeitura] = useState<LeituraDaCarteira | undefined>();
   const [pacote, setPacote] = useState<Pacote | undefined>();
+  const [custoDaAula, setCustoDaAula] = useState(1);
   const [disponiveis, setDisponiveis] = useState<AulaDisponivel[]>([]);
   const [minhasAulas, setMinhasAulas] = useState<AulaDaAluna[]>([]);
   const [bloqueio, setBloqueio] = useState<BloqueioDaAluna | undefined>();
@@ -64,7 +67,6 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
 
     const [
       alunas,
-      contratos,
       pacotes,
       agendamentos,
       ocorrencias,
@@ -77,7 +79,6 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
       registrosPresenca,
     ] = await Promise.all([
       alunaRepositorio.listar(),
-      contratoRepositorio.listar(),
       pacoteRepositorio.listar(),
       agendamentoRepositorio.listar(),
       ocorrenciaSessaoRepositorio.listar(),
@@ -91,21 +92,34 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
     ]);
 
     const minha = alunas.find((a) => a.usuarioId === usuarioId);
-    const meuContrato = contratos.find((c) => c.alunaId === minha?.id && c.situacao !== 'encerrado');
     setAluna(minha);
-    setContrato(meuContrato);
-    setPacote(pacotes.find((p) => p.id === meuContrato?.pacoteId));
 
     if (!minha) {
+      setCarteira(undefined);
+      setLeitura(undefined);
+      setPacote(undefined);
       setCarregando(false);
       return;
     }
 
-    setBloqueio(bloqueioParaAgendar(minha, meuContrato));
+    const situacao = await carregarSituacaoDeAgendamento(minha);
+    const limiares = await limiaresFinalizando();
+
+    setCarteira(situacao.carteira);
+    setLeitura(situacao.carteira ? lerCarteira(situacao.carteira, hojeISO(), limiares) : undefined);
+    setPacote(pacotes.find((p) => p.id === situacao.carteira?.pacoteId));
+    setCustoDaAula(situacao.custoDaAula);
+    setBloqueio(situacao.bloqueio);
     setJanelaDias(await janelaDeAgendamentoEmDias(minha));
     setAntecedenciaHoras(await antecedenciaMinimaEmHoras());
     setPrazoJustificativaDias(await prazoDeJustificativaEmDias());
-    setDisponiveis(await listarAulasDisponiveis({ aluna: minha, contrato: meuContrato }));
+    setDisponiveis(
+      await listarAulasDisponiveis({
+        aluna: minha,
+        carteira: situacao.carteira,
+        custoDaAula: situacao.custoDaAula,
+      }),
+    );
 
     const agora = new Date();
     const aulas = agendamentos
@@ -152,8 +166,10 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
 
   return {
     aluna,
-    contrato,
+    carteira,
+    leitura,
     pacote,
+    custoDaAula,
     disponiveis,
     minhasAulas,
     proximas,

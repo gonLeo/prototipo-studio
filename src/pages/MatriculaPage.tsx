@@ -3,17 +3,19 @@ import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { usePacotes } from '../hooks/usePacotes';
 import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../hooks/useTermos';
-import { matricularAlunaPeloSite, registrarPagamentoDaPrimeiraCobranca } from '../hooks/contratosDeAluna';
-import type { DadosCadastraisAluna } from '../hooks/contratosDeAluna';
+import { matricularAlunaPeloSite } from '../hooks/cadastroDeAlunas';
+import type { DadosCadastraisAluna } from '../hooks/cadastroDeAlunas';
+import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS } from '../hooks/vendas';
 import { agendarAula, listarAulasDisponiveis } from '../hooks/agendamentoDeAulas';
+import { custoDaAulaRegular } from '../hooks/carteiraDeCreditos';
 import type { AulaDisponivel } from '../hooks/agendamentoDeAulas';
-import type { Aluna, Contrato } from '../types/domain';
+import type { Aluna, Carteira, FormaPagamento } from '../types/domain';
 import { Button } from '../components/ui/Button';
-import { TextField } from '../components/ui/Field';
+import { TextField, SelectField } from '../components/ui/Field';
 import { TermoEAnamnese } from '../components/TermoEAnamnese';
 import { perguntasNaoRespondidas } from '../data/anamnese';
-import { formatarMoeda, rotuloTipoContrato } from '../utils/contrato';
-import { formatarDataBR, hojeISO } from '../utils/data';
+import { formatarCreditos, formatarMoeda } from '../utils/creditos';
+import { formatarDataBR, somarDias, hojeISO } from '../utils/data';
 
 type Passo = 'dados' | 'pacote' | 'termo' | 'pagamento' | 'primeira_aula' | 'concluido';
 
@@ -59,11 +61,11 @@ function Trilha({ atual }: { atual: Passo }) {
  * e pagamento em fluxo único. O acesso é liberado automaticamente ao fim,
  * sem aprovação manual.
  *
- * O pagamento passa pelo gateway simulado do M11, e o fluxo termina com o
- * agendamento da primeira aula (RF-AGD-10). Quem prefere conhecer o studio
- * antes de contratar tem o caminho da aula experimental, em
- * `/experimental` (M12), que inverte a ordem: horário primeiro, pagamento
- * depois.
+ * O pagamento é único, no ato da compra, e passa pelo gateway simulado do
+ * M12; o fluxo termina com o agendamento da primeira aula (RF-AGD-10).
+ * Quem prefere conhecer o studio antes de comprar tem o caminho da aula
+ * experimental, em `/experimental` (M13), que inverte a ordem: horário
+ * primeiro, pagamento depois (RN-36).
  */
 export function MatriculaPage() {
   const { pacotes, carregando: carregandoPacotes } = usePacotes();
@@ -83,7 +85,10 @@ export function MatriculaPage() {
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string>();
   const [processando, setProcessando] = useState(false);
-  const [matriculada, setMatriculada] = useState<{ aluna: Aluna; contrato: Contrato } | undefined>();
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('pix');
+  const [parcelas, setParcelas] = useState(String(PARCELAS_DISPONIVEIS[0]));
+  const [matriculada, setMatriculada] = useState<{ aluna: Aluna; carteira: Carteira | undefined } | undefined>();
+  const [custoDaAula, setCustoDaAula] = useState(1);
   const [aulasDisponiveis, setAulasDisponiveis] = useState<AulaDisponivel[]>([]);
   const [agendandoChave, setAgendandoChave] = useState<string>();
   const [primeiraAula, setPrimeiraAula] = useState<AulaDisponivel>();
@@ -92,8 +97,16 @@ export function MatriculaPage() {
   useEffect(() => {
     if (passo !== 'primeira_aula' || !matriculada) return;
     let valido = true;
-    listarAulasDisponiveis({ aluna: matriculada.aluna, contrato: matriculada.contrato }).then((lista) => {
-      if (valido) setAulasDisponiveis(lista.filter((a) => a.impedimento === undefined));
+    custoDaAulaRegular().then((custo: number) => {
+      if (!valido) return;
+      setCustoDaAula(custo);
+      return listarAulasDisponiveis({
+        aluna: matriculada.aluna,
+        carteira: matriculada.carteira,
+        custoDaAula: custo,
+      }).then((lista) => {
+        if (valido) setAulasDisponiveis(lista.filter((a) => a.impedimento === undefined));
+      });
     });
     return () => {
       valido = false;
@@ -118,9 +131,13 @@ export function MatriculaPage() {
     setErro(undefined);
     setProcessando(true);
     try {
-      const { aluna, usuario, contrato } = await matricularAlunaPeloSite({
+      const { aluna, usuario, venda } = await matricularAlunaPeloSite({
         dados,
-        contratacao: { pacoteId, dataPrimeiraCobranca: hojeISO() },
+        compra: {
+          pacoteId,
+          formaPagamento,
+          parcelas: formaPagamento === 'cartao_parcelado' ? Number(parcelas) : undefined,
+        },
       });
       await registrarAceiteEAnamnese({
         usuarioId: usuario.id,
@@ -128,11 +145,25 @@ export function MatriculaPage() {
         termo: termoVigente,
         respostasAnamnese: respostas,
       });
-      await registrarPagamentoDaPrimeiraCobranca(contrato);
       await liberarAcessoDaAluna({ usuarioId: usuario.id, alunaId: aluna.id });
       // RF-AGD-10: com o acesso liberado, a aluna já agenda a primeira
-      // aula sem sair do fluxo.
-      setMatriculada({ aluna: { ...aluna, situacao: 'ativa' }, contrato });
+      // aula sem sair do fluxo. A carteira nasceu ativa na confirmação do
+      // pagamento, então a grade já pode reservar créditos.
+      setMatriculada({
+        aluna: { ...aluna, situacao: 'ativa' },
+        carteira: {
+          id: venda.carteiraId ?? '',
+          alunaId: aluna.id,
+          pacoteId,
+          creditosTotais: venda.creditos,
+          creditosUtilizados: 0,
+          creditosReservados: 0,
+          dataAtivacao: hojeISO(),
+          dataValidade: somarDias(hojeISO(), venda.validadeDias),
+          situacao: 'ativa',
+          bolsa: false,
+        },
+      });
       setPasso('primeira_aula');
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
@@ -255,14 +286,14 @@ export function MatriculaPage() {
                       <span>
                         <span className="block text-sm font-semibold text-ink">{pacote.nome}</span>
                         <span className="block text-xs text-neutral-500">
-                          {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana · contrato{' '}
-                          {rotuloTipoContrato(pacote.tipo).toLowerCase()} · acesso a todas as modalidades
+                          {formatarCreditos(pacote.creditos)} · validade de {pacote.validadeDias} dias · acesso a todas
+                          as modalidades
                         </span>
                       </span>
                     </span>
                     <span className="shrink-0 text-sm font-semibold text-ink">
-                      {formatarMoeda(pacote.valorMensal)}
-                      <span className="block text-right text-xs font-normal text-neutral-500">por mês</span>
+                      {formatarMoeda(pacote.valor)}
+                      <span className="block text-right text-xs font-normal text-neutral-500">pagamento único</span>
                     </span>
                   </label>
                 ))}
@@ -335,28 +366,54 @@ export function MatriculaPage() {
                     <dd className="text-ink">{pacoteEscolhido.nome}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-neutral-500">Aulas creditadas</dt>
-                    <dd className="text-ink">{pacoteEscolhido.aulasPorCiclo} aulas</dd>
+                    <dt className="text-neutral-500">Créditos</dt>
+                    <dd className="text-ink">{formatarCreditos(pacoteEscolhido.creditos)}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-neutral-500">Duração do contrato</dt>
+                    <dt className="text-neutral-500">Validade</dt>
                     <dd className="text-ink">
-                      {rotuloTipoContrato(pacoteEscolhido.tipo)} · cobrança mensal recorrente
+                      {pacoteEscolhido.validadeDias} dias · até{' '}
+                      {formatarDataBR(somarDias(hojeISO(), pacoteEscolhido.validadeDias))}
                     </dd>
                   </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-neutral-500">Primeira cobrança</dt>
-                    <dd className="text-ink">{formatarDataBR(hojeISO())}</dd>
-                  </div>
                   <div className="flex justify-between gap-2 border-t border-neutral-200 pt-1">
-                    <dt className="font-medium text-ink">Valor mensal</dt>
-                    <dd className="font-semibold text-ink">{formatarMoeda(pacoteEscolhido.valorMensal)}</dd>
+                    <dt className="font-medium text-ink">Valor a pagar</dt>
+                    <dd className="font-semibold text-ink">{formatarMoeda(pacoteEscolhido.valor)}</dd>
                   </div>
                 </dl>
               </div>
 
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SelectField
+                  label="Forma de pagamento"
+                  value={formaPagamento}
+                  onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
+                >
+                  {FORMAS_PAGAMENTO.map((forma) => (
+                    <option key={forma.valor} value={forma.valor}>
+                      {forma.rotulo}
+                    </option>
+                  ))}
+                </SelectField>
+
+                {formaPagamento === 'cartao_parcelado' && (
+                  <SelectField
+                    label="Parcelas"
+                    value={parcelas}
+                    onChange={(e) => setParcelas(e.target.value)}
+                    dica="O valor total é debitado do limite no momento da compra."
+                  >
+                    {PARCELAS_DISPONIVEIS.map((n) => (
+                      <option key={n} value={n}>
+                        {n}x de {formatarMoeda(pacoteEscolhido.valor / n)}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
+              </div>
+
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
-                Pagamento simulado neste protótipo — a integração com o gateway entra junto do módulo financeiro.
+                Pagamento simulado neste protótipo. É um pagamento único: não há mensalidade nem cobrança recorrente.
                 Ao concluir, seu acesso é liberado automaticamente.
               </p>
 
@@ -378,8 +435,9 @@ export function MatriculaPage() {
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
                 <p className="text-sm font-semibold text-emerald-900">Pagamento confirmado e acesso liberado.</p>
                 <p className="mt-1 text-sm text-emerald-800">
-                  Seu saldo de {matriculada.contrato.saldoAulas} aulas já está creditado. Escolha sua primeira aula —
-                  ou deixe para depois, pelo painel.
+                  Seus {matriculada.carteira ? formatarCreditos(matriculada.carteira.creditosTotais) : 'créditos'} já
+                  estão disponíveis. Cada aula regular custa {formatarCreditos(custoDaAula)}. Escolha sua primeira aula
+                  — ou deixe para depois, pelo painel.
                 </p>
               </div>
 
@@ -450,8 +508,9 @@ export function MatriculaPage() {
               </span>
               <h2 className="mt-3 text-lg font-semibold text-ink">Matrícula concluída</h2>
               <p className="mt-1 text-sm text-neutral-600">
-                Enviamos o acesso para <span className="font-medium text-ink">{dados.email}</span>. Seu saldo de{' '}
-                {pacoteEscolhido?.aulasPorCiclo} aulas já está creditado e o agendamento está liberado.
+                Enviamos o acesso para <span className="font-medium text-ink">{dados.email}</span>. Seus{' '}
+                {pacoteEscolhido ? formatarCreditos(pacoteEscolhido.creditos) : 'créditos'} já estão disponíveis e o
+                agendamento está liberado.
               </p>
               {primeiraAula && (
                 <p className="mt-2 text-sm font-medium text-ink">

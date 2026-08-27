@@ -5,63 +5,83 @@ import { useSessao } from '../../hooks/useSessao';
 import { useAgendaDaAluna } from '../../hooks/useAgendaDaAluna';
 import { usePacotes } from '../../hooks/usePacotes';
 import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../../hooks/useTermos';
-import { contratarPacoteParaAluna, registrarPagamentoDaPrimeiraCobranca } from '../../hooks/contratosDeAluna';
+import { comprarPacoteParaAluna, quitarVendaDoPrimeiroAcesso } from '../../hooks/cadastroDeAlunas';
 import { registrarConversao } from '../../hooks/aulasExperimentais';
-import { debitoDaAluna, pagarDebitoDaAluna } from '../../hooks/cobrancas';
-import type { DebitoDaAluna } from '../../hooks/cobrancas';
+import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS, historicoDeComprasDaAluna } from '../../hooks/vendas';
 import { useToast } from '../../hooks/useToast';
-import {
-  aceiteRegistradoRepositorio,
-  alunaRepositorio,
-  contratoRepositorio,
-  pacoteRepositorio,
-} from '../../services/repositorios';
-import type { Aluna, Contrato, Pacote } from '../../types/domain';
+import { aceiteRegistradoRepositorio, alunaRepositorio, pacoteRepositorio } from '../../services/repositorios';
+import type { Aluna, FormaPagamento, Pacote, Venda } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { SelectField } from '../../components/ui/Field';
 import { TermoEAnamnese } from '../../components/TermoEAnamnese';
 import { perguntasNaoRespondidas } from '../../data/anamnese';
-import { diferencaEmDias, formatarDataBR, hojeISO } from '../../utils/data';
-import { ehIsencaoTotal, formatarMoeda, rotuloTipoContrato, valorComBolsa } from '../../utils/contrato';
+import { formatarDataBR, hojeISO } from '../../utils/data';
+import {
+  calcularPreviaDeCompra,
+  formatarCreditos,
+  formatarMoeda,
+  rotuloFormaPagamento,
+  rotuloSituacaoVenda,
+} from '../../utils/creditos';
+import { ResumoDoPacote } from './ResumoDoPacote';
 
 /**
- * Contratação de pacote pela própria aluna (RF-EXP-07).
+ * Compra de pacote pela própria aluna (RF-CRE-16, RF-EXP-07).
  *
- * É por aqui que quem fez a aula experimental vira matriculada sem repetir
- * cadastro: o vínculo já existe, o que falta é o contrato — e a primeira
- * mensalidade segue o mesmo caminho de cobrança das demais (RF-FIN-01).
+ * É por aqui que quem fez a aula experimental adquire um pacote sem
+ * repetir cadastro, e é também por aqui que quem já tem carteira renova
+ * antecipadamente. A prévia mostra o saldo resultante e a nova validade
+ * antes de confirmar, deixando claro o efeito sobre a carteira vigente.
  */
-function ContratarPacote({
+function ComprarPacote({
   aluna,
-  onContratado,
+  carteira,
+  onComprado,
 }: {
   aluna: Aluna | undefined;
-  onContratado: (mensagem: string) => Promise<void>;
+  carteira: Parameters<typeof calcularPreviaDeCompra>[0]['carteiraVigente'];
+  onComprado: (mensagem: string, sucesso: boolean) => Promise<void>;
 }) {
   const { pacotes, carregando } = usePacotes();
   const [pacoteId, setPacoteId] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('pix');
+  const [parcelas, setParcelas] = useState(String(PARCELAS_DISPONIVEIS[0]));
   const [erro, setErro] = useState<string>();
   const [processando, setProcessando] = useState(false);
 
   const ativos = pacotes.filter((p) => p.situacao === 'ativo');
   const escolhido = ativos.find((p) => p.id === pacoteId);
+  const previa = escolhido
+    ? calcularPreviaDeCompra({ carteiraVigente: carteira, pacote: escolhido, hoje: hojeISO() })
+    : undefined;
 
-  async function contratar(e: FormEvent) {
+  async function comprar(e: FormEvent) {
     e.preventDefault();
     if (!aluna || !escolhido) return;
     setErro(undefined);
     setProcessando(true);
     try {
-      const contrato = await contratarPacoteParaAluna({
+      const { venda, confirmada, mensagem } = await comprarPacoteParaAluna({
         aluna,
-        contratacao: { pacoteId: escolhido.id, dataPrimeiraCobranca: hojeISO(), percentualBolsa: 0 },
+        compra: {
+          pacoteId: escolhido.id,
+          formaPagamento,
+          parcelas: formaPagamento === 'cartao_parcelado' ? Number(parcelas) : undefined,
+        },
         autorId: aluna.usuarioId,
       });
-      await registrarPagamentoDaPrimeiraCobranca(contrato);
-      await registrarConversao({ alunaId: aluna.id, contratoId: contrato.id, autorId: aluna.usuarioId });
-      await onContratado(
-        `Pacote contratado. ${escolhido.aulasPorCiclo} aulas creditadas e agendamento liberado.`,
-      );
+
+      if (!confirmada) {
+        setErro(`O pagamento não foi aprovado: ${mensagem}`);
+        return;
+      }
+
+      // Compra depois da aula experimental fica marcada como conversão
+      // (RF-EXP-09), para separá-la de uma compra comum no relatório.
+      await registrarConversao({ alunaId: aluna.id, vendaId: venda.id, autorId: aluna.usuarioId });
+
+      await onComprado(`Compra confirmada: ${formatarCreditos(escolhido.creditos)} adicionados à sua carteira.`, true);
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
     } finally {
@@ -71,82 +91,120 @@ function ContratarPacote({
 
   if (carregando) return <p className="mt-6 text-sm text-neutral-500">Carregando pacotes…</p>;
 
+  if (ativos.length === 0) {
+    return (
+      <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
+        O studio ainda não publicou pacotes disponíveis para compra.
+      </p>
+    );
+  }
+
   return (
-    <form onSubmit={contratar} className="mt-6 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <form onSubmit={comprar} className="mt-6 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div>
-        <h2 className="text-sm font-semibold text-ink">Contrate um pacote</h2>
-        <p className="mt-1 text-sm text-neutral-600">
-          Você ainda não tem pacote ativo. Escolha um plano para liberar o agendamento — seu cadastro é aproveitado,
-          nada precisa ser preenchido de novo.
+        <h2 className="text-sm font-semibold text-ink">
+          {carteira ? 'Adquirir mais créditos' : 'Adquirir um pacote'}
+        </h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          {carteira
+            ? 'Os créditos restantes são somados aos do novo pacote, com uma validade única.'
+            : 'Escolha um pacote para liberar o agendamento. O pagamento é único, no ato da compra.'}
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {ativos.map((pacote) => (
-          <label
-            key={pacote.id}
-            className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 ${
-              pacoteId === pacote.id ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 hover:bg-neutral-50'
-            }`}
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {ativos.map((pacote: Pacote) => {
+          const selecionado = pacote.id === pacoteId;
+          return (
+            <li key={pacote.id}>
+              <button
+                type="button"
+                onClick={() => setPacoteId(pacote.id)}
+                aria-pressed={selecionado}
+                className={`w-full rounded-lg border p-3 text-left ${
+                  selecionado
+                    ? 'border-primary-600 bg-primary-50 ring-1 ring-primary-600'
+                    : 'border-neutral-200 bg-white hover:bg-neutral-50'
+                }`}
+              >
+                <p className="text-sm font-semibold text-ink">{pacote.nome}</p>
+                <p className="mt-0.5 text-lg font-semibold text-ink">{formatarMoeda(pacote.valor)}</p>
+                <p className="text-xs text-neutral-500">
+                  {formatarCreditos(pacote.creditos)} · validade de {pacote.validadeDias} dias
+                </p>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {escolhido && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SelectField
+            label="Forma de pagamento"
+            value={formaPagamento}
+            onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
           >
-            <span className="flex items-start gap-3">
-              <input
-                type="radio"
-                name="pacote-conversao"
-                value={pacote.id}
-                checked={pacoteId === pacote.id}
-                onChange={() => setPacoteId(pacote.id)}
-                required
-                className="mt-1 h-4 w-4 border-neutral-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span>
-                <span className="block text-sm font-semibold text-ink">{pacote.nome}</span>
-                <span className="block text-xs text-neutral-500">
-                  {pacote.aulasPorCiclo} aulas por ciclo · até {pacote.aulasPorSemana} por semana · contrato{' '}
-                  {rotuloTipoContrato(pacote.tipo).toLowerCase()}
-                </span>
-              </span>
-            </span>
-            <span className="shrink-0 text-sm font-semibold text-ink">{formatarMoeda(pacote.valorMensal)}</span>
-          </label>
-        ))}
-        {ativos.length === 0 && <p className="text-sm text-neutral-500">Nenhum pacote disponível no momento.</p>}
-      </div>
+            {FORMAS_PAGAMENTO.map((forma) => (
+              <option key={forma.valor} value={forma.valor}>
+                {forma.rotulo}
+              </option>
+            ))}
+          </SelectField>
+
+          {formaPagamento === 'cartao_parcelado' && (
+            <SelectField
+              label="Parcelas"
+              value={parcelas}
+              onChange={(e) => setParcelas(e.target.value)}
+              dica="O valor total é debitado do limite no momento da compra."
+            >
+              {PARCELAS_DISPONIVEIS.map((n) => (
+                <option key={n} value={n}>
+                  {n}x de {formatarMoeda(escolhido.valor / n)}
+                </option>
+              ))}
+            </SelectField>
+          )}
+        </div>
+      )}
+
+      {previa && (
+        <div className="rounded-lg bg-neutral-50 px-3 py-2 text-sm ring-1 ring-inset ring-neutral-200">
+          <p className="text-ink">
+            Depois da compra você fica com{' '}
+            <span className="font-semibold">{formatarCreditos(previa.creditosResultantes)}</span> disponíveis, válidos
+            até <span className="font-semibold">{formatarDataBR(previa.validadeResultante)}</span>.
+          </p>
+          {previa.validadeMantida && (
+            <p className="mt-0.5 text-xs text-emerald-700">
+              Sua validade atual é mais longa que a do pacote escolhido e foi mantida — você não perde prazo comprando.
+            </p>
+          )}
+        </div>
+      )}
 
       {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
 
       <div className="flex justify-end">
         <Button type="submit" disabled={!escolhido || processando}>
-          {processando
-            ? 'Processando…'
-            : escolhido
-              ? `Pagar ${formatarMoeda(escolhido.valorMensal)} e contratar`
-              : 'Escolha um pacote'}
+          {processando ? 'Processando…' : escolhido ? `Pagar ${formatarMoeda(escolhido.valor)}` : 'Escolha um pacote'}
         </Button>
       </div>
     </form>
   );
 }
 
-/**
- * Painel da aluna.
- *
- * Enquanto o termo não é aceito e a anamnese não é preenchida, esta é a
- * única coisa que a aluna vê — o acesso ao agendamento fica bloqueado
- * (RF-ALU-08). Depois do aceite, o painel mostra pacote, saldo e validade
- * de forma persistente, como pede a decisão de UX do escopo.
- */
 export function PainelAlunaPage() {
   const { usuario, recarregarUsuario } = useSessao();
-  const { vigente: termoVigente, carregando: carregandoTermo } = useTermos();
-  const { minhasAulas } = useAgendaDaAluna(usuario?.id);
   const mostrarToast = useToast();
+  const { vigente: termoVigente, carregando: carregandoTermo } = useTermos();
+  const { carteira, leitura, pacote, minhasAulas, recarregar: recarregarAgenda } = useAgendaDaAluna(usuario?.id);
 
   const [aluna, setAluna] = useState<Aluna | undefined>();
-  const [contrato, setContrato] = useState<Contrato | undefined>();
-  const [pacote, setPacote] = useState<Pacote | undefined>();
-  const [debito, setDebito] = useState<DebitoDaAluna | undefined>();
-  const [pagandoDebito, setPagandoDebito] = useState(false);
+  const [vendaPendente, setVendaPendente] = useState<Venda | undefined>();
+  const [pacoteDaVenda, setPacoteDaVenda] = useState<Pacote | undefined>();
+  const [compras, setCompras] = useState<Venda[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const [aceito, setAceito] = useState(false);
@@ -157,18 +215,20 @@ export function PainelAlunaPage() {
   const recarregar = useCallback(async () => {
     if (!usuario) return;
     setCarregando(true);
-    const [alunas, contratos, pacotes, aceites] = await Promise.all([
+    const [alunas, pacotes, aceites] = await Promise.all([
       alunaRepositorio.listar(),
-      contratoRepositorio.listar(),
       pacoteRepositorio.listar(),
       aceiteRegistradoRepositorio.listar(),
     ]);
     const minha = alunas.find((a) => a.usuarioId === usuario.id);
-    const meuContrato = contratos.find((c) => c.alunaId === minha?.id && c.situacao !== 'encerrado');
     setAluna(minha);
-    setContrato(meuContrato);
-    setPacote(pacotes.find((p) => p.id === meuContrato?.pacoteId));
-    setDebito(minha ? await debitoDaAluna(minha.id) : undefined);
+
+    const historico = minha ? await historicoDeComprasDaAluna(minha.id) : [];
+    setCompras(historico);
+
+    const pendente = historico.find((v) => v.situacao === 'pendente' && v.tipo === 'pacote');
+    setVendaPendente(pendente);
+    setPacoteDaVenda(pacotes.find((p) => p.id === pendente?.pacoteId));
 
     // Se o aceite já foi registrado mas o acesso ainda não abriu, o que
     // falta é o pagamento: retoma desse ponto em vez de pedir o aceite de
@@ -195,10 +255,9 @@ export function PainelAlunaPage() {
   const podeConcluir = aceito && faltamRespostas.length === 0;
 
   if (precisaAceitar) {
-    // Isenta não tem cobrança a pagar (RF-BOL-03): o primeiro acesso dela
+    // Bolsista não tem nada a pagar (RF-BOL-02): o primeiro acesso dela
     // termina no aceite, sem passo de pagamento.
-    const isenta = ehIsencaoTotal(contrato?.percentualBolsa ?? 0) || !contrato;
-    const valorAPagar = pacote ? valorComBolsa(pacote.valorMensal, contrato?.percentualBolsa ?? 0) : 0;
+    const isenta = !vendaPendente;
 
     async function concluirAceite() {
       if (!termoVigente || !usuario) return;
@@ -213,14 +272,13 @@ export function PainelAlunaPage() {
 
         if (isenta) {
           await liberarAcessoDaAluna({ usuarioId: usuario.id, alunaId: aluna?.id });
-          mostrarToast('Termo aceito e anamnese registrada. Seu agendamento está liberado.', 'sucesso');
+          mostrarToast('Termo aceito e anamnese registrada. Seus créditos estão liberados.', 'sucesso');
           await recarregarUsuario();
           await recarregar();
+          await recarregarAgenda();
           return;
         }
 
-        // Aceite registrado; falta o pagamento da primeira cobrança para
-        // liberar o agendamento.
         setPassoPrimeiroAcesso('pagamento');
       } catch (erroCapturado) {
         mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
@@ -230,14 +288,15 @@ export function PainelAlunaPage() {
     }
 
     async function concluirPagamento() {
-      if (!contrato || !usuario) return;
+      if (!vendaPendente || !usuario) return;
       setEnviando(true);
       try {
-        await registrarPagamentoDaPrimeiraCobranca(contrato);
+        await quitarVendaDoPrimeiroAcesso({ venda: vendaPendente, autorId: usuario.id });
         await liberarAcessoDaAluna({ usuarioId: usuario.id, alunaId: aluna?.id });
-        mostrarToast('Pagamento confirmado. Seu agendamento está liberado.', 'sucesso');
+        mostrarToast('Pagamento confirmado. Seus créditos estão liberados.', 'sucesso');
         await recarregarUsuario();
         await recarregar();
+        await recarregarAgenda();
       } catch (erroCapturado) {
         mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
         setEnviando(false);
@@ -250,7 +309,7 @@ export function PainelAlunaPage() {
         <p className="mt-1 text-sm text-neutral-500">
           {passoPrimeiroAcesso === 'termo'
             ? 'Para liberar o agendamento, aceite o termo de prestação de serviço e preencha a ficha de anamnese.'
-            : 'Último passo: confirme o pagamento da primeira mensalidade.'}
+            : 'Último passo: confirme o pagamento do seu pacote.'}
         </p>
 
         <ol className="mt-4 flex flex-wrap items-center gap-2 text-xs">
@@ -307,9 +366,8 @@ export function PainelAlunaPage() {
                 <p className="text-xs text-neutral-500">
                   {!aceito && 'Aceite o termo'}
                   {!aceito && faltamRespostas.length > 0 && ' e '}
-                  {faltamRespostas.length > 0 &&
-                    `responda ${faltamRespostas.length} pergunta(s) de saúde`}{' '}
-                  para continuar.
+                  {faltamRespostas.length > 0 && `responda ${faltamRespostas.length} pergunta(s) de saúde`} para
+                  continuar.
                 </p>
               )}
               <Button type="submit" disabled={!podeConcluir || enviando}>
@@ -326,48 +384,39 @@ export function PainelAlunaPage() {
             className="mt-6 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
           >
             <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-              <h2 className="text-sm font-semibold text-ink">Primeira mensalidade</h2>
+              <h2 className="text-sm font-semibold text-ink">Seu pacote</h2>
               <dl className="mt-2 flex flex-col gap-1 text-sm">
                 <div className="flex justify-between gap-2">
                   <dt className="text-neutral-500">Pacote</dt>
-                  <dd className="text-ink">{pacote?.nome ?? '—'}</dd>
+                  <dd className="text-ink">{pacoteDaVenda?.nome ?? '—'}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-neutral-500">Aulas creditadas</dt>
-                  <dd className="text-ink">{contrato?.saldoAulas ?? 0} aulas</dd>
+                  <dt className="text-neutral-500">Créditos</dt>
+                  <dd className="text-ink">{vendaPendente?.creditos ?? 0}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-neutral-500">Vencimento</dt>
-                  <dd className="text-ink">{contrato ? formatarDataBR(contrato.dataInicio) : '—'}</dd>
+                  <dt className="text-neutral-500">Validade</dt>
+                  <dd className="text-ink">
+                    {vendaPendente?.validadeDias ?? 0} dias a partir da liberação do acesso
+                  </dd>
                 </div>
-                {(contrato?.percentualBolsa ?? 0) > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-neutral-500">Bolsa aplicada</dt>
-                    <dd className="text-emerald-700">{contrato?.percentualBolsa}% de desconto</dd>
-                  </div>
-                )}
                 <div className="flex justify-between gap-2 border-t border-neutral-200 pt-1">
                   <dt className="font-medium text-ink">Valor a pagar</dt>
-                  <dd className="font-semibold text-ink">
-                    {formatarMoeda(valorAPagar)}
-                    {(contrato?.percentualBolsa ?? 0) > 0 && pacote && (
-                      <span className="ml-2 text-xs font-normal text-neutral-400 line-through">
-                        {formatarMoeda(pacote.valorMensal)}
-                      </span>
-                    )}
-                  </dd>
+                  <dd className="font-semibold text-ink">{formatarMoeda(vendaPendente?.valor ?? 0)}</dd>
                 </div>
               </dl>
             </div>
 
             <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
-              Pagamento simulado neste protótipo — a integração com o gateway entra junto do módulo financeiro. O
-              agendamento é liberado assim que você confirmar.
+              Pagamento simulado neste protótipo. O agendamento é liberado assim que você confirmar — pagamento único,
+              sem mensalidade.
             </p>
 
             <div className="flex justify-end">
               <Button type="submit" disabled={enviando}>
-                {enviando ? 'Processando…' : `Pagar ${formatarMoeda(valorAPagar)} e liberar meu acesso`}
+                {enviando
+                  ? 'Processando…'
+                  : `Pagar ${formatarMoeda(vendaPendente?.valor ?? 0)} e liberar meu acesso`}
               </Button>
             </div>
           </form>
@@ -376,11 +425,8 @@ export function PainelAlunaPage() {
     );
   }
 
-  const percentualBolsa = aluna?.percentualBolsa ?? 0;
-  const pausado = contrato?.situacao === 'trancado' || contrato?.situacao === 'suspenso';
-
-  // RF-PNL-05: as próximas aulas e a frequência recente ficam no painel,
-  // junto do saldo e da situação financeira.
+  // RF-PNL-05: saldo, validade, próximas aulas, frequência e histórico de
+  // compras ficam no painel.
   const proximasAulas = minhasAulas
     .filter((aula) => aula.situacao === 'ativo' && aula.data >= hojeISO())
     .sort((a, b) => a.data.localeCompare(b.data))
@@ -390,84 +436,47 @@ export function PainelAlunaPage() {
     .sort((a, b) => b.data.localeCompare(a.data))
     .slice(0, 3);
 
+  // RF-REE-10: nenhuma menção a reembolso aparece para quem não teve um
+  // aplicado ao próprio cadastro.
+  const comprasVisiveis = compras.filter((v) => v.situacao !== 'cancelada');
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold text-ink">Olá, {usuario.nome.split(' ')[0]}</h1>
-      <p className="mt-1 text-sm text-neutral-500">Seu pacote, saldo e validade ficam sempre visíveis por aqui.</p>
+      <p className="mt-1 text-sm text-neutral-500">
+        Seu saldo de créditos e a validade ficam sempre visíveis por aqui.
+      </p>
 
-      {!contrato ? (
-        aluna?.origem === 'convenio' ? (
-          <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
-            Seu acesso é pelo convênio: a reserva das aulas acontece no aplicativo do parceiro, e o check-in é
-            validado aqui automaticamente.
-          </p>
-        ) : (
-          <ContratarPacote
-            aluna={aluna}
-            onContratado={async (mensagem) => {
-              await recarregar();
-              mostrarToast(mensagem, 'sucesso');
-            }}
-          />
-        )
+      {aluna?.origem === 'convenio' ? (
+        <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
+          Seu acesso é pelo convênio: a reserva das aulas acontece no aplicativo do parceiro, e o check-in é validado
+          aqui automaticamente.
+        </p>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Saldo de aulas</p>
-              <p className="mt-1 text-2xl font-semibold text-ink">{contrato.saldoAulas}</p>
-              <p className="text-xs text-neutral-500">{pacote?.nome ?? 'Pacote'}</p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Validade do ciclo</p>
-              <p className="mt-1 text-2xl font-semibold text-ink">
-                {formatarDataBR(contrato.dataVencimentoCiclo)}
-              </p>
-              <p className="text-xs text-neutral-500">
-                {diferencaEmDias(hojeISO(), contrato.dataVencimentoCiclo)} dias restantes
-              </p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Mensalidade</p>
-              <p className="mt-1 text-2xl font-semibold text-ink">
-                {!pacote
-                  ? '—'
-                  : ehIsencaoTotal(percentualBolsa)
-                    ? 'Isenta'
-                    : formatarMoeda(valorComBolsa(pacote.valorMensal, percentualBolsa))}
-              </p>
-              {percentualBolsa > 0 && !ehIsencaoTotal(percentualBolsa) && (
-                <p className="text-xs text-emerald-700">Com {percentualBolsa}% de bolsa</p>
-              )}
-            </div>
+          <div className="mt-6">
+            <ResumoDoPacote carteira={carteira} leitura={leitura} pacote={pacote} />
           </div>
 
-          {pausado && (
+          {aluna?.situacao === 'trancada' && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tom="aviso">{contrato.situacao === 'trancado' ? 'Contrato trancado' : 'Contrato suspenso'}</Badge>
-              </div>
+              <Badge tom="aviso">Pacote trancado</Badge>
               <p className="mt-2 text-sm text-amber-800">
-                Seu agendamento está pausado neste período. Fale com a administração para registrar o retorno.
+                Seu agendamento está pausado neste período, e a validade dos créditos fica congelada. Fale com a
+                administração para registrar o retorno.
               </p>
             </div>
           )}
 
-          {!ehIsencaoTotal(percentualBolsa) && (
-            <p className="mt-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm text-neutral-600 shadow-sm">
-              Próxima cobrança em{' '}
-              <span className="font-medium text-ink">{formatarDataBR(contrato.dataVencimentoCiclo)}</span>
-              {pacote && (
-                <>
-                  , no valor de{' '}
-                  <span className="font-medium text-ink">
-                    {formatarMoeda(valorComBolsa(pacote.valorMensal, percentualBolsa))}
-                  </span>
-                </>
-              )}
-              . A renovação é automática — para ajustar o plano, fale com a administração.
-            </p>
-          )}
+          <ComprarPacote
+            aluna={aluna}
+            carteira={carteira}
+            onComprado={async (mensagem, sucesso) => {
+              await recarregar();
+              await recarregarAgenda();
+              mostrarToast(mensagem, sucesso ? 'sucesso' : 'erro');
+            }}
+          />
 
           <section className="mt-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -493,6 +502,7 @@ export function PainelAlunaPage() {
                     </span>
                     <span className="text-neutral-500">
                       {aula.horarioInicio}–{aula.horarioFim} · {aula.nomeProfessora}
+                      {aula.creditosReservados > 0 && ` · ${formatarCreditos(aula.creditosReservados)}`}
                     </span>
                   </li>
                 ))}
@@ -518,69 +528,33 @@ export function PainelAlunaPage() {
             </section>
           )}
 
-          {debito && (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tom="erro">Mensalidade em aberto</Badge>
-                <span className="text-xs text-rose-800">
-                  {debito.cobrancas.length} cobrança(s) · {debito.diasDeAtraso} dia(s) de atraso
-                </span>
-              </div>
-
-              <dl className="mt-3 flex flex-col gap-1 text-sm">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-rose-800">Valor original</dt>
-                  <dd className="text-rose-900">{formatarMoeda(debito.valorOriginal)}</dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-rose-800">Multa</dt>
-                  <dd className="text-rose-900">{formatarMoeda(debito.multa)}</dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-rose-800">Juros de mora</dt>
-                  <dd className="text-rose-900">{formatarMoeda(debito.juros)}</dd>
-                </div>
-                <div className="flex justify-between gap-2 border-t border-rose-200 pt-1">
-                  <dt className="font-medium text-rose-900">Valor atualizado</dt>
-                  <dd className="font-semibold text-rose-900">{formatarMoeda(debito.valorAtualizado)}</dd>
-                </div>
-              </dl>
-
-              <p className="mt-3 text-sm text-rose-800">
-                {aluna?.situacao === 'inadimplente'
-                  ? 'O agendamento de novas aulas está bloqueado até a regularização — as aulas já marcadas continuam valendo. O acesso é liberado assim que o pagamento é confirmado.'
-                  : 'Regularize para não ter o agendamento bloqueado. As aulas já marcadas continuam valendo.'}
-              </p>
-
-              <div className="mt-3 flex justify-end">
-                <Button
-                  disabled={pagandoDebito}
-                  onClick={async () => {
-                    if (!aluna) return;
-                    setPagandoDebito(true);
-                    try {
-                      const { pagas, falhas } = await pagarDebitoDaAluna(aluna.id);
-                      await recarregar();
-                      mostrarToast(
-                        falhas > 0
-                          ? `${falhas} cobrança(s) recusada(s) pelo gateway. Tente novamente ou fale com a administração.`
-                          : `Pagamento de ${pagas} cobrança(s) confirmado. Seu agendamento está liberado.`,
-                        falhas > 0 ? 'erro' : 'sucesso',
-                      );
-                    } catch (erroCapturado) {
-                      mostrarToast(
-                        erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.',
-                        'erro',
-                      );
-                    } finally {
-                      setPagandoDebito(false);
-                    }
-                  }}
-                >
-                  {pagandoDebito ? 'Processando…' : `Pagar ${formatarMoeda(debito.valorAtualizado)}`}
-                </Button>
-              </div>
-            </div>
+          {comprasVisiveis.length > 0 && (
+            <section className="mt-6">
+              <h2 className="text-sm font-semibold text-ink">Histórico de compras</h2>
+              <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+                {comprasVisiveis.map((venda) => (
+                  <li key={venda.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                    <span className="text-ink">
+                      {formatarDataBR(venda.data)} ·{' '}
+                      {venda.tipo === 'aula_experimental' ? 'Aula experimental' : formatarCreditos(venda.creditos)}
+                      <span className="ml-1 text-xs text-neutral-500">
+                        {rotuloFormaPagamento(venda.formaPagamento, venda.parcelas)}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-neutral-700">
+                        {venda.bolsa ? 'Isenta' : formatarMoeda(venda.valor)}
+                      </span>
+                      {venda.situacao !== 'confirmada' && (
+                        <Badge tom={venda.situacao === 'pendente' ? 'info' : 'aviso'}>
+                          {rotuloSituacaoVenda(venda.situacao)}
+                        </Badge>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </>
       )}

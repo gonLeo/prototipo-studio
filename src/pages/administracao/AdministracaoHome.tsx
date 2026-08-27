@@ -9,7 +9,7 @@ import type { IndicadoresAdministrativos, OcupacaoDaSessao, PendenciasDeAcao } f
 import { periodoAtual } from '../../hooks/comissoes';
 import { Badge } from '../../components/ui/Badge';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda } from '../../utils/creditos';
 
 const CARTOES_OPERACAO = [
   { to: '/administracao/alunas', titulo: 'Alunas', descricao: 'Cadastro, pacote, saldo, bolsa e ficha completa.' },
@@ -26,7 +26,7 @@ const CARTOES_OPERACAO = [
     descricao: 'Pedidos das professoras: designar substituta ou cancelar.',
   },
   {
-    to: '/administracao/cobrancas',
+    to: '/administracao/vendas',
     titulo: 'Cobranças',
     descricao: 'Recebido, a receber, falhas e atrasos — com retentativa e baixa manual.',
   },
@@ -57,7 +57,7 @@ const CARTOES = [
   { to: '/administracao/professoras', titulo: 'Professoras', descricao: 'Cadastro, categoria vigente e histórico.' },
   { to: '/administracao/categorias', titulo: 'Categorias de professora', descricao: 'Nome e valor por aula.' },
   { to: '/administracao/notificacoes', titulo: 'Notificações', descricao: 'Registro de tudo que foi disparado, por evento e canal.' },
-  { to: '/administracao/auditoria', titulo: 'Trilha de auditoria', descricao: 'Quem alterou contrato, saldo, financeiro, chamada ou comissão.' },
+  { to: '/administracao/auditoria', titulo: 'Trilha de auditoria', descricao: 'Quem alterou carteira, créditos, situação financeira, chamada ou comissão.' },
 ];
 
 function GrupoDeCartoes({ titulo, cartoes }: { titulo: string; cartoes: typeof CARTOES }) {
@@ -182,9 +182,9 @@ export function AdministracaoHome() {
                 quantidade={pendencias.chamadasNaoFinalizadas}
               />
               <CartaoDePendencia
-                to="/administracao/cobrancas"
-                rotulo="Cobranças em atraso ou com falha"
-                quantidade={pendencias.cobrancasEmAtraso}
+                to="/administracao/vendas"
+                rotulo="Vendas aguardando pagamento"
+                quantidade={pendencias.vendasPendentes}
               />
             </div>
           </section>
@@ -193,21 +193,26 @@ export function AdministracaoHome() {
             <h2 className="text-sm font-semibold text-ink">Indicadores do período</h2>
             <div className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-3">
               <Indicador
-                rotulo="Alunas ativas"
-                valor={String(indicadores.alunasAtivas)}
-                detalhe={`${indicadores.alunasInadimplentes} inadimplente(s)`}
+                rotulo="Alunas com pacote ativo"
+                valor={String(indicadores.alunasComPacoteAtivo)}
+                detalhe={`${indicadores.alunasSemPacoteAtivo} sem pacote · ${indicadores.alunasBolsistas} bolsista(s)`}
               />
               <Indicador
-                rotulo="Receita recebida"
-                valor={formatarMoeda(indicadores.receitaRecebida)}
-                detalhe={`${formatarMoeda(indicadores.aReceber)} em aberto`}
+                rotulo="Receita confirmada"
+                valor={formatarMoeda(indicadores.receitaConfirmada)}
+                detalhe={`${formatarMoeda(indicadores.receitaPendente)} aguardando pagamento`}
               />
               <Indicador rotulo="Aulas realizadas" valor={String(indicadores.aulasRealizadas)} />
               <Indicador rotulo="Comissão gerada" valor={formatarMoeda(indicadores.comissaoGerada)} />
               <Indicador
-                rotulo="Contratos a vencer"
-                valor={String(indicadores.contratosAVencer.length)}
-                detalhe="Próximos 30 dias"
+                rotulo="Créditos em circulação"
+                valor={String(indicadores.creditosEmCirculacao.disponiveis)}
+                detalhe={`${indicadores.creditosEmCirculacao.reservados} reservados · ${indicadores.creditosEmCirculacao.utilizados} utilizados`}
+              />
+              <Indicador
+                rotulo="Pacotes a vencer"
+                valor={String(indicadores.pacotesAVencer.length)}
+                detalhe="Poucos créditos ou validade próxima"
               />
               <Indicador
                 rotulo="Turmas lotadas"
@@ -216,21 +221,23 @@ export function AdministracaoHome() {
               />
             </div>
 
-            {indicadores.contratosAVencer.length > 0 && (
+            {indicadores.pacotesAVencer.length > 0 && (
               <ul className="mt-3 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                {indicadores.contratosAVencer.map((contrato) => (
+                {indicadores.pacotesAVencer.map((item) => (
                   <li
-                    key={contrato.contratoId}
+                    key={item.carteiraId}
                     className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
                   >
                     <Link
-                      to={`/administracao/alunas/${contrato.alunaId}`}
+                      to={`/administracao/alunas/${item.alunaId}`}
                       className="font-medium text-primary-700 hover:text-primary-800"
                     >
-                      {contrato.nomeAluna}
+                      {item.nomeAluna}
                     </Link>
                     <span className="text-neutral-500">
-                      Vence em {formatarDataBR(contrato.dataTermino)} · {contrato.diasRestantes} dia(s)
+                      {item.motivo === 'poucos_creditos'
+                        ? `${item.creditosDisponiveis} crédito(s) restante(s)`
+                        : `Vence em ${formatarDataBR(item.dataValidade)} · ${item.diasRestantes} dia(s)`}
                     </span>
                   </li>
                 ))}

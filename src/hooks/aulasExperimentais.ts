@@ -1,7 +1,7 @@
 import {
   agendamentoRepositorio,
   alunaRepositorio,
-  contratoRepositorio,
+  vendaRepositorio,
   espacoRepositorio,
   excecaoCalendarioRepositorio,
   modalidadeRepositorio,
@@ -15,12 +15,12 @@ import {
 import { notificar } from '../services/notificador';
 import type { Agendamento, Aluna, Modalidade, Sessao, Usuario } from '../types/domain';
 import { formatarDataBR, hojeISO, horasAteAula, somarDias } from '../utils/data';
-import { formatarMoeda } from '../utils/contrato';
+import { formatarMoeda } from '../utils/creditos';
 import { sessaoOcorreEm } from '../utils/grade';
 import { RegraNegocioError } from './useModalidades';
 import { garantirOcorrencia } from './cancelamentoDeAulas';
-import { gerarCobrancaAvulsa, tentarPagamento } from './cobrancas';
-import { validarIdentificacaoUnica } from './contratosDeAluna';
+import { venderAulaExperimental } from './vendas';
+import { validarIdentificacaoUnica } from './cadastroDeAlunas';
 
 /**
  * Aula experimental (M12).
@@ -228,15 +228,10 @@ export async function agendarAulaExperimental(params: {
     ? await carregarAlunaExistente(alunaExistenteId)
     : await cadastrarInteressada(dados);
 
-  // RF-EXP-05: a vaga só é confirmada depois do pagamento aprovado.
-  const cobranca = await gerarCobrancaAvulsa({
-    alunaId: aluna.id,
-    valor: parametros.valor,
-    descricao: `Aula experimental de ${formatarDataBR(data)} às ${sessao.horarioInicio}`,
-    origem: 'experimental',
-  });
-  const pagamento = await tentarPagamento({ cobranca, origem: 'manual' });
-  if (!pagamento.sucesso) {
+  // RF-EXP-05: a vaga só é confirmada depois do pagamento aprovado. A aula
+  // experimental é cobrada à parte e não consome créditos (RF-EXP-06).
+  const pagamento = await venderAulaExperimental({ alunaId: aluna.id, autorId: usuario.id });
+  if (!pagamento.confirmada) {
     throw new RegraNegocioError(`O pagamento não foi aprovado: ${pagamento.mensagem}`);
   }
 
@@ -257,8 +252,9 @@ export async function agendarAulaExperimental(params: {
     origem: 'portal',
     dataHora: new Date().toISOString(),
     situacao: 'ativo',
-    // Aula experimental não consome saldo de pacote — ela é paga à parte.
+    // Aula experimental não consome créditos — ela é paga à parte (RF-EXP-06).
     experimental: true,
+    creditosReservados: 0,
   });
 
   await notificar({
@@ -279,7 +275,7 @@ async function carregarAlunaExistente(alunaId: string): Promise<{ aluna: Aluna; 
 }
 
 /**
- * Cadastro da interessada (RF-EXP-02): usuária e aluna **sem contrato**.
+ * Cadastro da interessada (RF-EXP-02): usuária e aluna **sem pacote**.
  * Ela entra no sistema já com acesso liberado — não há termo de pacote a
  * assinar, porque não há pacote contratado; o termo entra na conversão.
  */
@@ -303,7 +299,6 @@ async function cadastrarInteressada(dados: DadosInteressada): Promise<{ aluna: A
     // Sem pacote contratado, a aluna existe só para a experimental.
     situacao: 'ativa',
     bolsista: false,
-    percentualBolsa: 0,
   });
 
   return { aluna, usuario };
@@ -316,7 +311,7 @@ export interface AulaExperimentalRealizada {
   data: string;
   modalidade: string;
   situacao: Agendamento['situacao'];
-  /** A interessada contratou pacote depois da aula (RF-EXP-07/08). */
+  /** A interessada comprou um pacote depois da aula (RF-EXP-07/09). */
   converteu: boolean;
   dataContratacao?: string;
 }
@@ -331,9 +326,9 @@ export interface RelatorioDeConversao {
 }
 
 /**
- * Relatório de aulas experimentais e taxa de conversão em matrícula
- * (RF-EXP-08). A conversão é contada quando a aluna que fez a experimental
- * passou a ter contrato iniciado a partir da data da aula.
+ * Relatório de aulas experimentais e taxa de conversão em pacote
+ * (RF-EXP-09). A conversão é contada quando a aluna que fez a experimental
+ * comprou um pacote a partir da data da aula.
  */
 export async function relatorioDeConversao(params: {
   dataInicio: string;
@@ -341,7 +336,7 @@ export async function relatorioDeConversao(params: {
 }): Promise<RelatorioDeConversao> {
   const { dataInicio, dataFim } = params;
 
-  const [agendamentos, ocorrencias, sessoes, modalidades, alunas, usuarios, contratos, parametros] =
+  const [agendamentos, ocorrencias, sessoes, modalidades, alunas, usuarios, vendas, parametros] =
     await Promise.all([
       agendamentoRepositorio.listar(),
       ocorrenciaSessaoRepositorio.listar(),
@@ -349,7 +344,7 @@ export async function relatorioDeConversao(params: {
       modalidadeRepositorio.listar(),
       alunaRepositorio.listar(),
       usuarioRepositorio.listar(),
-      contratoRepositorio.listar(),
+      vendaRepositorio.listar(),
       parametrosExperimentais(),
     ]);
 
@@ -365,9 +360,15 @@ export async function relatorioDeConversao(params: {
     const aluna = alunas.find((a) => a.id === agendamento.alunaId);
     const usuario = usuarios.find((u) => u.id === aluna?.usuarioId);
 
-    const contrato = contratos
-      .filter((c) => c.alunaId === agendamento.alunaId && c.dataInicio >= ocorrencia.data)
-      .sort((a, b) => a.dataInicio.localeCompare(b.dataInicio))[0];
+    const compra = vendas
+      .filter(
+        (v) =>
+          v.alunaId === agendamento.alunaId &&
+          v.tipo === 'pacote' &&
+          v.situacao === 'confirmada' &&
+          v.data >= ocorrencia.data,
+      )
+      .sort((a, b) => a.data.localeCompare(b.data))[0];
 
     aulas.push({
       agendamentoId: agendamento.id,
@@ -376,8 +377,8 @@ export async function relatorioDeConversao(params: {
       data: ocorrencia.data,
       modalidade: modalidades.find((m) => m.id === sessao?.modalidadeId)?.nome ?? 'Modalidade removida',
       situacao: agendamento.situacao,
-      converteu: contrato !== undefined,
-      dataContratacao: contrato?.dataInicio,
+      converteu: compra !== undefined,
+      dataContratacao: compra?.data,
     });
   }
 
@@ -396,7 +397,7 @@ export async function relatorioDeConversao(params: {
 /** Registro de auditoria da conversão, para separar da matrícula comum. */
 export async function registrarConversao(params: {
   alunaId: string;
-  contratoId: string;
+  vendaId: string;
   autorId: string;
 }): Promise<void> {
   await registroAuditoriaRepositorio.criar({
@@ -404,6 +405,6 @@ export async function registrarConversao(params: {
     operacao: 'conversao_de_experimental',
     autorId: params.autorId,
     dataHora: new Date().toISOString(),
-    valorNovo: { alunaId: params.alunaId, contratoId: params.contratoId },
+    valorNovo: { alunaId: params.alunaId, vendaId: params.vendaId },
   });
 }

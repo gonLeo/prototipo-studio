@@ -34,7 +34,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
         { to: '/administracao/excecoes', label: 'Exceções' },
         { to: '/administracao/justificativas', label: 'Justificativas' },
         { to: '/administracao/solicitacoes', label: 'Solicitações' },
-        { to: '/administracao/cobrancas', label: 'Cobranças' },
+        { to: '/administracao/vendas', label: 'Vendas' },
         { to: '/administracao/comissoes', label: 'Comissões' },
         { to: '/administracao/experimentais', label: 'Experimentais' },
         { to: '/administracao/convenios', label: 'Convênios' },

@@ -14,10 +14,9 @@ import type {
   TermoAceite,
   AceiteRegistrado,
   Pacote,
-  Contrato,
-  HistoricoPlano,
-  HistoricoBolsa,
-  Pausa,
+  Carteira,
+  MovimentoCredito,
+  Venda,
   Sessao,
   OcorrenciaSessao,
   Agendamento,
@@ -28,8 +27,6 @@ import type {
   SolicitacaoCancelamento,
   Comissao,
   FechamentoComissao,
-  Cobranca,
-  TentativaCobranca,
   ConvenioIntegracao,
   ReservaConvenio,
   Notificacao,
@@ -52,10 +49,9 @@ export const historicoCategoriaRepositorio = criarRepositorio<HistoricoCategoria
 export const termoAceiteRepositorio = criarRepositorio<TermoAceite>('termosAceite');
 export const aceiteRegistradoRepositorio = criarRepositorio<AceiteRegistrado>('aceitesRegistrados');
 export const pacoteRepositorio = criarRepositorio<Pacote>('pacotes');
-export const contratoRepositorio = criarRepositorio<Contrato>('contratos');
-export const historicoPlanoRepositorio = criarRepositorio<HistoricoPlano>('historicoPlanos');
-export const historicoBolsaRepositorio = criarRepositorio<HistoricoBolsa>('historicoBolsas');
-export const pausaRepositorio = criarRepositorio<Pausa>('pausas');
+export const carteiraRepositorio = criarRepositorio<Carteira>('carteiras');
+export const movimentoCreditoRepositorio = criarRepositorio<MovimentoCredito>('movimentosCredito');
+export const vendaRepositorio = criarRepositorio<Venda>('vendas');
 export const sessaoRepositorio = criarRepositorio<Sessao>('sessoes');
 export const ocorrenciaSessaoRepositorio = criarRepositorio<OcorrenciaSessao>('ocorrenciasSessao');
 export const agendamentoRepositorio = criarRepositorio<Agendamento>('agendamentos');
@@ -66,8 +62,6 @@ export const justificativaRepositorio = criarRepositorio<Justificativa>('justifi
 export const solicitacaoCancelamentoRepositorio = criarRepositorio<SolicitacaoCancelamento>('solicitacoesCancelamento');
 export const comissaoRepositorio = criarRepositorio<Comissao>('comissoes');
 export const fechamentoComissaoRepositorio = criarRepositorio<FechamentoComissao>('fechamentosComissao');
-export const cobrancaRepositorio = criarRepositorio<Cobranca>('cobrancas');
-export const tentativaCobrancaRepositorio = criarRepositorio<TentativaCobranca>('tentativasCobranca');
 export const convenioIntegracaoRepositorio = criarRepositorio<ConvenioIntegracao>('conveniosIntegracao');
 export const reservaConvenioRepositorio = criarRepositorio<ReservaConvenio>('reservasConvenio');
 export const notificacaoRepositorio = criarRepositorio<Notificacao>('notificacoes');

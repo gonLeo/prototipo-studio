@@ -11,7 +11,7 @@ import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/Field';
 import { NavegadorDeDatas } from '../components/ui/NavegadorDeDatas';
 import { CartaoDeAula } from '../components/ui/CartaoDeAula';
-import { formatarMoeda } from '../utils/contrato';
+import { formatarMoeda } from '../utils/creditos';
 import { formatarDataBR, hojeISO, somarDias } from '../utils/data';
 
 type Passo = 'aula' | 'cadastro' | 'pagamento' | 'concluido';
@@ -287,7 +287,7 @@ export function ExperimentalPage() {
 
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
                 Sua vaga é confirmada assim que o pagamento for aprovado. Pagamento simulado neste protótipo, pelo
-                mesmo caminho usado nas mensalidades.
+                mesmo caminho usado nas compras de pacote.
               </p>
 
               {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}

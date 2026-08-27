@@ -14,7 +14,7 @@ import type { Chamada, Modalidade, Sessao } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { formatarDataBR } from '../../utils/data';
-import { formatarMoeda } from '../../utils/contrato';
+import { formatarMoeda } from '../../utils/creditos';
 
 /**
  * Chamada de uma aula (M9).

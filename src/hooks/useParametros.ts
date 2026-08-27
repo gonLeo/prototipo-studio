@@ -25,12 +25,6 @@ interface DefinicaoParametro {
    */
   efeito: (valor: ValorParametro) => string;
   opcoes?: OpcaoParametro[];
-  /**
-   * Parâmetro do modelo de contrato (escopo v1.0), que sai junto com a
-   * cobrança recorrente na Etapa 2 da migração. Sinalizado na tela para não
-   * ser confundido com regra vigente.
-   */
-  legado?: boolean;
 }
 
 const OPCOES_BENEFICIO_CONVERSAO: OpcaoParametro[] = [
@@ -44,7 +38,7 @@ function rotuloDoBeneficio(valor: ValorParametro): string {
 
 const DEFINICOES: Record<string, DefinicaoParametro> = {
   // --- Agendamento e cancelamento ---
-  janela_agendamento_matriculadas_dias: {
+  janela_agendamento_com_pacote_dias: {
     tipo: 'numero',
     efeito: (v) => `A aluna com pacote enxerga e agenda a grade até ${v} dias à frente.`,
   },
@@ -116,32 +110,6 @@ const DEFINICOES: Record<string, DefinicaoParametro> = {
     efeito: (v) => `O benefício de conversão precisa ser usado em até ${v} dias após a aula experimental.`,
   },
 
-  // --- Legado do modelo de contrato: sai na Etapa 2 ---
-  prazo_bloqueio_inadimplencia_dias: {
-    tipo: 'numero',
-    legado: true,
-    efeito: (v) => `Após ${v} dias sem pagamento, a aluna é marcada como inadimplente e o agendamento é bloqueado.`,
-  },
-  percentual_multa: {
-    tipo: 'numero',
-    legado: true,
-    efeito: (v) => `Cobranças em atraso recebem multa de ${v}%.`,
-  },
-  percentual_juros_mes: {
-    tipo: 'numero',
-    legado: true,
-    efeito: (v) => `Cobranças em atraso recebem juros de ${v}% ao mês.`,
-  },
-  antecedencia_aviso_vencimento_dias_1: {
-    tipo: 'numero',
-    legado: true,
-    efeito: (v) => `Primeiro aviso de término de contrato enviado ${v} dias antes do vencimento.`,
-  },
-  antecedencia_aviso_vencimento_dias_2: {
-    tipo: 'numero',
-    legado: true,
-    efeito: (v) => `Segundo aviso de término de contrato enviado ${v} dias antes do vencimento.`,
-  },
 };
 
 export function tipoDoParametro(parametro: Parametro): TipoParametro {
@@ -150,10 +118,6 @@ export function tipoDoParametro(parametro: Parametro): TipoParametro {
 
 export function opcoesDoParametro(parametro: Parametro): OpcaoParametro[] {
   return DEFINICOES[parametro.chave]?.opcoes ?? [];
-}
-
-export function ehParametroLegado(parametro: Parametro): boolean {
-  return DEFINICOES[parametro.chave]?.legado === true;
 }
 
 export function efeitoDoParametro(parametro: Parametro): string | undefined {
