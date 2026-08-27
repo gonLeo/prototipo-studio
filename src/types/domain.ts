@@ -336,6 +336,72 @@ export interface Reembolso {
   carteiraEncerrada: boolean;
 }
 
+/**
+ * Aula excepcional (M9): workshop ou aula particular, criada pela
+ * administração fora da grade recorrente. Cada ocorrência é cadastrada
+ * individualmente — não há recorrência (RF-AEX-01).
+ */
+export interface AulaExcepcional {
+  id: ID;
+  /** Define o custo em créditos da participação (RF-AEX-05). */
+  categoriaAulaId: ID;
+  nome: string;
+  data: string;
+  horarioInicio: string;
+  horarioFim: string;
+  espacoId?: ID;
+  descricao?: string;
+  situacao: 'ativa' | 'cancelada';
+  /**
+   * A administração confirmou o cadastro mesmo com o horário fora do
+   * funcionamento do studio (RF-AEX-13). Guardado para a tela poder
+   * explicar por que aquela aula está fora da faixa configurada.
+   */
+  foraDoFuncionamento?: boolean;
+  autorId: ID;
+  dataCriacao: string;
+}
+
+/**
+ * Vínculo opcional de professora a uma aula excepcional (RF-AEX-12).
+ *
+ * O valor da comissão é informado **por professora, no cadastro da aula**,
+ * e não pela categoria dela: uma aula particular remunera mais que a
+ * regular, e num workshop a quatro mãos cada professora pode receber um
+ * valor distinto.
+ */
+export interface ProfessoraDaAula {
+  id: ID;
+  aulaExcepcionalId: ID;
+  professoraId: ID;
+  valorComissao: number;
+}
+
+/** Motivos aceitos quando a participação não consome créditos (PA-12). */
+export type MotivoSemConsumo = 'pagamento_avulso' | 'convidada' | 'cortesia';
+
+/**
+ * Alocação de uma aluna em aula excepcional (RF-AEX-04).
+ *
+ * Consome os créditos **imediatamente**, sem passar pelo estado de
+ * reserva: a administração é quem aloca, e não há janela de cancelamento
+ * pela aluna que justifique segurar o crédito.
+ */
+export interface Alocacao {
+  id: ID;
+  aulaExcepcionalId: ID;
+  alunaId: ID;
+  creditosConsumidos: number;
+  /** RF-AEX-06: participação registrada sem consumo, com motivo obrigatório. */
+  consumoDispensado: boolean;
+  motivoSemConsumo?: MotivoSemConsumo;
+  situacao: 'ativa' | 'cancelada';
+  /** RF-AEX-07: o cancelamento estorna os créditos e exige motivo. */
+  motivoCancelamento?: string;
+  autorId: ID;
+  data: string;
+}
+
 export interface Sessao {
   id: ID;
   modalidadeId: ID;
@@ -407,10 +473,20 @@ export interface ExcecaoCalendario {
 
 export type SituacaoChamada = 'aberta' | 'finalizada';
 
+/**
+ * A chamada cobre uma ocorrência da grade **ou** uma aula excepcional
+ * (RF-AEX-10): workshop e aula particular têm chamada como qualquer outra
+ * aula. Exatamente um dos dois vínculos é preenchido.
+ */
 export interface Chamada {
   id: ID;
-  ocorrenciaSessaoId: ID;
-  professoraId: ID;
+  ocorrenciaSessaoId?: ID;
+  aulaExcepcionalId?: ID;
+  /**
+   * Quem conduziu. Na aula excepcional sem professora vinculada, a chamada
+   * é feita pela administração e este campo fica vazio (RF-AEX-10).
+   */
+  professoraId?: ID;
   dataHoraFinalizacao?: string;
   situacao: SituacaoChamada;
 }
@@ -463,7 +539,16 @@ export interface Comissao {
   id: ID;
   chamadaId: ID;
   professoraId: ID;
-  categoriaAplicadaId: ID;
+  /**
+   * Categoria vigente da professora na data, quando a comissão vem de uma
+   * aula regular. A aula excepcional não usa categoria: o valor é
+   * informado no cadastro da aula, por professora (RF-COM-01, RF-AEX-12).
+   */
+  categoriaAplicadaId?: ID;
+  /** Descrição legível da base aplicada, para conferência (RF-COM-02). */
+  baseDeCalculo: string;
+  /** Preenchido quando a comissão vem de uma aula excepcional. */
+  aulaExcepcionalId?: ID;
   valor: number;
   dataAula: string;
   periodoFechamentoId?: ID;

@@ -19,6 +19,9 @@ import type {
   Venda,
   Trancamento,
   Reembolso,
+  AulaExcepcional,
+  ProfessoraDaAula,
+  Alocacao,
   Sessao,
   OcorrenciaSessao,
   Agendamento,
@@ -56,6 +59,9 @@ export const movimentoCreditoRepositorio = criarRepositorio<MovimentoCredito>('m
 export const vendaRepositorio = criarRepositorio<Venda>('vendas');
 export const trancamentoRepositorio = criarRepositorio<Trancamento>('trancamentos');
 export const reembolsoRepositorio = criarRepositorio<Reembolso>('reembolsos');
+export const aulaExcepcionalRepositorio = criarRepositorio<AulaExcepcional>('aulasExcepcionais');
+export const professoraDaAulaRepositorio = criarRepositorio<ProfessoraDaAula>('professorasDaAula');
+export const alocacaoRepositorio = criarRepositorio<Alocacao>('alocacoes');
 export const sessaoRepositorio = criarRepositorio<Sessao>('sessoes');
 export const ocorrenciaSessaoRepositorio = criarRepositorio<OcorrenciaSessao>('ocorrenciasSessao');
 export const agendamentoRepositorio = criarRepositorio<Agendamento>('agendamentos');

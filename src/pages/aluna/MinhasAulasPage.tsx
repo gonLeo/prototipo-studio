@@ -93,6 +93,9 @@ function SituacaoDaAula({ aula }: { aula: AulaDaAluna }) {
   if (aula.presenca === 'presente') return <Badge tom="sucesso">Presente</Badge>;
   if (aula.presenca === 'ausente') return <Badge tom="erro">Falta</Badge>;
   if (aula.situacao === 'realizado') return <Badge tom="sucesso">Realizada</Badge>;
+  // Na aula excepcional quem inclui a aluna é a administração (RF-AEX-04):
+  // dizer "agendada" atribuiria a ela uma ação que não foi dela.
+  if (aula.tipoDeAula === 'excepcional') return <Badge tom="info">Alocada</Badge>;
   return <Badge tom="info">Agendada</Badge>;
 }
 
@@ -207,6 +210,10 @@ export function MinhasAulasPage() {
     // Justifica quem perdeu a aula de fato (RF-JUS-01): cancelou abaixo da
     // antecedência mínima sem receber o crédito de volta, ou faltou — o que
     // só se sabe depois que a chamada é finalizada.
+    //
+    // A aula excepcional fica de fora: quem aloca e quem cancela é a
+    // administração (RF-AEX-04/07), então não há falta da aluna a justificar.
+    if (aula.tipoDeAula === 'excepcional') return false;
     if (aula.justificativa || aula.experimental || aula.canceladaPeloStudio) return false;
     if (aula.presenca === 'ausente') return true;
     return aula.situacao === 'cancelado' && aula.creditoDevolvido === false;
@@ -233,7 +240,9 @@ export function MinhasAulasPage() {
               <ItemDeAula
                 key={aula.id}
                 aula={aula}
-                podeCancelar={aula.situacao === 'ativo' && !aula.canceladaPeloStudio}
+                podeCancelar={
+                  aula.tipoDeAula === 'grade' && aula.situacao === 'ativo' && !aula.canceladaPeloStudio
+                }
                 podeJustificar={podeJustificar(aula)}
                 onCancelar={() => cancelar(aula)}
                 onJustificar={() => setJustificando(aula)}

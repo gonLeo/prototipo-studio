@@ -29,9 +29,11 @@ import { MinhasAulasPage } from './pages/aluna/MinhasAulasPage';
 import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfessoraPage';
 import { PainelProfessoraPage } from './pages/professora/PainelProfessoraPage';
 import { ChamadaPage } from './pages/professora/ChamadaPage';
+import { ChamadaExcepcionalPage } from './pages/professora/ChamadaExcepcionalPage';
 import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
 import { ComissoesPage } from './pages/administracao/ComissoesPage';
 import { VendasPage } from './pages/administracao/VendasPage';
+import { AulasExcepcionaisPage } from './pages/administracao/AulasExcepcionaisPage';
 import { ConveniosPage } from './pages/administracao/ConveniosPage';
 import { ExperimentaisPage } from './pages/administracao/ExperimentaisPage';
 import { ExperimentalPage } from './pages/ExperimentalPage';
@@ -95,12 +97,15 @@ function App() {
                 <Route path="solicitacoes" element={<SolicitacoesCancelamentoPage />} />
                 <Route path="comissoes" element={<ComissoesPage />} />
                 <Route path="vendas" element={<VendasPage />} />
+                <Route path="aulas-excepcionais" element={<AulasExcepcionaisPage />} />
                 <Route path="experimentais" element={<ExperimentaisPage />} />
                 <Route path="convenios" element={<ConveniosPage />} />
                 <Route path="notificacoes" element={<NotificacoesPage />} />
                 <Route path="auditoria" element={<AuditoriaPage />} />
                 {/* A administração ajusta chamada fora do prazo (RF-PRE-06). */}
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
+                {/* Sem professora vinculada, a chamada da aula excepcional é da administração (RF-AEX-10). */}
+                <Route path="chamada-excepcional/:aulaId" element={<ChamadaExcepcionalPage />} />
               </Route>
               <Route
                 path="/professora"
@@ -113,6 +118,7 @@ function App() {
                 <Route index element={<PainelProfessoraPage />} />
                 <Route path="aulas" element={<MinhasAulasProfessoraPage />} />
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
+                <Route path="chamada-excepcional/:aulaId" element={<ChamadaExcepcionalPage />} />
                 <Route path="pagamentos" element={<MeusPagamentosPage />} />
               </Route>
               <Route

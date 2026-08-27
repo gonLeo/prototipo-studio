@@ -913,6 +913,9 @@
       "situacao": "ativa"
     }
   ],
+  "aulasExcepcionais": [],
+  "professorasDaAula": [],
+  "alocacoes": [],
   "agendamentos": [
     {
       "id": "agd-futuro",

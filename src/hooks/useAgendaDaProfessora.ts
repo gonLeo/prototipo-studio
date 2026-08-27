@@ -13,6 +13,17 @@ import {
 import type { Professora, Sessao, SolicitacaoCancelamento } from '../types/domain';
 import { hojeISO, somarDias } from '../utils/data';
 import { sessaoOcorreEm } from '../utils/grade';
+import { listarAulasExcepcionais } from './aulasExcepcionais';
+import type { AulaExcepcionalDetalhada } from './aulasExcepcionais';
+
+/**
+ * Aula excepcional na agenda da professora (RF-AEX-10): ela aparece nas
+ * sessões do dia de cada professora vinculada, com a situação da chamada.
+ */
+export interface AulaExcepcionalDaProfessora extends AulaExcepcionalDetalhada {
+  chamadaFinalizada: boolean;
+  chamadaPendente: boolean;
+}
 
 export interface AulaDaProfessora {
   sessao: Sessao;
@@ -50,6 +61,7 @@ const DIAS_RETROATIVOS = 14;
 export function useAgendaDaProfessora(usuarioId: string | undefined) {
   const [professora, setProfessora] = useState<Professora | undefined>();
   const [aulas, setAulas] = useState<AulaDaProfessora[]>([]);
+  const [aulasExcepcionais, setAulasExcepcionais] = useState<AulaExcepcionalDaProfessora[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoCancelamento[]>([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -130,6 +142,30 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
     setAulas(
       lista.sort((a, b) => a.data.localeCompare(b.data) || a.sessao.horarioInicio.localeCompare(b.sessao.horarioInicio)),
     );
+
+    // RF-AEX-10: workshop e aula particular entram na agenda de cada
+    // professora vinculada, com chamada própria.
+    const todasExcepcionais = await listarAulasExcepcionais();
+    setAulasExcepcionais(
+      todasExcepcionais
+        .filter(
+          (aula) =>
+            aula.situacao === 'ativa' &&
+            aula.data >= inicio &&
+            aula.data <= limite &&
+            aula.professoras.some((p) => p.professoraId === minha.id),
+        )
+        .map((aula) => {
+          const chamada = chamadas.find((c) => c.aulaExcepcionalId === aula.id);
+          return {
+            ...aula,
+            chamadaFinalizada: chamada?.situacao === 'finalizada',
+            chamadaPendente: aula.data < hoje && aula.alocadas > 0 && chamada?.situacao !== 'finalizada',
+          };
+        })
+        .sort((a, b) => a.data.localeCompare(b.data) || a.horarioInicio.localeCompare(b.horarioInicio)),
+    );
+
     setCarregando(false);
   }, [usuarioId]);
 
@@ -140,11 +176,13 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
   return {
     professora,
     aulas,
+    aulasExcepcionais,
     solicitacoes,
     carregando,
     recarregar,
     diasVisiveis: DIAS_VISIVEIS,
     diasRetroativos: DIAS_RETROATIVOS,
     pendentes: aulas.filter((aula) => aula.chamadaPendente),
+    pendentesExcepcionais: aulasExcepcionais.filter((aula) => aula.chamadaPendente),
   };
 }

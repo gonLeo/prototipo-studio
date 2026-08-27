@@ -7,7 +7,7 @@ O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0,
 - [x] Etapa 1 — Documento de escopo e configuração base do modelo de créditos
 - [x] Etapa 2 — Carteira de créditos e venda avulsa (a virada)
 - [x] Etapa 3 — Trancamento e reembolso
-- [ ] Etapa 4 — Aulas excepcionais (M9, módulo novo)
+- [x] Etapa 4 — Aulas excepcionais (M9, módulo novo)
 - [ ] Etapa 5 — Agendamento, cancelamento e presença sobre créditos
 - [ ] Etapa 6 — Comissão e convênios
 - [ ] Etapa 7 — Experimental, painéis, notificações, perfis e relatórios
@@ -246,3 +246,74 @@ Dois defeitos apareceram no teste e foram corrigidos antes da entrega: o acerto 
   A correção tem duas partes. O padrão da `Tabela` passou a ser 10, que existe nas opções. E `usePaginacao` passou a **normalizar o valor inicial** para a opção mais próxima, de modo que nenhum valor fora da lista consiga criar de novo um estado que a interface não sabe refletir.
 
   **Alcance:** todas as tabelas do sistema tinham o problema, porque nenhuma delas passava `itensPorPagina` — a única exceção era "Meus pagamentos" da professora, que já passava 10 explicitamente. As listas em cartão de "Minhas aulas" usam `usePaginacao` com 5, que está nas opções, e nunca foram afetadas.
+
+---
+
+## Etapa 4 — o que foi entregue
+
+**M9, o módulo novo do escopo v2.0: workshops e aulas particulares.** Acontecem fora da grade recorrente, são criados pela administração e não podem ser agendados pelas alunas (RN-12). Ambos compartilham o mesmo cadastro — o que os diferencia é a categoria de aula escolhida e o custo em créditos dela.
+
+### Modelo de dados
+
+- **`AulaExcepcional`**, **`ProfessoraDaAula`** e **`Alocacao`**, com repositórios, chaves estrangeiras no reset e chaves no backfill.
+- **`Chamada`** passou a aceitar ocorrência de sessão **ou** aula excepcional, e `professoraId` virou opcional: sem professora vinculada, a chamada é da administração e não há a quem atribuir a condução (RF-AEX-10).
+- **`Comissao`** ganhou `baseDeCalculo` — descrição legível do que originou o valor (RF-COM-02) — e `aulaExcepcionalId`. A `categoriaAplicadaId` virou opcional, porque a aula excepcional não usa categoria de professora.
+
+### O cadastro (RF-AEX-01/02/03/13)
+
+- **Categoria, nome, data, horário e espaço**, sem recorrência: cada ocorrência é criada individualmente.
+- **Conflito de espaço e de professora bloqueia** (RN-23), com a mensagem dizendo qual aula gera o conflito.
+- **Horário fora do funcionamento apenas alerta.** O escopo é explícito: workshop de sábado e aula particular em horário atípico são justamente os casos em que isso acontece, e bloquear obrigaria a administração a alterar a configuração do studio para cadastrar um evento pontual. A tela oferece as duas saídas — confirmar assim mesmo ou ajustar —, e a aula fica marcada com o selo "Fora do funcionamento".
+- **Conflito com a grade regular informa e oferece o cancelamento** das sessões daquele horário. Havendo alunas agendadas, o cancelamento devolve os créditos, prorroga a validade e avisa cada uma — pelo mesmo caminho já usado pelo calendário de exceções. Não havendo, a grade daquele horário apenas deixa de ser ofertada.
+- **A checagem roda enquanto a administração preenche**, não no envio: o alerta e o conflito precisam aparecer antes de confirmar, não depois.
+
+### Professoras e comissão (RF-AEX-12)
+
+- **Vínculo opcional, uma ou mais**, cada uma com **seu próprio valor de comissão**, informado no cadastro da aula.
+- **Não usa a categoria da professora.** Uma aula particular remunera mais que a regular, porque o valor cobrado da aluna também é maior, e num workshop a quatro mãos cada professora pode receber um valor distinto.
+- **Aula sem professora vinculada não gera comissão nenhuma** — acontece normalmente, tem chamada e consome créditos. A tela explica quando não cadastrar: aula conduzida pela proprietária, ou convidado remunerado por fora.
+
+### Alocação (RF-AEX-04 a 08, 11)
+
+- **Consumo imediato, sem reserva** (RN-13): quem aloca é a administração, e não há janela de cancelamento pela aluna que justifique segurar o crédito.
+- **Custo integral por participante**, não dividido entre elas.
+- **Alocação sem consumo** para quando o pagamento é tratado fora do sistema, com motivo obrigatório de lista curta — pagamento avulso, convidada ou cortesia (PA-12). Sem esse registro, a diferença entre quem consumiu crédito e quem pagou por fora desapareceria na conferência.
+- **Cancelamento da alocação estorna os créditos**, com autor e motivo, e avisa a aluna.
+- **Sem controle de capacidade**: a tela mostra quantas estão alocadas e diz explicitamente que a lotação é decisão da administração.
+- **Aluna de convênio é recusada**, com a explicação de que o convênio cobre apenas a grade regular.
+- A aluna sem pacote ativo também é recusada, com a saída oferecida na própria mensagem: registrar sem consumo ou vender um pacote antes.
+
+### Chamada e visibilidade
+
+- **Chamada própria** (RF-AEX-10), na mesma interface de toque da chamada da grade, mostrando quanto cada participação consumiu e quanto cada professora vai receber ao finalizar. Os créditos já saíram na alocação, então a finalização não converte reserva nenhuma: ela registra a presença e gera **um lançamento por professora vinculada**.
+- **Na agenda da professora**, as aulas em que ela está vinculada aparecem junto das sessões do dia, com o valor da comissão dela e o botão de chamada.
+- **Para a aluna** (RF-AEX-09), a aula alocada entra nas próximas aulas e no histórico de frequência, com o consumo de créditos — e sem botão de cancelar, porque quem cancela é a administração.
+- **Na ficha da aluna**, a participação aparece no histórico de frequência, identificada pelo nome da aula.
+
+### Decisões desta etapa
+
+- **A comissão da aula excepcional entrou agora, não na Etapa 6.** O plano deixou o M11 para depois, mas o RF-AEX-12 diz que a finalização da chamada gera o lançamento: entregar a chamada sem a comissão seria entregar meio fluxo. O que fica para a Etapa 6 é o restante do M11 — sessão sem presenças não gera comissão (RF-COM-03) e o detalhamento do fechamento separando regulares de excepcionais.
+- **A aula excepcional da aluna é montada como um agendamento sintético.** `AulaDaAluna` ganhou `tipoDeAula` e as alocações entram na mesma lista, com os mesmos campos. O RF-AEX-09 pede que ela apareça **nas próximas aulas e no histórico de frequência** — não num bloco à parte —, e uma lista separada teria sido mais fácil de escrever e pior de usar.
+- **O badge da aula excepcional diz "Alocada", não "Agendada".** Chamar de agendada atribuiria à aluna uma ação que não foi dela.
+- **A chamada da aula excepcional ficou em funções próprias**, e não como condicional dentro da chamada da grade: a lista de participantes vem de outra entidade e a comissão segue outra regra. Sobrecarregar as funções existentes espalharia condicionais por todo o fluxo.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. Entrar como **Camila Duarte** → Administração → **Aulas excepcionais**.
+3. **Criar um workshop fora do horário**: categoria Workshop, nome, data de hoje, início 22:00 e término 23:00. O alerta "Fora do horário de funcionamento" aparece assim que os campos ficam completos, e o botão passa a dizer **"Confirmar assim mesmo"**. Vincule **Beatriz Nogueira** com comissão de R$ 180,00 e confirme. A aula aparece na listagem com o selo "Fora do funcionamento".
+4. **Testar o conflito com a grade**: crie outra aula numa segunda ou quarta às 08:00, no mesmo espaço da sessão de POLE INICIANTE. A tela informa a sessão em conflito, quantas alunas estão agendadas, e oferece cancelá-la — com o aviso do que acontece com os créditos.
+5. **Alocar alunas**: escolha **Fernanda Alves** (bolsista aguardando aceite) — a alocação é recusada, porque ela ainda não tem carteira ativa, e a mensagem oferece a saída. Escolha **Larissa Prado**: os 2 créditos do workshop saem na hora, sem passar por reserva. Confira na ficha dela: o extrato recebe um consumo com a origem `Alocação em "…"`.
+6. **Alocação sem consumo**: marque a opção e escolha um motivo. A participação é registrada sem tocar na carteira, e o motivo fica visível na lista.
+7. **Aluna de convênio**: tente alocar **Renata Souza** — recusada, porque o convênio cobre apenas a grade regular (RF-AEX-11).
+8. **Chamada**: clique em "Chamada" na aula. A tela mostra quanto cada participação consumiu e quanto a professora vai receber. Finalize — o toast confirma **1 lançamento de comissão de R$ 180,00**, e não os R$ 35–55 da categoria dela.
+9. **Comissões**: o lançamento aparece no período, com a base de cálculo dizendo que o valor veio do cadastro da aula.
+10. Entrar como **Beatriz Nogueira** (Professora) → **Minhas aulas**, na data da aula: o workshop aparece junto das sessões, com o valor da comissão dela.
+11. Entrar como **Larissa Prado** (Aluna) → **Minhas aulas**: o workshop aparece nas próximas aulas, marcado como **Alocada**, sem botão de cancelar.
+12. **Cancelar a alocação** pela administração e conferir o estorno dos 2 créditos no extrato da aluna.
+
+### Verificação executada
+
+O fluxo foi percorrido no navegador: criação com alerta de horário fora do funcionamento, vínculo de professora com comissão própria, recusa da aluna sem pacote ativo, alocação com consumo imediato (9 → 7 disponíveis, sem passar por reserva), chamada finalizada gerando R$ 180,00 pelo valor do cadastro, e a aula aparecendo nas próximas aulas da aluna. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
+
+Um problema apareceu no teste e foi corrigido: **os dois campos de horário não tinham rótulo visível**. O `TimePicker` carrega só um rótulo acessível, o que basta nas telas onde a posição diz qual é qual (as faixas de horário da grade e do studio), mas não num formulário em grid com outros campos rotulados — não dava para saber qual era início e qual era término.

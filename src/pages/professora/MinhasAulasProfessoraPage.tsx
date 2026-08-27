@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
+import { formatarMoeda } from '../../utils/creditos';
 import { NavegadorDeDatas } from '../../components/ui/NavegadorDeDatas';
 import { formatarDataBR, hojeISO, somarDias } from '../../utils/data';
 
@@ -107,6 +108,9 @@ export function MinhasAulasProfessoraPage() {
   }
 
   const aulasDoDia = agenda.aulas.filter((aula) => aula.data === dataSelecionada);
+  // RF-AEX-10: workshop e aula particular entram na lista do dia de cada
+  // professora vinculada, com chamada própria.
+  const excepcionaisDoDia = agenda.aulasExcepcionais.filter((aula) => aula.data === dataSelecionada);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -146,7 +150,7 @@ export function MinhasAulasProfessoraPage() {
         />
       </div>
 
-      {aulasDoDia.length === 0 ? (
+      {aulasDoDia.length === 0 && excepcionaisDoDia.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500">
           Nenhuma aula sua nesta data.
         </p>
@@ -191,6 +195,34 @@ export function MinhasAulasProfessoraPage() {
                     )}
                   </div>
                 )
+              }
+            />
+          ))}
+
+          {excepcionaisDoDia.map((aula) => (
+            <CartaoDeAula
+              key={aula.id}
+              titulo={aula.nome}
+              subtitulo={aula.nomeEspaco}
+              etiqueta={aula.nomeCategoria}
+              horario={`${aula.horarioInicio} - ${aula.horarioFim}`}
+              detalhe={`${aula.alocadas} aluna(s)`}
+              valor={formatarMoeda(
+                aula.professoras.find((p) => p.professoraId === agenda.professora?.id)?.valorComissao ?? 0,
+              )}
+              acao={
+                aula.data <= hoje && aula.alocadas > 0 ? (
+                  <Link
+                    to={`/professora/chamada-excepcional/${aula.id}`}
+                    className={`rounded-md px-3 py-2 text-sm font-medium ${
+                      aula.chamadaFinalizada
+                        ? 'text-neutral-600 hover:bg-neutral-100'
+                        : 'bg-primary-600 text-white shadow-sm hover:bg-primary-700'
+                    }`}
+                  >
+                    {aula.chamadaFinalizada ? 'Ver chamada' : 'Fazer chamada'}
+                  </Link>
+                ) : undefined
               }
             />
           ))}

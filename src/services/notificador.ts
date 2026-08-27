@@ -41,6 +41,8 @@ export const EVENTOS_NOTIFICACAO: Record<string, { rotulo: string; requisito: st
   agendamento_confirmado: { rotulo: 'Confirmação de agendamento', requisito: 'RF-NOT-03' },
   aula_experimental_confirmada: { rotulo: 'Aula experimental confirmada', requisito: 'RF-NOT-03' },
   agendamento_cancelado: { rotulo: 'Cancelamento pela aluna', requisito: 'RF-NOT-03' },
+  alocacao_em_aula_excepcional: { rotulo: 'Alocação em aula excepcional', requisito: 'RF-NOT-04' },
+  alocacao_cancelada: { rotulo: 'Alocação cancelada', requisito: 'RF-AEX-07' },
   agendamento_cancelado_pela_administracao: {
     rotulo: 'Cancelamento pela administração',
     requisito: 'RF-NOT-05',

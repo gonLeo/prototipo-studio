@@ -384,6 +384,9 @@ export function AlunaFichaPage() {
                   <span className="text-ink">
                     {item.dataAula ? formatarDataBR(item.dataAula) : '—'}
                     {item.experimental && <span className="ml-1 text-xs text-neutral-500">· experimental</span>}
+                    {item.nomeAulaExcepcional && (
+                      <span className="ml-1 text-xs text-neutral-500">· {item.nomeAulaExcepcional}</span>
+                    )}
                   </span>
                   <span className="text-neutral-500">
                     {item.situacao}

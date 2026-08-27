@@ -11,24 +11,33 @@ import {
   usuarioRepositorio,
 } from '../services/repositorios';
 import { notificar } from '../services/notificador';
-import type { Chamada, RegistroPresenca, Sessao } from '../types/domain';
+import type { AulaExcepcional, Chamada, RegistroPresenca, Sessao } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
 import { carteiraVigenteDaAluna, consumirReserva } from './carteiraDeCreditos';
 import { garantirOcorrencia } from './cancelamentoDeAulas';
-import { categoriaVigenteNaData, estornarComissaoDaChamada, lancarComissao } from './comissoes';
+import {
+  categoriaVigenteNaData,
+  estornarComissaoDaChamada,
+  lancarComissao,
+  lancarComissoesDaAulaExcepcional,
+} from './comissoes';
+import { alocacoesDaAula, professorasDaAula } from './aulasExcepcionais';
 
 /**
- * Presença e chamada (M9).
+ * Presença e chamada (M10).
  *
- * A chamada existe por ocorrência de sessão. Ela nasce aberta com todas as
- * alunas agendadas marcadas como presentes (RF-PRE-03) — a professora só
- * precisa apontar as ausências —, e ao ser finalizada consolida os
- * registros e gera a comissão da aula (RF-PRE-04).
+ * A chamada existe por ocorrência de sessão **ou** por aula excepcional
+ * (RF-AEX-10). Ela nasce aberta com todas as participantes marcadas como
+ * presentes (RF-PRE-03) — quem conduz só precisa apontar as ausências —, e
+ * ao ser finalizada consolida os registros e gera a comissão (RF-PRE-04).
  */
 
 export interface AlunaNaChamada {
-  agendamentoId: string;
+  /** Preenchido na aula da grade; ausente na aula excepcional. */
+  agendamentoId?: string;
+  /** Preenchido na aula excepcional; ausente na aula da grade. */
+  alocacaoId?: string;
   alunaId: string;
   nome: string;
   origemConvenio: boolean;
@@ -200,14 +209,19 @@ export async function finalizarChamada(params: {
     dataHoraFinalizacao: new Date().toISOString(),
   });
 
+  const professoraId = chamada.professoraId;
+  if (!professoraId) {
+    throw new RegraNegocioError('Esta chamada não tem professora vinculada.');
+  }
+
   const { ehAjuste } = await lancarComissao({
     chamadaId: chamada.id,
-    professoraId: chamada.professoraId,
+    professoraId,
     dataAula,
     autorId,
   });
 
-  const categoria = await categoriaVigenteNaData(chamada.professoraId, dataAula);
+  const categoria = await categoriaVigenteNaData(professoraId, dataAula);
   const presentes = alunas.filter((a) => a.presente).length;
 
   return {
@@ -254,6 +268,7 @@ async function gravarRegistrosDePresenca(params: {
     // convertem a reserva em consumo. A conversão acontece uma única vez —
     // a correção da chamada reescreve a presença, mas não cobra de novo. O
     // crédito só volta por justificativa aprovada (RF-JUS-04).
+    if (!aluna.agendamentoId) continue;
     const agendamento = agendamentos.find((a) => a.id === aluna.agendamentoId);
     const jaConsumido = agendamento?.situacao === 'realizado';
     const creditos = agendamento?.creditosReservados ?? 0;
@@ -308,10 +323,15 @@ export async function corrigirChamada(params: {
 
   // A comissão é recalculada do zero: estorna a anterior (se ainda não foi
   // paga) e lança de novo pela categoria vigente na data da aula.
+  const professoraId = chamada.professoraId;
+  if (!professoraId) {
+    throw new RegraNegocioError('Esta chamada não tem professora vinculada.');
+  }
+
   await estornarComissaoDaChamada(chamada.id);
   const { ehAjuste } = await lancarComissao({
     chamadaId: chamada.id,
-    professoraId: chamada.professoraId,
+    professoraId,
     dataAula,
     autorId,
   });
@@ -338,13 +358,127 @@ export async function corrigirChamada(params: {
     });
   }
 
-  const categoria = await categoriaVigenteNaData(chamada.professoraId, dataAula);
+  const categoria = await categoriaVigenteNaData(professoraId, dataAula);
   const presentes = alunas.filter((a) => a.presente).length;
 
   return {
     valorComissao: categoria?.valorPorAula ?? 0,
     presentes,
     ausentes: alunas.length - presentes,
+    ehAjuste,
+  };
+}
+
+// --- Chamada de aula excepcional (RF-AEX-10) ------------------------------
+
+/**
+ * Carrega a chamada de uma aula excepcional — **sem gravar nada**, pelo
+ * mesmo motivo da chamada da grade.
+ *
+ * A lista sai das alocações ativas, não de agendamentos: em aula
+ * excepcional quem inclui a aluna é a administração (RF-AEX-04). Alunas de
+ * convênio não aparecem porque não podem ser alocadas (RF-AEX-11).
+ */
+export async function carregarChamadaDeAulaExcepcional(
+  aulaExcepcionalId: string,
+): Promise<{ chamada: Chamada | undefined; alunas: AlunaNaChamada[] }> {
+  const [chamadas, registros, alocacoes, { alunasPorId }] = await Promise.all([
+    chamadaRepositorio.listar(),
+    registroPresencaRepositorio.listar(),
+    alocacoesDaAula(aulaExcepcionalId),
+    carregarNomesDeAlunas(),
+  ]);
+
+  const chamada = chamadas.find((c) => c.aulaExcepcionalId === aulaExcepcionalId);
+
+  const alunas: AlunaNaChamada[] = alocacoes
+    .filter((a) => a.situacao === 'ativa')
+    .map((alocacao) => {
+      const registro = chamada
+        ? registros.find((r) => r.chamadaId === chamada.id && r.alunaId === alocacao.alunaId)
+        : undefined;
+      return {
+        alocacaoId: alocacao.id,
+        alunaId: alocacao.alunaId,
+        nome: alunasPorId[alocacao.alunaId]?.nome ?? 'Aluna removida',
+        origemConvenio: false,
+        experimental: false,
+        checkinConvenio: false,
+        presente: registro ? registro.situacao === 'presente' : true,
+      };
+    })
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  return { chamada, alunas };
+}
+
+export interface ResultadoFinalizacaoExcepcional {
+  presentes: number;
+  ausentes: number;
+  /** Um lançamento por professora vinculada; zero quando não há nenhuma. */
+  comissoesGeradas: number;
+  totalComissao: number;
+  ehAjuste: boolean;
+}
+
+/**
+ * Finaliza a chamada da aula excepcional (RF-AEX-10/12).
+ *
+ * Os créditos já foram consumidos na alocação (RF-AEX-04), então aqui não
+ * há conversão de reserva: a finalização registra a presença e gera **um
+ * lançamento de comissão por professora vinculada**, com o valor que foi
+ * informado para cada uma no cadastro da aula. Aula sem professora
+ * vinculada não gera comissão nenhuma.
+ */
+export async function finalizarChamadaDeAulaExcepcional(params: {
+  aula: AulaExcepcional;
+  alunas: AlunaNaChamada[];
+  autorId: string;
+}): Promise<ResultadoFinalizacaoExcepcional> {
+  const { aula, alunas, autorId } = params;
+
+  const chamadas = await chamadaRepositorio.listar();
+  let chamada = chamadas.find((c) => c.aulaExcepcionalId === aula.id);
+
+  if (chamada?.situacao === 'finalizada') {
+    throw new RegraNegocioError('Esta chamada já foi finalizada. Use a correção para alterá-la.');
+  }
+
+  const vinculos = await professorasDaAula(aula.id);
+
+  if (!chamada) {
+    chamada = await chamadaRepositorio.criar({
+      aulaExcepcionalId: aula.id,
+      // Sem professora vinculada, a chamada é da administração e o campo
+      // fica vazio — não há a quem atribuir a condução (RF-AEX-10).
+      professoraId: vinculos[0]?.professoraId,
+      situacao: 'aberta',
+    });
+  }
+
+  await gravarRegistrosDePresenca({ chamada, dataAula: aula.data, alunas, autorId });
+
+  await chamadaRepositorio.atualizar(chamada.id, {
+    situacao: 'finalizada',
+    dataHoraFinalizacao: new Date().toISOString(),
+  });
+
+  const { comissoes, ehAjuste } = await lancarComissoesDaAulaExcepcional({
+    chamadaId: chamada.id,
+    aulaExcepcionalId: aula.id,
+    nomeAula: aula.nome,
+    professoras: vinculos.map((v) => ({ professoraId: v.professoraId, valorComissao: v.valorComissao })),
+    dataAula: aula.data,
+    autorId,
+  });
+
+  const presentes = alunas.filter((a) => a.presente).length;
+
+  return {
+    presentes,
+    ausentes: alunas.length - presentes,
+    comissoesGeradas: comissoes.length,
+    totalComissao: comissoes.reduce((soma, c) => soma + c.valor, 0),
     ehAjuste,
   };
 }

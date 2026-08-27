@@ -9,6 +9,7 @@ import {
 import type { CategoriaProfessora, Comissao, FechamentoComissao } from '../types/domain';
 import { hojeISO, primeiroDiaDoMes, quintoDiaUtil, ultimoDiaDoMes } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
+import { formatarMoeda } from '../utils/creditos';
 
 /**
  * Comissão e fechamento (M10).
@@ -84,9 +85,12 @@ export async function fechamentoQueCobre(data: string): Promise<FechamentoComiss
 }
 
 /**
- * Lança a comissão de uma aula. Quando a data já pertence a um período
- * fechado, o lançamento entra como **ajuste** e fica sem período: ele será
- * absorvido pelo próximo fechamento, preservando o anterior (RF-COM-10).
+ * Lança a comissão de uma **aula regular** (RF-COM-01): usa o valor por
+ * aula da categoria vigente da professora na data.
+ *
+ * Quando a data já pertence a um período fechado, o lançamento entra como
+ * **ajuste** e fica sem período: ele será absorvido pelo próximo
+ * fechamento, preservando o anterior (RF-COM-11).
  */
 export async function lancarComissao(params: {
   chamadaId: string;
@@ -114,6 +118,7 @@ export async function lancarComissao(params: {
     chamadaId,
     professoraId,
     categoriaAplicadaId: categoria.id,
+    baseDeCalculo: `Categoria ${categoria.nome} — ${formatarMoeda(categoria.valorPorAula)} por aula regular`,
     valor: categoria.valorPorAula,
     dataAula,
     situacao: ehAjuste ? 'ajuste' : 'gerada',
@@ -130,6 +135,62 @@ export async function lancarComissao(params: {
   }
 
   return { comissao, ehAjuste };
+}
+
+/**
+ * Lança as comissões de uma **aula excepcional** (RF-COM-01, RF-AEX-12).
+ *
+ * Não usa a categoria da professora: o valor é o que foi informado para
+ * cada uma no cadastro da aula. São tantos lançamentos quantas forem as
+ * professoras vinculadas — e aula sem professora vinculada não gera
+ * comissão nenhuma.
+ */
+export async function lancarComissoesDaAulaExcepcional(params: {
+  chamadaId: string;
+  aulaExcepcionalId: string;
+  nomeAula: string;
+  professoras: Array<{ professoraId: string; valorComissao: number }>;
+  dataAula: string;
+  autorId: string;
+}): Promise<{ comissoes: Comissao[]; ehAjuste: boolean }> {
+  const { chamadaId, aulaExcepcionalId, nomeAula, professoras, dataAula, autorId } = params;
+
+  const existentes = await comissaoRepositorio.listar();
+  const jaLancadas = existentes.filter((c) => c.chamadaId === chamadaId);
+  if (jaLancadas.length > 0) return { comissoes: jaLancadas, ehAjuste: false };
+
+  const fechamento = await fechamentoQueCobre(dataAula);
+  const ehAjuste = fechamento !== undefined;
+
+  const comissoes: Comissao[] = [];
+
+  for (const vinculo of professoras) {
+    if (vinculo.valorComissao <= 0) continue;
+
+    comissoes.push(
+      await comissaoRepositorio.criar({
+        chamadaId,
+        professoraId: vinculo.professoraId,
+        aulaExcepcionalId,
+        baseDeCalculo: `Valor informado no cadastro de "${nomeAula}" — ${formatarMoeda(vinculo.valorComissao)}`,
+        valor: vinculo.valorComissao,
+        dataAula,
+        situacao: ehAjuste ? 'ajuste' : 'gerada',
+      }),
+    );
+  }
+
+  if (ehAjuste && comissoes.length > 0) {
+    await registroAuditoriaRepositorio.criar({
+      entidadeAfetada: 'Comissao',
+      operacao: 'ajuste_em_periodo_fechado',
+      autorId,
+      dataHora: new Date().toISOString(),
+      valorNovo: { chamadaId, dataAula, aulaExcepcionalId, lancamentos: comissoes.length },
+    });
+  }
+
+  return { comissoes, ehAjuste };
 }
 
 /** Remove a comissão de uma chamada que deixou de ser válida (chamada reaberta). */

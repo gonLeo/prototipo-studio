@@ -31,6 +31,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
       itens: [
         { to: '/administracao/alunas', label: 'Alunas' },
         { to: '/administracao/grade', label: 'Grade de horários' },
+        { to: '/administracao/aulas-excepcionais', label: 'Aulas excepcionais' },
         { to: '/administracao/excecoes', label: 'Exceções' },
         { to: '/administracao/justificativas', label: 'Justificativas' },
         { to: '/administracao/solicitacoes', label: 'Solicitações' },

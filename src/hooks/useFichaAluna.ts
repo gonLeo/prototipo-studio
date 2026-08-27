@@ -23,10 +23,13 @@ import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '.
 import { carteirasDaAluna, extratoDaAluna, limiaresFinalizando } from './carteiraDeCreditos';
 import { historicoDeComprasDaAluna, type CompraDaAluna } from './vendas';
 import { trancamentosDaAluna } from './trancamento';
+import { alocacoesDaAluna } from './aulasExcepcionais';
 import { reembolsosDaAluna } from './reembolsos';
 
 export interface FrequenciaDaAluna extends Agendamento {
   dataAula: string;
+  /** Nome da aula excepcional, quando a linha vem de uma alocação (RF-AEX-09). */
+  nomeAulaExcepcional?: string;
 }
 
 export interface FichaAluna {
@@ -109,6 +112,10 @@ export function useFichaAluna(alunaId: string | undefined) {
       limiaresFinalizando(),
     ]);
 
+    // RF-AEX-09: a participação em workshop e aula particular entra no
+    // histórico de frequência, com o consumo de créditos correspondente.
+    const alocacoes = await alocacoesDaAluna(alunaId);
+
     const aluna = alunas.find((a) => a.id === alunaId);
     const usuario = aluna && usuarios.find((u) => u.id === aluna.usuarioId);
     if (!aluna || !usuario) {
@@ -119,13 +126,29 @@ export function useFichaAluna(alunaId: string | undefined) {
 
     const carteira = carteiras.find((c) => c.situacao === 'ativa' && !lerCarteira(c, hoje, limiares).encerrada);
 
-    const frequencia = agendamentos
+    const daGrade: FrequenciaDaAluna[] = agendamentos
       .filter((a) => a.alunaId === aluna.id)
       .map((agendamento) => ({
         ...agendamento,
         dataAula: ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId)?.data ?? '',
-      }))
-      .sort((a, b) => b.dataAula.localeCompare(a.dataAula));
+      }));
+
+    const deAulasExcepcionais: FrequenciaDaAluna[] = alocacoes.map((alocacao) => ({
+      id: alocacao.id,
+      alunaId: alocacao.alunaId,
+      ocorrenciaSessaoId: '',
+      origem: 'administracao',
+      dataHora: alocacao.data,
+      situacao: alocacao.situacao === 'cancelada' ? 'cancelado' : 'realizado',
+      experimental: false,
+      creditosReservados: alocacao.creditosConsumidos,
+      dataAula: alocacao.aula.data,
+      nomeAulaExcepcional: alocacao.aula.nome,
+    }));
+
+    const frequencia = [...daGrade, ...deAulasExcepcionais].sort((a, b) =>
+      b.dataAula.localeCompare(a.dataAula),
+    );
 
     setFicha({
       aluna,

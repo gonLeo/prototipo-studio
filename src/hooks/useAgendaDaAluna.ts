@@ -16,6 +16,7 @@ import type { Agendamento, Aluna, Carteira, Justificativa, Pacote } from '../typ
 import { hojeISO, horasAteAula } from '../utils/data';
 import { lerCarteira, type LeituraDaCarteira } from '../utils/creditos';
 import { limiaresFinalizando } from './carteiraDeCreditos';
+import { alocacoesDaAluna } from './aulasExcepcionais';
 import {
   antecedenciaMinimaEmHoras,
   carregarSituacaoDeAgendamento,
@@ -26,6 +27,13 @@ import {
 import type { AulaDisponivel, BloqueioDaAluna } from './agendamentoDeAulas';
 
 export interface AulaDaAluna extends Agendamento {
+  /**
+   * De onde a aula vem. A excepcional (M9) não tem agendamento: é montada
+   * a partir da alocação, com os mesmos campos, para que as telas da aluna
+   * possam listar as duas juntas — o RF-AEX-09 pede que ela apareça nas
+   * próximas aulas e no histórico de frequência, e não num bloco à parte.
+   */
+  tipoDeAula: 'grade' | 'excepcional';
   data: string;
   horarioInicio: string;
   horarioFim: string;
@@ -122,7 +130,35 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
     );
 
     const agora = new Date();
-    const aulas = agendamentos
+
+    // RF-AEX-09: as aulas excepcionais em que a aluna foi alocada aparecem
+    // junto das demais, com o consumo de créditos correspondente.
+    const alocacoes = await alocacoesDaAluna(minha.id);
+    const excepcionais: AulaDaAluna[] = alocacoes.map((alocacao) => ({
+      id: alocacao.id,
+      alunaId: alocacao.alunaId,
+      ocorrenciaSessaoId: '',
+      // A alocação não passa por portal nem por convênio: quem inclui a
+      // aluna é a administração (RF-AEX-04).
+      origem: 'administracao',
+      tipoDeAula: 'excepcional',
+      dataHora: alocacao.data,
+      situacao: alocacao.situacao === 'cancelada' ? 'cancelado' : 'ativo',
+      experimental: false,
+      creditosReservados: alocacao.creditosConsumidos,
+      data: alocacao.aula.data,
+      horarioInicio: alocacao.aula.horarioInicio,
+      horarioFim: alocacao.aula.horarioFim,
+      nomeModalidade: alocacao.aula.nome,
+      nomeProfessora: alocacao.aula.professoras.map((prof) => prof.nome).join(', ') || 'Sem professora vinculada',
+      canceladaPeloStudio: alocacao.aula.situacao === 'cancelada',
+      motivoCancelamento: alocacao.motivoCancelamento,
+      justificativa: undefined,
+      horasAteAAula: horasAteAula(alocacao.aula.data, alocacao.aula.horarioInicio, agora),
+      presenca: undefined,
+    }));
+
+    const daGrade: AulaDaAluna[] = agendamentos
       .filter((a) => a.alunaId === minha.id)
       .map((agendamento) => {
         const ocorrencia = ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId);
@@ -138,6 +174,7 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
 
         return {
           ...agendamento,
+          tipoDeAula: 'grade' as const,
           presenca: registro?.situacao,
           data,
           horarioInicio: sessao?.horarioInicio ?? '',
@@ -149,8 +186,11 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
           justificativa: justificativas.find((j) => j.agendamentoId === agendamento.id),
           horasAteAAula: data && sessao ? horasAteAula(data, sessao.horarioInicio, agora) : 0,
         };
-      })
-      .sort((a, b) => b.data.localeCompare(a.data) || b.horarioInicio.localeCompare(a.horarioInicio));
+      });
+
+    const aulas = [...daGrade, ...excepcionais].sort(
+      (a, b) => b.data.localeCompare(a.data) || b.horarioInicio.localeCompare(a.horarioInicio),
+    );
 
     setMinhasAulas(aulas);
     setCarregando(false);
