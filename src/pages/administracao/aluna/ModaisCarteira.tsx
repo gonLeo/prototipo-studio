@@ -1,18 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import type { Carteira, FormaPagamento, Pacote } from '../../../types/domain';
+import type { Carteira, FormaPagamento, Pacote, TipoReembolso, Venda } from '../../../types/domain';
 import type { FichaAluna } from '../../../hooks/useFichaAluna';
 import { ROTULOS_AJUSTE, type TipoAjuste } from '../../../hooks/carteiraDeCreditos';
 import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS } from '../../../hooks/vendas';
+import { calcularPreviaDeTrancamento, type PreviaTrancamento } from '../../../hooks/trancamento';
+import { calcularPreviaDeReembolso, type PreviaDeReembolso } from '../../../hooks/reembolsos';
 import { Button } from '../../../components/ui/Button';
 import { TextField, SelectField, CheckboxField } from '../../../components/ui/Field';
 import {
   calcularPreviaDeCompra,
   formatarCreditos,
   formatarMoeda,
+  rotuloFormaPagamento,
   valorUnitarioDoCredito,
 } from '../../../utils/creditos';
-import { formatarDataBR, hojeISO } from '../../../utils/data';
+import { formatarDataBR, hojeISO, somarDias } from '../../../utils/data';
 
 function Formulario({
   children,
@@ -467,6 +470,334 @@ export function ModalVendaManual({
           wrapperClassName="sm:col-span-2"
         />
       </div>
+    </Formulario>
+  );
+}
+
+/**
+ * Trancamento da carteira (RF-TRA-01/05/07).
+ *
+ * A tela apresenta o pacote, o saldo, a validade e o histórico de
+ * trancamentos anteriores como apoio à decisão: o escopo decidiu não impor
+ * teto de dias, então o controle é o critério de quem concede, e o que o
+ * sistema faz é dar contexto antes de arbitrar.
+ */
+export function ModalTrancamento({
+  ficha,
+  carteira,
+  onConfirmar,
+  onFechar,
+}: {
+  ficha: FichaAluna;
+  carteira: Carteira;
+  onConfirmar: (params: { dataInicio: string; dataTerminoPrevista: string; motivo: string }) => Promise<void>;
+  onFechar: () => void;
+}) {
+  const [dataInicio, setDataInicio] = useState(hojeISO());
+  const [dataTerminoPrevista, setDataTerminoPrevista] = useState(somarDias(hojeISO(), 30));
+  const [motivo, setMotivo] = useState('');
+  const [previa, setPrevia] = useState<PreviaTrancamento>();
+  const [erro, setErro] = useState<string>();
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    let valido = true;
+    calcularPreviaDeTrancamento({
+      carteira,
+      alunaId: ficha.aluna.id,
+      dataInicio,
+      dataTerminoPrevista,
+    }).then((resultado) => {
+      if (valido) setPrevia(resultado);
+    });
+    return () => {
+      valido = false;
+    };
+  }, [carteira, ficha.aluna.id, dataInicio, dataTerminoPrevista]);
+
+  async function enviar(e: FormEvent) {
+    e.preventDefault();
+    setErro(undefined);
+    setSalvando(true);
+    try {
+      await onConfirmar({ dataInicio, dataTerminoPrevista, motivo });
+      onFechar();
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Formulario onEnviar={enviar} onFechar={onFechar} textoConfirmar="Trancar pacote" salvando={salvando} erro={erro}>
+      {/* RF-TRA-07: contexto para a decisão, antes dos campos. */}
+      <div className="grid grid-cols-2 gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm sm:grid-cols-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Pacote</p>
+          <p className="text-ink">{ficha.pacote?.nome ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Disponíveis</p>
+          <p className="text-ink">{ficha.leitura?.disponiveis ?? 0}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Validade</p>
+          <p className="text-ink">{formatarDataBR(carteira.dataValidade)}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Trancamentos</p>
+          <p className="text-ink">{ficha.trancamentos.length} anterior(es)</p>
+        </div>
+      </div>
+
+      {ficha.trancamentos.length > 0 && (
+        <ul className="flex flex-col gap-1 text-xs text-neutral-500">
+          {ficha.trancamentos.slice(0, 3).map((t) => (
+            <li key={t.id}>
+              {formatarDataBR(t.dataInicio)} a {formatarDataBR(t.dataTerminoPrevista)} · {t.diasProrrogados} dia(s) ·{' '}
+              {t.motivo}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField
+          label="Início do trancamento"
+          type="date"
+          value={dataInicio}
+          onChange={(e) => setDataInicio(e.target.value)}
+          required
+        />
+        <TextField
+          label="Retorno previsto"
+          type="date"
+          value={dataTerminoPrevista}
+          onChange={(e) => setDataTerminoPrevista(e.target.value)}
+          required
+          dica="O sistema não impõe teto de dias — a decisão é da administração."
+        />
+        <TextField
+          label="Motivo"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          required
+          dica="Registrado com autor e data na trilha de auditoria."
+          wrapperClassName="sm:col-span-2"
+        />
+      </div>
+
+      {previa && (
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+          <div className="grid grid-cols-3 gap-2 pb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            <span>Prévia</span>
+            <span>Hoje</span>
+            <span>No retorno</span>
+          </div>
+          <LinhaComparativo
+            rotulo="Créditos congelados"
+            atual={String(previa.creditosCongelados)}
+            novo={String(previa.creditosCongelados)}
+          />
+          <LinhaComparativo
+            rotulo="Validade"
+            atual={formatarDataBR(previa.validadeAtual)}
+            novo={formatarDataBR(previa.validadeProjetada)}
+          />
+          <LinhaComparativo
+            rotulo="Dias de trancamento"
+            atual="—"
+            novo={`${previa.diasDeTrancamento} dia(s)`}
+          />
+
+          {previa.aulasQueSeraoCanceladas.length > 0 ? (
+            <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-100">
+              <p className="font-medium">
+                {previa.aulasQueSeraoCanceladas.length} aula(s) agendada(s) no período serão canceladas, e os créditos
+                reservados voltam ao saldo disponível:
+              </p>
+              <ul className="mt-1 list-inside list-disc">
+                {previa.aulasQueSeraoCanceladas.map((aula) => (
+                  <li key={aula.agendamentoId}>
+                    {formatarDataBR(aula.data)} · {formatarCreditos(aula.creditos)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-neutral-600">Nenhuma aula agendada no período.</p>
+          )}
+        </div>
+      )}
+    </Formulario>
+  );
+}
+
+/**
+ * Reembolso (RF-REE-01/02/03/07).
+ *
+ * A prévia mostra valor pago, créditos utilizados, valor descontado e
+ * líquido a reembolsar antes de confirmar. Fora do prazo de arrependimento,
+ * a operação só segue por motivo legal, com documentação datada — e aí o
+ * valor admite ajuste, porque o RF-REE-07 permite reembolso parcial.
+ */
+export function ModalReembolso({
+  venda,
+  onConfirmar,
+  onFechar,
+}: {
+  venda: Venda;
+  onConfirmar: (params: {
+    tipo: TipoReembolso;
+    motivo: string;
+    documentacao?: string;
+    valorPersonalizado?: number;
+  }) => Promise<void>;
+  onFechar: () => void;
+}) {
+  const [tipo, setTipo] = useState<TipoReembolso>('arrependimento');
+  const [motivo, setMotivo] = useState('');
+  const [documentacao, setDocumentacao] = useState('');
+  const [valorPersonalizado, setValorPersonalizado] = useState('');
+  const [previa, setPrevia] = useState<PreviaDeReembolso>();
+  const [erro, setErro] = useState<string>();
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    let valido = true;
+    calcularPreviaDeReembolso({ venda, tipo }).then((resultado) => {
+      if (!valido) return;
+      setPrevia(resultado);
+      setValorPersonalizado(String(resultado.valorReembolsado));
+    });
+    return () => {
+      valido = false;
+    };
+  }, [venda, tipo]);
+
+  async function enviar(e: FormEvent) {
+    e.preventDefault();
+    setErro(undefined);
+    setSalvando(true);
+    try {
+      await onConfirmar({
+        tipo,
+        motivo,
+        documentacao: tipo === 'legal' ? documentacao : undefined,
+        valorPersonalizado: tipo === 'legal' ? Number(valorPersonalizado) : undefined,
+      });
+      onFechar();
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Formulario
+      onEnviar={enviar}
+      onFechar={onFechar}
+      textoConfirmar="Confirmar reembolso"
+      salvando={salvando}
+      erro={erro}
+      desabilitado={!previa?.elegivel}
+    >
+      <p className="text-sm text-neutral-600">
+        Compra de {formatarDataBR(venda.data)} · {formatarCreditos(venda.creditos)} ·{' '}
+        {formatarMoeda(venda.valor)} em {rotuloFormaPagamento(venda.formaPagamento, venda.parcelas)}.
+      </p>
+
+      <SelectField label="Tipo de reembolso" value={tipo} onChange={(e) => setTipo(e.target.value as TipoReembolso)}>
+        <option value="arrependimento">Arrependimento (dentro do prazo)</option>
+        <option value="legal">Motivo legal (mediante documentação)</option>
+      </SelectField>
+
+      {previa && (
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+          <dl className="flex flex-col gap-1 text-sm">
+            <div className="flex justify-between gap-2">
+              <dt className="text-neutral-500">Valor pago</dt>
+              <dd className="text-ink">{formatarMoeda(previa.valorPago)}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-neutral-500">Créditos utilizados desde a compra</dt>
+              <dd className="text-ink">
+                {previa.creditosUtilizados} de {previa.creditosComprados} ({previa.percentualUtilizado}%)
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-neutral-500">
+                Valor descontado ({formatarMoeda(previa.valorUnitario)} por crédito)
+              </dt>
+              <dd className="text-ink">− {formatarMoeda(previa.valorDescontado)}</dd>
+            </div>
+            <div className="flex justify-between gap-2 border-t border-neutral-200 pt-1">
+              <dt className="font-medium text-ink">Valor líquido a reembolsar</dt>
+              <dd className="font-semibold text-ink">{formatarMoeda(previa.valorReembolsado)}</dd>
+            </div>
+          </dl>
+
+          <p className="mt-2 text-xs text-neutral-600">
+            {previa.encerraCarteira ? (
+              <>
+                A carteira será encerrada, os créditos remanescentes anulados
+                {previa.aulasFuturas > 0 && ` e ${previa.aulasFuturas} aula(s) futura(s) cancelada(s)`}.
+              </>
+            ) : (
+              <>
+                Esta compra foi absorvida por uma carteira que já existia: apenas os créditos dela saem, e a validade
+                anterior ({formatarDataBR(previa.validadeRestaurada!)}) é restaurada.
+              </>
+            )}
+          </p>
+
+          {!previa.elegivel && (
+            <p className="mt-2 rounded-md bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-100">
+              {previa.impedimento}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {tipo === 'legal' && (
+          <>
+            <TextField
+              label="Documentação apresentada"
+              value={documentacao}
+              onChange={(e) => setDocumentacao(e.target.value)}
+              required
+              dica="Documento datado e assinado, apresentado em até 7 dias do evento."
+            />
+            <TextField
+              label="Valor a reembolsar (R$)"
+              type="number"
+              min={0}
+              step="0.01"
+              value={valorPersonalizado}
+              onChange={(e) => setValorPersonalizado(e.target.value)}
+              required
+              dica="O reembolso por motivo legal admite valor parcial."
+            />
+          </>
+        )}
+        <TextField
+          label="Motivo"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          required
+          dica="Registrado com autor, data e valor na trilha de auditoria."
+          wrapperClassName="sm:col-span-2"
+        />
+      </div>
+
+      {previa?.textoPrazo && (
+        <p className="rounded-md bg-primary-50 px-3 py-2 text-xs text-primary-800 ring-1 ring-inset ring-primary-100">
+          Informado à aluna: {previa.textoPrazo}
+        </p>
+      )}
     </Formulario>
   );
 }

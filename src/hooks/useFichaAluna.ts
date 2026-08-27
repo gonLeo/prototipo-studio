@@ -14,6 +14,8 @@ import type {
   Carteira,
   MovimentoCredito,
   Pacote,
+  Reembolso,
+  Trancamento,
   Usuario,
   Venda,
 } from '../types/domain';
@@ -21,6 +23,8 @@ import { hojeISO } from '../utils/data';
 import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
 import { carteirasDaAluna, extratoDaAluna, limiaresFinalizando } from './carteiraDeCreditos';
 import { historicoDeComprasDaAluna } from './vendas';
+import { trancamentosDaAluna } from './trancamento';
+import { reembolsosDaAluna } from './reembolsos';
 
 export interface FrequenciaDaAluna extends Agendamento {
   dataAula: string;
@@ -40,6 +44,15 @@ export interface FichaAluna {
   movimentos: MovimentoCredito[];
   /** Histórico de compras (RF-VEN-06). */
   compras: Venda[];
+  /** Trancamentos anteriores, apoio à decisão da administração (RF-TRA-07). */
+  trancamentos: Trancamento[];
+  /** Trancamento em curso, quando existe. */
+  trancamentoAtivo: Trancamento | undefined;
+  /**
+   * Reembolsos aplicados ao cadastro desta aluna (RF-REE-10). Só existem
+   * na ficha administrativa — o perfil da aluna não expõe o recurso.
+   */
+  reembolsos: Reembolso[];
   frequencia: FrequenciaDaAluna[];
   pacotes: Pacote[];
   limiares: LimiaresFinalizando;
@@ -69,19 +82,33 @@ export function useFichaAluna(alunaId: string | undefined) {
     setCarregando(true);
     const hoje = hojeISO();
 
-    const [alunas, usuarios, pacotes, anamneses, agendamentos, ocorrencias, carteiras, movimentos, compras, limiares] =
-      await Promise.all([
-        alunaRepositorio.listar(),
-        usuarioRepositorio.listar(),
-        pacoteRepositorio.listar(),
-        anamneseRepositorio.listar(),
-        agendamentoRepositorio.listar(),
-        ocorrenciaSessaoRepositorio.listar(),
-        carteirasDaAluna(alunaId),
-        extratoDaAluna(alunaId),
-        historicoDeComprasDaAluna(alunaId),
-        limiaresFinalizando(),
-      ]);
+    const [
+      alunas,
+      usuarios,
+      pacotes,
+      anamneses,
+      agendamentos,
+      ocorrencias,
+      carteiras,
+      movimentos,
+      compras,
+      trancamentos,
+      reembolsos,
+      limiares,
+    ] = await Promise.all([
+      alunaRepositorio.listar(),
+      usuarioRepositorio.listar(),
+      pacoteRepositorio.listar(),
+      anamneseRepositorio.listar(),
+      agendamentoRepositorio.listar(),
+      ocorrenciaSessaoRepositorio.listar(),
+      carteirasDaAluna(alunaId),
+      extratoDaAluna(alunaId),
+      historicoDeComprasDaAluna(alunaId),
+      trancamentosDaAluna(alunaId),
+      reembolsosDaAluna(alunaId),
+      limiaresFinalizando(),
+    ]);
 
     const aluna = alunas.find((a) => a.id === alunaId);
     const usuario = aluna && usuarios.find((u) => u.id === aluna.usuarioId);
@@ -111,6 +138,9 @@ export function useFichaAluna(alunaId: string | undefined) {
       carteiras,
       movimentos,
       compras,
+      trancamentos,
+      trancamentoAtivo: trancamentos.find((t) => t.situacao === 'em_curso'),
+      reembolsos,
       frequencia,
       pacotes,
       limiares,

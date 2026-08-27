@@ -11,6 +11,8 @@ import {
 } from '../../hooks/vendas';
 import type { ResumoDeVendas, VendaDetalhada } from '../../hooks/vendas';
 import { processarRotinaDeCarteiras } from '../../hooks/carteiraDeCreditos';
+import { listarReembolsos, ROTULO_TIPO_REEMBOLSO } from '../../hooks/reembolsos';
+import type { ReembolsoDetalhado } from '../../hooks/reembolsos';
 import { pacoteRepositorio } from '../../services/repositorios';
 import { useSessao } from '../../hooks/useSessao';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -143,6 +145,7 @@ export function VendasPage() {
   const [vendas, setVendas] = useState<VendaDetalhada[]>([]);
   const [pacotes, setPacotes] = useState<Pacote[]>([]);
   const [resumo, setResumo] = useState<ResumoDeVendas>();
+  const [reembolsos, setReembolsos] = useState<ReembolsoDetalhado[]>([]);
   const [filtro, setFiltro] = useState<FiltroVenda>('todas');
   const [cancelando, setCancelando] = useState<VendaDetalhada | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -150,10 +153,15 @@ export function VendasPage() {
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
-    const [lista, catalogo] = await Promise.all([listarVendasDetalhadas(), pacoteRepositorio.listar()]);
+    const [lista, catalogo, aplicados] = await Promise.all([
+      listarVendasDetalhadas(),
+      pacoteRepositorio.listar(),
+      listarReembolsos(),
+    ]);
     setVendas(lista);
     setPacotes(catalogo);
     setResumo(resumirVendas(lista, catalogo));
+    setReembolsos(aplicados);
     setCarregando(false);
   }, []);
 
@@ -383,6 +391,65 @@ export function VendasPage() {
             </LinhaTabela>
           )}
         />
+      )}
+
+      {/* REL-13: reembolsos aplicados no período, para conferência. A
+          listagem existe só aqui e na ficha da aluna que teve um aplicado
+          — o perfil da aluna nunca expõe o recurso (RF-REE-09/10). */}
+      {reembolsos.length > 0 && (
+        <section className="mt-8">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-ink">Reembolsos aplicados</h2>
+            <Button
+              variante="secundaria"
+              onClick={() =>
+                baixarCSV({
+                  nomeArquivo: 'reembolsos',
+                  itens: reembolsos,
+                  colunas: [
+                    { cabecalho: 'Data', valor: (item) => item.data },
+                    { cabecalho: 'Aluna', valor: (item) => item.nomeAluna },
+                    { cabecalho: 'Tipo', valor: (item) => ROTULO_TIPO_REEMBOLSO[item.tipo] },
+                    { cabecalho: 'Valor pago', valor: (item) => item.valorPago.toFixed(2) },
+                    { cabecalho: 'Créditos utilizados', valor: (item) => item.creditosUtilizados },
+                    { cabecalho: 'Valor descontado', valor: (item) => item.valorDescontado.toFixed(2) },
+                    { cabecalho: 'Valor reembolsado', valor: (item) => item.valorReembolsado.toFixed(2) },
+                    { cabecalho: 'Motivo', valor: (item) => item.motivo },
+                    { cabecalho: 'Autor', valor: (item) => item.nomeAutor },
+                  ],
+                })
+              }
+            >
+              Exportar CSV
+            </Button>
+          </div>
+
+          <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+            {reembolsos.map((item) => (
+              <li key={item.id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <Link
+                    to={`/administracao/alunas/${item.alunaId}`}
+                    className="font-medium text-primary-700 hover:text-primary-800"
+                  >
+                    {item.nomeAluna}
+                  </Link>
+                  <p className="text-xs text-neutral-500">
+                    {formatarDataBR(item.data)} · {ROTULO_TIPO_REEMBOLSO[item.tipo]} · {item.creditosUtilizados} de{' '}
+                    {item.creditosComprados} créditos utilizados · por {item.nomeAutor}
+                  </p>
+                  <p className="text-xs text-neutral-500">{item.motivo}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-ink">{formatarMoeda(item.valorReembolsado)}</p>
+                  <p className="text-xs text-neutral-500">
+                    de {formatarMoeda(item.valorPago)} · − {formatarMoeda(item.valorDescontado)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {cancelando && (

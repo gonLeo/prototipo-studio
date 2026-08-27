@@ -129,6 +129,7 @@ interface DadosMovimento {
   origem: string;
   referenciaId?: string;
   autorId: string;
+  unidade?: 'creditos' | 'dias';
 }
 
 /**
@@ -140,7 +141,7 @@ async function aplicarMovimento(
   dados: DadosMovimento,
   alteracao: Partial<Pick<Carteira, 'creditosTotais' | 'creditosUtilizados' | 'creditosReservados' | 'dataValidade'>>,
 ): Promise<Carteira> {
-  const { carteira, tipo, quantidade, origem, referenciaId, autorId } = dados;
+  const { carteira, tipo, quantidade, origem, referenciaId, autorId, unidade } = dados;
 
   const atualizada = await carteiraRepositorio.atualizar(carteira.id, alteracao);
 
@@ -148,6 +149,7 @@ async function aplicarMovimento(
     carteiraId: carteira.id,
     tipo,
     quantidade,
+    unidade,
     origem,
     referenciaId,
     autorId,
@@ -337,7 +339,14 @@ export async function aplicarCompra(params: {
     });
   }
 
-  await vendaRepositorio.atualizar(venda.id, { carteiraId: carteira.id });
+  await vendaRepositorio.atualizar(venda.id, {
+    carteiraId: carteira.id,
+    // PA-09: reembolsar uma renovação antecipada devolve só esta compra, e
+    // os créditos que já estavam na carteira voltam com a validade
+    // original. Ela precisa ficar registrada agora, antes de ser
+    // substituída pela validade única.
+    validadeAnteriorDaCarteira: vigente?.dataValidade,
+  });
 
   await registroAuditoriaRepositorio.criar({
     entidadeAfetada: 'Carteira',
@@ -452,7 +461,7 @@ export async function ajustarCarteira(params: {
     );
   } else {
     atualizada = await aplicarMovimento(
-      { carteira, tipo: 'ajuste', quantidade, origem: descricao, autorId },
+      { carteira, tipo: 'ajuste', quantidade, origem: descricao, autorId, unidade: 'dias' },
       { dataValidade: somarDias(carteira.dataValidade, quantidade) },
     );
   }
@@ -496,7 +505,28 @@ export async function prorrogarPorCancelamentoDoStudio(params: {
   if (dias <= 0) return carteira;
 
   return aplicarMovimento(
-    { carteira, tipo: 'ajuste', quantidade: dias, origem, referenciaId, autorId },
+    { carteira, tipo: 'ajuste', quantidade: dias, origem, referenciaId, autorId, unidade: 'dias' },
+    { dataValidade: somarDias(carteira.dataValidade, dias) },
+  );
+}
+
+/**
+ * Acerta a prorrogação de um trancamento que durou menos (ou mais) do que
+ * o previsto. A quantidade pode ser negativa: o extrato precisa mostrar
+ * que os dias concedidos na concessão foram devolvidos.
+ */
+export async function ajustarProrrogacao(params: {
+  carteira: Carteira;
+  dias: number;
+  origem: string;
+  referenciaId?: string;
+  autorId: string;
+}): Promise<Carteira> {
+  const { carteira, dias, origem, referenciaId, autorId } = params;
+  if (dias === 0) return carteira;
+
+  return aplicarMovimento(
+    { carteira, tipo: 'ajuste', quantidade: dias, origem, referenciaId, autorId, unidade: 'dias' },
     { dataValidade: somarDias(carteira.dataValidade, dias) },
   );
 }

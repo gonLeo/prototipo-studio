@@ -6,7 +6,7 @@ O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0,
 
 - [x] Etapa 1 — Documento de escopo e configuração base do modelo de créditos
 - [x] Etapa 2 — Carteira de créditos e venda avulsa (a virada)
-- [ ] Etapa 3 — Trancamento e reembolso
+- [x] Etapa 3 — Trancamento e reembolso
 - [ ] Etapa 4 — Aulas excepcionais (M9, módulo novo)
 - [ ] Etapa 5 — Agendamento, cancelamento e presença sobre créditos
 - [ ] Etapa 6 — Comissão e convênios
@@ -166,3 +166,70 @@ Os quatro erros de tipagem que existiam em `src/hooks/useAlunas.ts` desde antes 
 - **O texto do termo de aceite foi reescrito** (`src/data/anamnese.ts` e o backfill): saiu a cláusula de cobrança mensal recorrente, entraram as cláusulas de créditos e validade, e uma cláusula de reembolso alinhada ao RF-REE-01. O termo definitivo continua sendo responsabilidade da cliente (capítulo 12 do escopo) — este é o texto provisório do protótipo.
 - **O catálogo de eventos de notificação foi limpo**: saíram os eventos de cobrança, inadimplência, aviso de término de contrato, alteração de plano e encerramento de contrato; entrou a confirmação de compra. Os eventos de pacote finalizando, pacote encerrado, alocação em aula excepcional e reembolso aplicado entram na Etapa 7, junto com o restante do M16.
 - **O trancamento ainda não existe como operação**: a situação `trancada` da aluna já bloqueia o agendamento e a interface já responde a ela, mas a entidade `Trancamento` e a tela de concessão são a Etapa 3.
+
+---
+
+## Etapa 3 — o que foi entregue
+
+**Trancamento e reembolso: os dois recursos de mediação da administração.** Nenhum dos dois tem jornada de solicitação pela aluna — ela procura o studio pelos canais de atendimento, e o sistema serve para dar contexto, calcular, executar e registrar.
+
+### M3 — Trancamento (seção 4.3.6)
+
+- **Entidade `Trancamento`** + `src/hooks/trancamento.ts`: concessão, prévia, retorno e histórico.
+- **Prévia antes de confirmar** (RF-TRA-05): créditos congelados, validade atual, validade projetada no retorno e a lista das aulas que serão canceladas, com data e créditos de cada uma.
+- **Apoio à decisão no topo do modal** (RF-TRA-07): pacote vigente, créditos disponíveis, validade e os trancamentos anteriores da aluna. O escopo decidiu não impor teto de dias (RF-TRA-03), então o que o sistema faz é dar contexto antes de a administração arbitrar.
+- **Efeitos da concessão** (RF-TRA-04): a aluna passa a `trancada` e deixa de visualizar a grade; as aulas agendadas no período são canceladas e os créditos reservados voltam ao saldo disponível.
+- **Retorno** (RF-TRA-02): a validade é acertada pelo tempo em que a carteira ficou de fato trancada, e o agendamento é liberado.
+- **Registro completo** (RF-TRA-06): data de início, término previsto, retorno efetivo, dias prorrogados, motivo e autor, com trilha de auditoria e notificação à aluna nas duas pontas.
+- Seção **"Trancamentos"** na ficha da aluna e faixa de aviso no topo enquanto o trancamento está em curso.
+
+### M12 — Reembolso (seção 4.12.2)
+
+- **Entidade `Reembolso`** + `src/hooks/reembolsos.ts`: verificação das condições, cálculo, prévia, execução pelo gateway e registro.
+- **Condições verificadas** (RF-REE-01/06): prazo de arrependimento, percentual máximo de créditos utilizados, situação da carteira, tipo e situação da venda. Quando alguma falha, a prévia devolve o **impedimento em texto** e o botão de confirmar fica desabilitado — a administração vê por que não dá, não só que não dá.
+- **Cálculo pelo valor unitário do crédito** (RF-REE-02): valor pago dividido pelos créditos comprados, multiplicado pelos créditos consumidos desde a compra.
+- **Prévia** (RF-REE-03): valor pago, créditos utilizados, valor descontado e valor líquido a reembolsar, mais o efeito na carteira.
+- **Execução** (RF-REE-04/05): estorno pelo gateway na mesma forma de pagamento, venda marcada como reembolsada, créditos retirados da carteira e aulas futuras canceladas.
+- **Reembolso por motivo legal** (RF-REE-07): fora do prazo de arrependimento, a operação segue mediante documentação datada, e o valor admite ajuste — o requisito prevê reembolso parcial.
+- **Registro** (RF-REE-08): data, motivo, documentação, decisão, autor e valor, com trilha de auditoria e e-mail à aluna (RF-NOT-12).
+- **REL-13** na página de Vendas: reembolsos aplicados no período, com aluna, tipo, créditos utilizados, valor descontado, valor devolvido, motivo e autor, exportável em CSV.
+
+### A regra do PA-09, implementada
+
+O escopo tem uma tensão aqui: o RF-REE-05 manda encerrar a carteira, e o PA-09 manda devolver **apenas a compra**, com os créditos anteriores voltando pela validade original. Os dois valem, em situações diferentes:
+
+- **A compra originou a carteira** → carteira encerrada, remanescentes anulados, aulas futuras canceladas.
+- **A compra foi absorvida por uma carteira que já existia** (renovação antecipada) → só os créditos dela saem, a validade anterior é restaurada, e a carteira segue ativa com o que a aluna já tinha.
+
+Para o segundo caso funcionar, a `Venda` passou a gravar `validadeAnteriorDaCarteira` no momento da compra: sem essa data registrada antes de ser substituída pela validade única, não haveria como restaurá-la depois. A prévia diz explicitamente qual dos dois caminhos será tomado.
+
+### Decisões desta etapa
+
+- **A prorrogação do trancamento é aplicada na concessão, não só no retorno.** O RF-TRA-02 fala em congelar a contagem da validade; como a validade aqui é uma data, congelar significa empurrá-la. Empurrar já na concessão evita que a carteira expire no meio da pausa — que é exatamente o que o requisito quer impedir. O retorno acerta a diferença: volta antes, devolve os dias; volta depois, acrescenta.
+- **O acerto do retorno gera movimento no extrato.** A primeira versão ajustava a data direto na carteira, e o extrato ficava afirmando uma prorrogação de 30 dias que tinha sido desfeita. Toda mudança de validade passa a ser um movimento, pelo mesmo motivo que todo crédito é: o registro precisa explicar o estado.
+- **`MovimentoCredito` ganhou `unidade` e admite quantidade negativa.** Prorrogação movimenta dias, não créditos — sem a distinção, o extrato mostrava "+30" numa carteira cujo saldo não mudou. E os lançamentos que retiram saldo (créditos anulados por reembolso, dias devolvidos no retorno antecipado) são gravados com sinal negativo, senão apareceriam como entrada.
+- **Reembolso parcial só existe no motivo legal.** No arrependimento o valor é o cálculo do RF-REE-02, sem edição: abrir o campo ali convidaria a negociar o que a regra já resolve. No motivo legal o RF-REE-07 prevê explicitamente decisão caso a caso.
+- **Quando o reembolso parcial deixa o saldo abaixo do reservado**, as aulas mais distantes são canceladas até caber. É o caso de reembolsar uma renovação antecipada de quem já agendou usando os créditos comprados.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. Entrar como **Camila Duarte** → Administração → **Alunas** → **Larissa Prado**.
+3. **Trancar**: o modal abre com pacote, disponíveis, validade e trancamentos anteriores no topo. Escolha um período e veja a prévia — a validade projetada avança pelos dias do período, e as aulas agendadas dentro dele aparecem listadas. Confirme: a aluna vira "Trancada", uma faixa amarela explica o período, "Agendar aula" fica desabilitado e o extrato recebe um ajuste de validade em dias.
+4. **Registrar retorno**: a validade é acertada pelo tempo real de trancamento, e o extrato registra o acerto. Retornando no mesmo dia, os 30 dias concedidos voltam.
+5. **Entrar como Larissa** e conferir que a grade fica bloqueada durante o trancamento, com a mensagem de pacote trancado.
+6. **Reembolso fora do prazo**: na ficha da **Patrícia Lima**, "Histórico de compras" → **Reembolsar**. A prévia calcula R$ 220,00 pagos, 3 de 4 créditos (75%), R$ 55,00 por crédito, R$ 165,00 descontados, R$ 55,00 líquidos — e recusa o arrependimento, porque a compra foi há mais de 7 dias. Troque para **Motivo legal**: aparecem os campos de documentação e valor, e a operação passa a ser possível.
+7. **Confirme o reembolso** da Patrícia: a carteira é encerrada, a venda vira "Reembolsada" e a seção "Reembolsos aplicados" surge na ficha dela.
+8. **A regra do PA-09**: na ficha da Larissa, compre o pacote **Premium** (renovação antecipada: 9 + 24 = 33 disponíveis, validade 23/02/2027). Depois clique em **Reembolsar** nessa compra. A prévia avisa que a compra foi absorvida por uma carteira que já existia, então apenas os créditos dela saem e a validade anterior (08/11/2026) é restaurada. Confirme e confira: a carteira volta a 12 créditos com validade 08/11/2026, **sem** ser encerrada.
+9. **Vendas**: o bloco "Reembolsos aplicados" lista os dois reembolsos com aluna, tipo, cálculo, motivo e autor, com exportação em CSV.
+10. **Perfil da aluna**: confirme que nenhuma tela da aluna menciona reembolso — não há botão, aba, rótulo, coluna nem filtro. A informação só aparece no histórico de compras dela, como a situação "Reembolsada" da venda (RF-REE-09/10).
+
+### Verificação executada
+
+Os dois fluxos foram percorridos no navegador: trancamento com prévia, concessão, bloqueio e retorno; reembolso recusado por prazo, aceito por motivo legal com valor parcial e encerramento da carteira; e o ramo do PA-09, confirmado pela API — carteira de 36 volta a 12 créditos, validade restaurada para 08/11/2026, `carteiraEncerrada: false`. `tsc` sem erros, `vite build` compilando, `oxlint` apenas com os três avisos preexistentes.
+
+Dois defeitos apareceram no teste e foram corrigidos antes da entrega: o acerto de validade no retorno não gerava movimento no extrato, e os lançamentos de retirada de crédito apareciam com sinal positivo.
+
+### Observação registrada durante a etapa
+
+- **A notificação de reembolso aplicado (RF-NOT-12) entrou nesta etapa**, e não na Etapa 7 como o plano previa. O reembolso encerra a carteira e cancela aulas já agendadas; deixar a aluna sem aviso até a etapa das notificações seria entregar um fluxo que age sobre ela em silêncio. Os avisos de trancamento e de retorno entraram pelo mesmo motivo. O restante do M16 continua na Etapa 7.

@@ -49,6 +49,9 @@ export const EVENTOS_NOTIFICACAO: Record<string, { rotulo: string; requisito: st
   troca_de_professora: { rotulo: 'Substituição de professora', requisito: 'RF-NOT-06' },
   sessao_alterada: { rotulo: 'Alteração de sessão', requisito: 'RF-NOT-07' },
   link_de_pagamento_reenviado: { rotulo: 'Link de pagamento reenviado', requisito: 'RF-VEN-03' },
+  reembolso_aplicado: { rotulo: 'Reembolso aplicado', requisito: 'RF-NOT-12' },
+  pacote_trancado: { rotulo: 'Pacote trancado', requisito: 'RF-TRA-01' },
+  retorno_de_trancamento: { rotulo: 'Retorno do trancamento', requisito: 'RF-TRA-02' },
   justificativa_aprovada: { rotulo: 'Justificativa aprovada', requisito: 'RF-NOT-10' },
   justificativa_recusada: { rotulo: 'Justificativa recusada', requisito: 'RF-NOT-10' },
   solicitacao_de_cancelamento_recebida: {

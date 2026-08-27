@@ -8,6 +8,9 @@ import { ROTULO_SITUACAO_ALUNA } from '../../hooks/useAlunas';
 import { ajustarCarteira, custoDaAulaRegular } from '../../hooks/carteiraDeCreditos';
 import { alterarBolsa, comprarPacoteParaAluna } from '../../hooks/cadastroDeAlunas';
 import { registrarVendaManual } from '../../hooks/vendas';
+import { concederTrancamento, registrarRetorno } from '../../hooks/trancamento';
+import { executarReembolso, ROTULO_TIPO_REEMBOLSO } from '../../hooks/reembolsos';
+import { useConfirm } from '../../hooks/useConfirm';
 import type { MovimentoCredito, SituacaoAluna, TipoMovimentoCredito, Venda } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -26,6 +29,8 @@ import {
   ModalAjustarCreditos,
   ModalBolsa,
   ModalComprarPacote,
+  ModalReembolso,
+  ModalTrancamento,
   ModalVendaManual,
 } from './aluna/ModaisCarteira';
 import { ModalAgendarPelaAdministracao } from './aluna/ModalAgendarPelaAdministracao';
@@ -88,20 +93,25 @@ function Dado({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
 }
 
 function LinhaMovimento({ movimento }: { movimento: MovimentoCredito }) {
-  const positivo = AUMENTA_DISPONIVEL[movimento.tipo];
+  // Prorrogação movimenta dias, não créditos: sem o sufixo o extrato
+  // mostraria "+30" numa carteira cujo saldo não mudou.
+  const emDias = movimento.unidade === 'dias';
+  const positivo = movimento.quantidade < 0 ? false : AUMENTA_DISPONIVEL[movimento.tipo];
+
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-neutral-200 p-2 text-sm">
       <div className="min-w-0">
         <p className="text-ink">
           {ROTULO_MOVIMENTO[movimento.tipo]}
-          {movimento.tipo === 'ajuste' && movimento.origem.startsWith('Prorrogar') ? ' de validade' : ''}
+          {emDias ? ' de validade' : ''}
         </p>
         <p className="truncate text-xs text-neutral-500">{movimento.origem}</p>
       </div>
       <div className="text-right">
         <p className={`font-medium ${positivo ? 'text-emerald-700' : 'text-neutral-700'}`}>
           {positivo ? '+' : '−'}
-          {movimento.quantidade}
+          {Math.abs(movimento.quantidade)}
+          {emDias ? ' dias' : ''}
         </p>
         <p className="text-xs text-neutral-500">{formatarDataBR(movimento.dataHora.slice(0, 10))}</p>
       </div>
@@ -109,13 +119,22 @@ function LinhaMovimento({ movimento }: { movimento: MovimentoCredito }) {
   );
 }
 
-type ModalAberto = 'comprar' | 'ajustar' | 'bolsa' | 'venda_manual' | 'agendar' | null;
+type ModalAberto =
+  | 'comprar'
+  | 'ajustar'
+  | 'bolsa'
+  | 'venda_manual'
+  | 'agendar'
+  | 'trancar'
+  | { reembolso: Venda }
+  | null;
 
 export function AlunaFichaPage() {
   const { alunaId } = useParams<{ alunaId: string }>();
   const { ficha, carregando, recarregar } = useFichaAluna(alunaId);
   const { usuario } = useSessao();
   const mostrarToast = useToast();
+  const confirmar = useConfirm();
 
   const [modalAberto, setModalAberto] = useState<ModalAberto>(null);
   const [custoDaAula, setCustoDaAula] = useState(1);
@@ -136,7 +155,7 @@ export function AlunaFichaPage() {
     );
   }
 
-  const { aluna, usuario: dadosUsuario, carteira, leitura, pacote } = ficha;
+  const { aluna, usuario: dadosUsuario, carteira, leitura, pacote, trancamentoAtivo } = ficha;
 
   async function executar(acao: () => Promise<void>, mensagemSucesso: string) {
     try {
@@ -167,7 +186,7 @@ export function AlunaFichaPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => setModalAberto('agendar')} disabled={!carteira}>
+          <Button onClick={() => setModalAberto('agendar')} disabled={!carteira || aluna.situacao === 'trancada'}>
             Agendar aula
           </Button>
           <Button variante="secundaria" onClick={() => setModalAberto('comprar')}>
@@ -184,8 +203,39 @@ export function AlunaFichaPage() {
               Ajustar créditos
             </Button>
           )}
+          {/* RF-TRA-01 e RF-PER-03: trancamento é exclusivo da administração. */}
+          {trancamentoAtivo ? (
+            <Button
+              variante="secundaria"
+              onClick={() =>
+                executar(
+                  () =>
+                    registrarRetorno({ trancamento: trancamentoAtivo, aluna, autorId: usuario!.id }).then(
+                      () => undefined,
+                    ),
+                  'Retorno registrado. A validade foi prorrogada pelo tempo trancado e o agendamento está liberado.',
+                )
+              }
+            >
+              Registrar retorno
+            </Button>
+          ) : (
+            carteira && (
+              <Button variante="secundaria" onClick={() => setModalAberto('trancar')}>
+                Trancar
+              </Button>
+            )
+          )}
         </div>
       </div>
+
+      {trancamentoAtivo && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <span className="font-medium">Pacote trancado</span> de {formatarDataBR(trancamentoAtivo.dataInicio)} a{' '}
+          {formatarDataBR(trancamentoAtivo.dataTerminoPrevista)} · {trancamentoAtivo.diasProrrogados} dia(s) de
+          prorrogação · {trancamentoAtivo.motivo}. Durante o período a aluna não visualiza a grade nem agenda.
+        </div>
+      )}
 
       <div className="mt-6 flex flex-col gap-4">
         <Secao titulo="Dados cadastrais">
@@ -347,6 +397,60 @@ export function AlunaFichaPage() {
           )}
         </Secao>
 
+        {/* RF-TRA-06/07: registro completo dos trancamentos. */}
+        {ficha.trancamentos.length > 0 && (
+          <Secao titulo="Trancamentos">
+            <ul className="flex flex-col gap-2">
+              {ficha.trancamentos.map((item) => (
+                <li key={item.id} className="rounded-md border border-neutral-200 p-2 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-ink">
+                      {formatarDataBR(item.dataInicio)} a {formatarDataBR(item.dataTerminoPrevista)}
+                    </span>
+                    <Badge tom={item.situacao === 'em_curso' ? 'aviso' : 'neutro'}>
+                      {item.situacao === 'em_curso' ? 'Em curso' : 'Encerrado'}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 text-xs text-neutral-500">
+                    {item.diasProrrogados} dia(s) de prorrogação ·{' '}
+                    {item.dataRetornoEfetiva
+                      ? `retorno em ${formatarDataBR(item.dataRetornoEfetiva)}`
+                      : 'aguardando retorno'}{' '}
+                    · {item.motivo}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </Secao>
+        )}
+
+        {/* RF-REE-08/10: a informação de reembolso só aparece para quem teve um aplicado. */}
+        {ficha.reembolsos.length > 0 && (
+          <Secao titulo="Reembolsos aplicados">
+            <ul className="flex flex-col gap-2">
+              {ficha.reembolsos.map((item) => (
+                <li key={item.id} className="rounded-md border border-neutral-200 p-2 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-ink">
+                      {formatarDataBR(item.data)} · {ROTULO_TIPO_REEMBOLSO[item.tipo]}
+                    </span>
+                    <span className="font-medium text-ink">{formatarMoeda(item.valorReembolsado)}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-neutral-500">
+                    Pago {formatarMoeda(item.valorPago)} · {item.creditosUtilizados} de {item.creditosComprados}{' '}
+                    créditos utilizados · descontado {formatarMoeda(item.valorDescontado)}
+                    {item.carteiraEncerrada ? ' · carteira encerrada' : ' · validade anterior restaurada'}
+                  </p>
+                  <p className="text-xs text-neutral-500">{item.motivo}</p>
+                  {item.documentacao && (
+                    <p className="text-xs text-neutral-500">Documentação: {item.documentacao}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Secao>
+        )}
+
         {/* RF-VEN-06: histórico de compras da aluna. */}
         <Secao
           titulo="Histórico de compras"
@@ -384,6 +488,14 @@ export function AlunaFichaPage() {
                     <p className="text-xs text-neutral-500">Cancelada: {item.motivoCancelamento}</p>
                   )}
                   {item.observacao && <p className="text-xs text-neutral-500">{item.observacao}</p>}
+                  {/* RF-REE-09: o reembolso só existe aqui, no perfil da administração. */}
+                  {item.tipo === 'pacote' && item.situacao === 'confirmada' && !item.bolsa && (
+                    <div className="mt-1">
+                      <Button variante="fantasma" onClick={() => setModalAberto({ reembolso: item })}>
+                        Reembolsar
+                      </Button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -457,6 +569,66 @@ export function AlunaFichaPage() {
               await alterarBolsa({ aluna, bolsista, pacoteConcedidoId, motivo, autorId: usuario!.id });
               await recarregar();
               mostrarToast(bolsista ? 'Bolsa concedida.' : 'Bolsa revogada.', 'sucesso');
+            }}
+            onFechar={() => setModalAberto(null)}
+          />
+        </Modal>
+      )}
+
+      {modalAberto === 'trancar' && carteira && (
+        <Modal titulo="Trancar pacote" largura="larga" onFechar={() => setModalAberto(null)}>
+          <ModalTrancamento
+            ficha={ficha}
+            carteira={carteira}
+            onConfirmar={async ({ dataInicio, dataTerminoPrevista, motivo }) => {
+              const { agendamentosCancelados } = await concederTrancamento({
+                carteira,
+                aluna,
+                dataInicio,
+                dataTerminoPrevista,
+                motivo,
+                autorId: usuario!.id,
+              });
+              await recarregar();
+              mostrarToast(
+                agendamentosCancelados > 0
+                  ? `Pacote trancado. ${agendamentosCancelados} aula(s) cancelada(s) e créditos liberados.`
+                  : 'Pacote trancado e validade prorrogada.',
+                'sucesso',
+              );
+            }}
+            onFechar={() => setModalAberto(null)}
+          />
+        </Modal>
+      )}
+
+      {modalAberto && typeof modalAberto === 'object' && 'reembolso' in modalAberto && (
+        <Modal titulo="Reembolso" largura="larga" onFechar={() => setModalAberto(null)}>
+          <ModalReembolso
+            venda={modalAberto.reembolso}
+            onConfirmar={async ({ tipo, motivo, documentacao, valorPersonalizado }) => {
+              const ok = await confirmar({
+                titulo: 'Confirmar reembolso',
+                mensagem:
+                  'O estorno será enviado ao gateway e os créditos desta compra saem da carteira. Esta ação não pode ser desfeita.',
+                textoConfirmar: 'Reembolsar',
+                perigo: true,
+              });
+              if (!ok) return;
+
+              const reembolso = await executarReembolso({
+                venda: modalAberto.reembolso,
+                tipo,
+                motivo,
+                documentacao,
+                valorPersonalizado,
+                autorId: usuario!.id,
+              });
+              await recarregar();
+              mostrarToast(
+                `Reembolso de ${formatarMoeda(reembolso.valorReembolsado)} aplicado e registrado.`,
+                'sucesso',
+              );
             }}
             onFechar={() => setModalAberto(null)}
           />

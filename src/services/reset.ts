@@ -30,6 +30,8 @@ const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
   carteiras: { alunaId: 'alunas', pacoteId: 'pacotes' },
   movimentosCredito: { carteiraId: 'carteiras', autorId: 'usuarios' },
   vendas: { alunaId: 'alunas', pacoteId: 'pacotes', carteiraId: 'carteiras' },
+  trancamentos: { carteiraId: 'carteiras', alunaId: 'alunas', autorId: 'usuarios' },
+  reembolsos: { vendaId: 'vendas', alunaId: 'alunas', autorId: 'usuarios' },
   sessoes: { modalidadeId: 'modalidades', professoraId: 'professoras', espacoId: 'espacos' },
   ocorrenciasSessao: { sessaoId: 'sessoes', professoraEfetivaId: 'professoras' },
   agendamentos: { alunaId: 'alunas', ocorrenciaSessaoId: 'ocorrenciasSessao' },

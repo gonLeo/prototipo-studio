@@ -212,7 +212,17 @@ export interface MovimentoCredito {
   id: ID;
   carteiraId: ID;
   tipo: TipoMovimentoCredito;
+  /**
+   * Em créditos por padrão. Negativa quando o movimento retira o que um
+   * ajuste anterior havia concedido — é o caso do acerto no retorno de um
+   * trancamento que durou menos que o previsto.
+   */
   quantidade: number;
+  /**
+   * Prorrogação de validade movimenta **dias**, não créditos. Sem essa
+   * distinção o extrato exibiria "+30" numa carteira cujo saldo não mudou.
+   */
+  unidade?: 'creditos' | 'dias';
   /** Descrição legível do que originou o movimento, exibida no extrato. */
   origem: string;
   /** Registro que originou o movimento: venda, agendamento, alocação, reembolso. */
@@ -249,6 +259,16 @@ export interface Venda {
   bolsa: boolean;
   /** Carteira que a venda ativou ou alimentou. */
   carteiraId?: ID;
+  /**
+   * Validade que a carteira tinha antes desta compra, gravada só quando a
+   * compra foi absorvida por uma carteira vigente (RF-CRE-13).
+   *
+   * Existe por causa do PA-09: reembolsar uma renovação antecipada devolve
+   * apenas a compra, e os créditos que já estavam na carteira voltam com a
+   * validade original. Sem guardar essa data no momento da compra, não há
+   * como restaurá-la depois.
+   */
+  validadeAnteriorDaCarteira?: string;
   motivoCancelamento?: string;
   observacao?: string;
   /**
@@ -257,6 +277,63 @@ export interface Venda {
    * demonstrados de forma determinística.
    */
   simularFalhaGateway?: boolean;
+}
+
+/**
+ * Trancamento da carteira (seção 4.3.6 do escopo).
+ *
+ * Controle administrativo de mediação: a administração arbitra caso a
+ * caso se concede a pausa e por quantos dias, sem teto imposto pelo
+ * sistema (RF-TRA-03).
+ */
+export interface Trancamento {
+  id: ID;
+  carteiraId: ID;
+  alunaId: ID;
+  dataInicio: string;
+  dataTerminoPrevista: string;
+  /** Preenchida quando a administração registra o retorno da aluna. */
+  dataRetornoEfetiva?: string;
+  /** Dias efetivamente acrescentados à validade da carteira (RF-TRA-02). */
+  diasProrrogados: number;
+  motivo: string;
+  autorId: ID;
+  dataConcessao: string;
+  situacao: 'em_curso' | 'encerrado';
+}
+
+/**
+ * Reembolso (seção 4.12.2 do escopo).
+ *
+ * Recurso de mediação operado exclusivamente pela administração
+ * (RF-REE-09): a solicitação chega pelos canais de atendimento do studio,
+ * e o sistema serve para calcular, executar e registrar — nunca para
+ * receber o pedido.
+ */
+export type TipoReembolso = 'arrependimento' | 'legal';
+
+export interface Reembolso {
+  id: ID;
+  vendaId: ID;
+  alunaId: ID;
+  tipo: TipoReembolso;
+  data: string;
+  creditosComprados: number;
+  /** Créditos consumidos desde a compra, base do desconto (RF-REE-02). */
+  creditosUtilizados: number;
+  valorPago: number;
+  valorDescontado: number;
+  valorReembolsado: number;
+  /** Documentação datada exigida no reembolso por motivo legal (RF-REE-07). */
+  documentacao?: string;
+  motivo: string;
+  autorId: ID;
+  /** Identificador da transação de estorno no gateway (RF-REE-04). */
+  identificadorEstorno?: string;
+  /** Aulas futuras canceladas na execução (RF-REE-05). */
+  agendamentosCancelados: number;
+  /** A carteira foi encerrada, ou só perdeu os créditos desta compra (PA-09). */
+  carteiraEncerrada: boolean;
 }
 
 export interface Sessao {

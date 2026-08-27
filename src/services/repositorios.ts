@@ -17,6 +17,8 @@ import type {
   Carteira,
   MovimentoCredito,
   Venda,
+  Trancamento,
+  Reembolso,
   Sessao,
   OcorrenciaSessao,
   Agendamento,
@@ -52,6 +54,8 @@ export const pacoteRepositorio = criarRepositorio<Pacote>('pacotes');
 export const carteiraRepositorio = criarRepositorio<Carteira>('carteiras');
 export const movimentoCreditoRepositorio = criarRepositorio<MovimentoCredito>('movimentosCredito');
 export const vendaRepositorio = criarRepositorio<Venda>('vendas');
+export const trancamentoRepositorio = criarRepositorio<Trancamento>('trancamentos');
+export const reembolsoRepositorio = criarRepositorio<Reembolso>('reembolsos');
 export const sessaoRepositorio = criarRepositorio<Sessao>('sessoes');
 export const ocorrenciaSessaoRepositorio = criarRepositorio<OcorrenciaSessao>('ocorrenciasSessao');
 export const agendamentoRepositorio = criarRepositorio<Agendamento>('agendamentos');

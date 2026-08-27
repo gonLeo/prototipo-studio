@@ -806,6 +806,8 @@
       "simularFalhaGateway": true
     }
   ],
+  "trancamentos": [],
+  "reembolsos": [],
   "sessoes": [
     {
       "id": "ses-1",
