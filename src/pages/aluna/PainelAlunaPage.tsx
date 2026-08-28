@@ -1,211 +1,44 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useSessao } from '../../hooks/useSessao';
 import { useAgendaDaAluna } from '../../hooks/useAgendaDaAluna';
-import { usePacotes } from '../../hooks/usePacotes';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../../hooks/useTermos';
-import { comprarPacoteParaAluna, quitarVendaDoPrimeiroAcesso } from '../../hooks/cadastroDeAlunas';
-import { registrarConversao } from '../../hooks/aulasExperimentais';
-import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS, historicoDeComprasDaAluna } from '../../hooks/vendas';
-import type { CompraDaAluna } from '../../hooks/vendas';
+import { quitarVendaDoPrimeiroAcesso } from '../../hooks/cadastroDeAlunas';
+import { agendarAula } from '../../hooks/agendamentoDeAulas';
+import { historicoDeComprasDaAluna } from '../../hooks/vendas';
 import { useToast } from '../../hooks/useToast';
 import { aceiteRegistradoRepositorio, alunaRepositorio, pacoteRepositorio } from '../../services/repositorios';
-import type { Aluna, FormaPagamento, Pacote, Venda } from '../../types/domain';
+import type { Aluna, Pacote, Venda } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { SelectField } from '../../components/ui/Field';
+import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
 import { TermoEAnamnese } from '../../components/TermoEAnamnese';
 import { perguntasNaoRespondidas } from '../../data/anamnese';
 import { formatarDataBR, hojeISO } from '../../utils/data';
-import {
-  calcularPreviaDeCompra,
-  formatarCreditos,
-  formatarMoeda,
-  rotuloFormaPagamento,
-  rotuloSituacaoVenda,
-} from '../../utils/creditos';
+import { formatarCreditos, formatarMoeda } from '../../utils/creditos';
 import { ResumoDoPacote } from './ResumoDoPacote';
-
-/**
- * Compra de pacote pela própria aluna (RF-CRE-16, RF-EXP-07).
- *
- * É por aqui que quem fez a aula experimental adquire um pacote sem
- * repetir cadastro, e é também por aqui que quem já tem carteira renova
- * antecipadamente. A prévia mostra o saldo resultante e a nova validade
- * antes de confirmar, deixando claro o efeito sobre a carteira vigente.
- */
-function ComprarPacote({
-  aluna,
-  carteira,
-  onComprado,
-}: {
-  aluna: Aluna | undefined;
-  carteira: Parameters<typeof calcularPreviaDeCompra>[0]['carteiraVigente'];
-  onComprado: (mensagem: string, sucesso: boolean) => Promise<void>;
-}) {
-  const { pacotes, carregando } = usePacotes();
-  const [pacoteId, setPacoteId] = useState('');
-  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('pix');
-  const [parcelas, setParcelas] = useState(String(PARCELAS_DISPONIVEIS[0]));
-  const [erro, setErro] = useState<string>();
-  const [processando, setProcessando] = useState(false);
-
-  const ativos = pacotes.filter((p) => p.situacao === 'ativo');
-  const escolhido = ativos.find((p) => p.id === pacoteId);
-  const previa = escolhido
-    ? calcularPreviaDeCompra({ carteiraVigente: carteira, pacote: escolhido, hoje: hojeISO() })
-    : undefined;
-
-  async function comprar(e: FormEvent) {
-    e.preventDefault();
-    if (!aluna || !escolhido) return;
-    setErro(undefined);
-    setProcessando(true);
-    try {
-      const { venda, confirmada, mensagem } = await comprarPacoteParaAluna({
-        aluna,
-        compra: {
-          pacoteId: escolhido.id,
-          formaPagamento,
-          parcelas: formaPagamento === 'cartao_parcelado' ? Number(parcelas) : undefined,
-        },
-        autorId: aluna.usuarioId,
-      });
-
-      if (!confirmada) {
-        setErro(`O pagamento não foi aprovado: ${mensagem}`);
-        return;
-      }
-
-      // Compra depois da aula experimental fica marcada como conversão
-      // (RF-EXP-09), para separá-la de uma compra comum no relatório.
-      await registrarConversao({ alunaId: aluna.id, vendaId: venda.id, autorId: aluna.usuarioId });
-
-      await onComprado(`Compra confirmada: ${formatarCreditos(escolhido.creditos)} adicionados à sua carteira.`, true);
-    } catch (erroCapturado) {
-      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
-    } finally {
-      setProcessando(false);
-    }
-  }
-
-  if (carregando) return <p className="mt-6 text-sm text-neutral-500">Carregando pacotes…</p>;
-
-  if (ativos.length === 0) {
-    return (
-      <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
-        O studio ainda não publicou pacotes disponíveis para compra.
-      </p>
-    );
-  }
-
-  return (
-    <form onSubmit={comprar} className="mt-6 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <div>
-        <h2 className="text-sm font-semibold text-ink">
-          {carteira ? 'Adquirir mais créditos' : 'Adquirir um pacote'}
-        </h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          {carteira
-            ? 'Os créditos restantes são somados aos do novo pacote, com uma validade única.'
-            : 'Escolha um pacote para liberar o agendamento. O pagamento é único, no ato da compra.'}
-        </p>
-      </div>
-
-      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {ativos.map((pacote: Pacote) => {
-          const selecionado = pacote.id === pacoteId;
-          return (
-            <li key={pacote.id}>
-              <button
-                type="button"
-                onClick={() => setPacoteId(pacote.id)}
-                aria-pressed={selecionado}
-                className={`w-full rounded-lg border p-3 text-left ${
-                  selecionado
-                    ? 'border-primary-600 bg-primary-50 ring-1 ring-primary-600'
-                    : 'border-neutral-200 bg-white hover:bg-neutral-50'
-                }`}
-              >
-                <p className="text-sm font-semibold text-ink">{pacote.nome}</p>
-                <p className="mt-0.5 text-lg font-semibold text-ink">{formatarMoeda(pacote.valor)}</p>
-                <p className="text-xs text-neutral-500">
-                  {formatarCreditos(pacote.creditos)} · validade de {pacote.validadeDias} dias
-                </p>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      {escolhido && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField
-            label="Forma de pagamento"
-            value={formaPagamento}
-            onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
-          >
-            {FORMAS_PAGAMENTO.map((forma) => (
-              <option key={forma.valor} value={forma.valor}>
-                {forma.rotulo}
-              </option>
-            ))}
-          </SelectField>
-
-          {formaPagamento === 'cartao_parcelado' && (
-            <SelectField
-              label="Parcelas"
-              value={parcelas}
-              onChange={(e) => setParcelas(e.target.value)}
-              dica="O valor total é debitado do limite no momento da compra."
-            >
-              {PARCELAS_DISPONIVEIS.map((n) => (
-                <option key={n} value={n}>
-                  {n}x de {formatarMoeda(escolhido.valor / n)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-        </div>
-      )}
-
-      {previa && (
-        <div className="rounded-lg bg-neutral-50 px-3 py-2 text-sm ring-1 ring-inset ring-neutral-200">
-          <p className="text-ink">
-            Depois da compra você fica com{' '}
-            <span className="font-semibold">{formatarCreditos(previa.creditosResultantes)}</span> disponíveis, válidos
-            até <span className="font-semibold">{formatarDataBR(previa.validadeResultante)}</span>.
-          </p>
-          {previa.validadeMantida && (
-            <p className="mt-0.5 text-xs text-emerald-700">
-              Sua validade atual é mais longa que a do pacote escolhido e foi mantida — você não perde prazo comprando.
-            </p>
-          )}
-        </div>
-      )}
-
-      {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={!escolhido || processando}>
-          {processando ? 'Processando…' : escolhido ? `Pagar ${formatarMoeda(escolhido.valor)}` : 'Escolha um pacote'}
-        </Button>
-      </div>
-    </form>
-  );
-}
 
 export function PainelAlunaPage() {
   const { usuario, recarregarUsuario } = useSessao();
   const mostrarToast = useToast();
+  const confirmar = useConfirm();
   const { vigente: termoVigente, carregando: carregandoTermo } = useTermos();
-  const { carteira, leitura, pacote, minhasAulas, recarregar: recarregarAgenda } = useAgendaDaAluna(usuario?.id);
+  const {
+    carteira,
+    leitura,
+    pacote,
+    minhasAulas,
+    disponiveis,
+    bloqueio,
+    antecedenciaHoras,
+    recarregar: recarregarAgenda,
+  } = useAgendaDaAluna(usuario?.id);
+  const [agendando, setAgendando] = useState(false);
 
   const [aluna, setAluna] = useState<Aluna | undefined>();
   const [vendaPendente, setVendaPendente] = useState<Venda | undefined>();
   const [pacoteDaVenda, setPacoteDaVenda] = useState<Pacote | undefined>();
-  const [compras, setCompras] = useState<CompraDaAluna[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const [aceito, setAceito] = useState(false);
@@ -225,7 +58,6 @@ export function PainelAlunaPage() {
     setAluna(minha);
 
     const historico = minha ? await historicoDeComprasDaAluna(minha.id) : [];
-    setCompras(historico);
 
     const pendente = historico.find((v) => v.situacao === 'pendente' && v.tipo === 'pacote');
     setVendaPendente(pendente);
@@ -426,8 +258,9 @@ export function PainelAlunaPage() {
     );
   }
 
-  // RF-PNL-05: saldo, validade, próximas aulas, frequência e histórico de
-  // compras ficam no painel.
+  // RF-PNL-05: saldo, validade, grade disponível, próximas aulas e
+  // frequência ficam no painel. Compra e histórico financeiro vivem em
+  // "Meu pacote" (UX-01) — o painel trata de aulas, não de dinheiro.
   const proximasAulas = minhasAulas
     .filter((aula) => aula.situacao === 'ativo' && aula.data >= hojeISO())
     .sort((a, b) => a.data.localeCompare(b.data))
@@ -436,10 +269,46 @@ export function PainelAlunaPage() {
     .filter((aula) => aula.presenca !== undefined)
     .sort((a, b) => b.data.localeCompare(a.data))
     .slice(0, 3);
+  const proximasDisponiveis = disponiveis
+    .slice()
+    .sort((a, b) => a.data.localeCompare(b.data) || a.sessao.horarioInicio.localeCompare(b.sessao.horarioInicio))
+    .slice(0, 4);
 
-  // RF-REE-10: nenhuma menção a reembolso aparece para quem não teve um
-  // aplicado ao próprio cadastro.
-  const comprasVisiveis = compras.filter((v) => v.situacao !== 'cancelada');
+  // Bloqueio de saldo ou de pacote leva direto para "Meu pacote" — não faz
+  // sentido listar aulas que a aluna não pode marcar sem indicar a saída.
+  const bloqueioLevaAoPacote =
+    bloqueio?.motivo === 'Nenhum pacote ativo.' || bloqueio?.motivo === 'Saldo de créditos insuficiente.';
+
+  async function tentarAgendar(aula: (typeof proximasDisponiveis)[number]) {
+    if (!aluna || !usuario) return;
+
+    const ok = await confirmar({
+      titulo: 'Confirmar agendamento',
+      mensagem: `${aula.modalidade?.nome ?? 'Aula'} em ${formatarDataBR(aula.data)}, às ${aula.sessao.horarioInicio}. ${formatarCreditos(aula.custoEmCreditos)} serão reservados do seu saldo. Cancelamentos com ${antecedenciaHoras}h ou mais de antecedência liberam os créditos reservados.`,
+      textoConfirmar: 'Agendar',
+    });
+    if (!ok) return;
+
+    setAgendando(true);
+    try {
+      const resultado = await agendarAula({
+        aluna,
+        sessao: aula.sessao,
+        data: aula.data,
+        origem: 'portal',
+        autorId: usuario.id,
+      });
+      await recarregarAgenda();
+      mostrarToast(
+        `Aula agendada. Saldo restante: ${resultado.novoSaldo} aula(s). Cancele com ${resultado.antecedenciaMinimaHoras}h de antecedência para não perder o crédito.`,
+        'sucesso',
+      );
+    } catch (erroCapturado) {
+      mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
+    } finally {
+      setAgendando(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -448,13 +317,15 @@ export function PainelAlunaPage() {
         Seu saldo de créditos e a validade ficam sempre visíveis por aqui.
       </p>
 
-      {aluna?.origem === 'convenio' ? (
+      {aluna?.origem === 'convenio' && (
         <p className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
-          Seu acesso é pelo convênio: a reserva das aulas acontece no aplicativo do parceiro, e o check-in é validado
-          aqui automaticamente.
+          Seu acesso é pelo convênio: a reserva das aulas do convênio acontece no aplicativo do parceiro, e o check-in
+          é validado aqui automaticamente. Se você também tiver créditos próprios, o agendamento por aqui funciona
+          normalmente, como para qualquer aluna.
         </p>
-      ) : (
-        <>
+      )}
+
+      <>
           <div className="mt-6">
             <ResumoDoPacote carteira={carteira} leitura={leitura} pacote={pacote} />
           </div>
@@ -469,15 +340,60 @@ export function PainelAlunaPage() {
             </div>
           )}
 
-          <ComprarPacote
-            aluna={aluna}
-            carteira={carteira}
-            onComprado={async (mensagem, sucesso) => {
-              await recarregar();
-              await recarregarAgenda();
-              mostrarToast(mensagem, sucesso ? 'sucesso' : 'erro');
-            }}
-          />
+          <section className="mt-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-ink">Grade disponível</h2>
+              <Link to="/aluna/grade" className="text-sm font-medium text-primary-700 hover:text-primary-800">
+                Ver a grade completa →
+              </Link>
+            </div>
+
+            {bloqueio ? (
+              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-900">{bloqueio.motivo}</p>
+                {bloqueio.detalhe && <p className="mt-1 text-sm text-amber-800">{bloqueio.detalhe}</p>}
+                {bloqueioLevaAoPacote && (
+                  <Link
+                    to="/aluna/meu-pacote"
+                    className="mt-2 inline-block text-sm font-semibold text-amber-900 underline hover:no-underline"
+                  >
+                    Ir para Meu pacote →
+                  </Link>
+                )}
+              </div>
+            ) : proximasDisponiveis.length === 0 ? (
+              <p className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-500">
+                Nenhuma aula disponível nos próximos dias.
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-2">
+                {proximasDisponiveis.map((aula) => (
+                  <CartaoDeAula
+                    key={`${aula.sessao.id}-${aula.data}`}
+                    titulo={`${aula.modalidade?.nome ?? 'Modalidade'} — ${aula.nomeProfessora}`}
+                    subtitulo={`${formatarDataBR(aula.data)} · ${aula.nomeEspaco ?? ''}`}
+                    horario={`${aula.sessao.horarioInicio} - ${aula.sessao.horarioFim}`}
+                    detalhe={aula.vagas > 0 ? `${aula.vagas} vaga(s)` : 'Sem vagas'}
+                    valor={formatarCreditos(aula.custoEmCreditos)}
+                    aviso={aula.impedimento}
+                    esmaecido={aula.impedimento !== undefined && !aula.jaAgendada}
+                    acao={
+                      aula.jaAgendada ? (
+                        <Badge tom="sucesso">Agendada</Badge>
+                      ) : (
+                        <Button
+                          onClick={() => tentarAgendar(aula)}
+                          disabled={aula.impedimento !== undefined || agendando}
+                        >
+                          Agendar
+                        </Button>
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
 
           <section className="mt-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -487,13 +403,12 @@ export function PainelAlunaPage() {
               </Link>
             </div>
             {proximasAulas.length === 0 ? (
-              <p className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-500">
-                Nenhuma aula agendada.{' '}
-                <Link to="/aluna/grade" className="font-medium text-primary-700 hover:text-primary-800">
-                  Ver a grade disponível
+              <div className="mt-2 flex flex-col items-start gap-2 rounded-xl border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-600">
+                <p>Você ainda não tem nenhuma aula agendada.</p>
+                <Link to="/aluna/grade">
+                  <Button type="button">Marcar uma aula</Button>
                 </Link>
-                .
-              </p>
+              </div>
             ) : (
               <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
                 {proximasAulas.map((aula) => (
@@ -528,46 +443,7 @@ export function PainelAlunaPage() {
               </ul>
             </section>
           )}
-
-          {comprasVisiveis.length > 0 && (
-            <section className="mt-6">
-              <h2 className="text-sm font-semibold text-ink">Histórico de compras</h2>
-              <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                {comprasVisiveis.map((venda) => (
-                  <li key={venda.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
-                    <span className="text-ink">
-                      {formatarDataBR(venda.data)} ·{' '}
-                      {venda.tipo === 'aula_experimental' ? 'Aula experimental' : formatarCreditos(venda.creditos)}
-                      <span className="ml-1 text-xs text-neutral-500">
-                        {rotuloFormaPagamento(venda.formaPagamento, venda.parcelas)}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-right">
-                        {/* RF-REE-10: o valor devolvido só aparece para quem
-                            teve um reembolso aplicado ao próprio cadastro. */}
-                        <span className="block text-neutral-700">
-                          {venda.bolsa ? 'Isenta' : formatarMoeda(venda.valorReembolsado ?? venda.valor)}
-                        </span>
-                        {venda.valorReembolsado !== undefined && (
-                          <span className="block text-xs text-neutral-500">
-                            reembolsado de {formatarMoeda(venda.valor)}
-                          </span>
-                        )}
-                      </span>
-                      {venda.situacao !== 'confirmada' && (
-                        <Badge tom={venda.situacao === 'pendente' ? 'info' : 'aviso'}>
-                          {rotuloSituacaoVenda(venda.situacao)}
-                        </Badge>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
-      )}
+      </>
     </div>
   );
 }

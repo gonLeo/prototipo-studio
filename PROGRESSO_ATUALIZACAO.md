@@ -167,6 +167,16 @@ Os quatro erros de tipagem que existiam em `src/hooks/useAlunas.ts` desde antes 
 - **O catálogo de eventos de notificação foi limpo**: saíram os eventos de cobrança, inadimplência, aviso de término de contrato, alteração de plano e encerramento de contrato; entrou a confirmação de compra. Os eventos de pacote finalizando, pacote encerrado, alocação em aula excepcional e reembolso aplicado entram na Etapa 7, junto com o restante do M16.
 - **O trancamento ainda não existe como operação**: a situação `trancada` da aluna já bloqueia o agendamento e a interface já responde a ela, mas a entidade `Trancamento` e a tela de concessão são a Etapa 3.
 
+### Ajuste pós-entrega (UX-01 e UX-02, aplicado depois da Etapa 4)
+
+Melhoria de UX identificada pelo uso, documentada em `AJUSTES DE UX.md` antes de ser implementada:
+
+- **Nova página "Meu pacote"** (`src/pages/aluna/MeuPacotePage.tsx`, rota `/aluna/meu-pacote`, item no menu lateral): reúne a carteira, a compra de pacote (`ComprarPacote`, extraído de `PainelAlunaPage.tsx` para `src/pages/aluna/ComprarPacote.tsx` e reaproveitado nas duas telas) e o histórico de compras — os três saíram do painel. Acessível a qualquer aluna, inclusive de convênio (RF-CNV-09). Durante o trancamento a página continua acessível, mas a compra fica desabilitada com a explicação (RF-TRA-04).
+- **O painel (`PainelAlunaPage.tsx`) passou a tratar de aulas, não de dinheiro**: no lugar do bloco de compra removido, entrou um recorte da **grade disponível** (até 4 aulas, com agendamento direto ali) ou o motivo do bloqueio, com link para "Meu pacote" quando o bloqueio é de saldo ou de pacote inexistente. O estado vazio de "Próximas aulas" trocou o link discreto por um bloco de orientação com botão "Marcar uma aula".
+- **`ResumoDoPacote.tsx`** ganhou os links de saída: a mensagem de "Nenhum pacote ativo" e a faixa de "Finalizando" (com texto diferente por motivo — poucos créditos vs. vencimento próximo) levam para `/aluna/meu-pacote`. **`GradeDaAlunaPage.tsx`** ganhou o mesmo link quando o bloqueio é de saldo ou de pacote.
+- Verificado no navegador: agendamento pela grade do painel (saldo e reservado atualizando), a faixa "Finalizando" da Patrícia Lima levando a "Meu pacote", a aluna de convênio (Renata Souza) vendo o aviso do parceiro **junto** do conteúdo normal e podendo comprar pacote, a aluna sem carteira (Aline Martins) com o cartão de bloqueio e o link de saída, o trancamento (Larissa Prado) com a compra desabilitada mas carteira e histórico visíveis, e o primeiro acesso (Fernanda Alves) inalterado. `tsc` e `vite build` sem erros.
+- `AJUSTES DE UX.md`: os dois itens foram marcados como aplicados.
+
 ---
 
 ## Etapa 3 — o que foi entregue

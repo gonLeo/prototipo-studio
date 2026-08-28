@@ -24,6 +24,7 @@ import { MatriculaPage } from './pages/MatriculaPage';
 import { JustificativasPage } from './pages/administracao/JustificativasPage';
 import { SolicitacoesCancelamentoPage } from './pages/administracao/SolicitacoesCancelamentoPage';
 import { PainelAlunaPage } from './pages/aluna/PainelAlunaPage';
+import { MeuPacotePage } from './pages/aluna/MeuPacotePage';
 import { GradeDaAlunaPage } from './pages/aluna/GradeDaAlunaPage';
 import { MinhasAulasPage } from './pages/aluna/MinhasAulasPage';
 import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfessoraPage';
@@ -130,6 +131,7 @@ function App() {
                 }
               >
                 <Route index element={<PainelAlunaPage />} />
+                <Route path="meu-pacote" element={<MeuPacotePage />} />
                 <Route path="grade" element={<GradeDaAlunaPage />} />
                 <Route path="minhas-aulas" element={<MinhasAulasPage />} />
               </Route>

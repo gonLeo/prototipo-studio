@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { Carteira, Pacote } from '../../types/domain';
 import { formatarDataBR } from '../../utils/data';
 import { Badge } from '../../components/ui/Badge';
@@ -31,13 +32,18 @@ export function ResumoDoPacote({
   if (!carteira || !leitura) {
     return (
       <p className="rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600 shadow-sm">
-        <strong className="font-semibold text-ink">Nenhum pacote ativo.</strong> Adquira um pacote no seu painel para
-        voltar a agendar.
+        <strong className="font-semibold text-ink">Nenhum pacote ativo.</strong> Adquira um pacote em{' '}
+        <Link to="/aluna/meu-pacote" className="font-medium text-primary-700 hover:text-primary-800">
+          Meu pacote
+        </Link>{' '}
+        para voltar a agendar.
       </p>
     );
   }
 
   const finalizando = leitura.motivoFinalizando !== undefined;
+  const textoLinkFinalizando =
+    leitura.motivoFinalizando === 'poucos_creditos' ? 'Adquirir mais créditos' : 'Renovar meu pacote';
 
   return (
     <div className="space-y-2">
@@ -71,8 +77,10 @@ export function ResumoDoPacote({
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-100">
           <Badge tom="aviso">{rotuloStatusCarteira('finalizando')}</Badge>
           <span>
-            {explicarFinalizando(leitura.motivoFinalizando!, leitura)} Você continua agendando normalmente — vale
-            renovar para não ficar sem créditos.
+            {explicarFinalizando(leitura.motivoFinalizando!, leitura)} Você continua agendando normalmente.{' '}
+            <Link to="/aluna/meu-pacote" className="font-semibold text-amber-900 underline hover:no-underline">
+              {textoLinkFinalizando} →
+            </Link>
           </span>
         </div>
       )}

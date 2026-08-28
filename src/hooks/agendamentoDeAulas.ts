@@ -128,7 +128,7 @@ export function bloqueioParaAgendar(params: {
     }
     return {
       motivo: 'Nenhum pacote ativo.',
-      detalhe: 'Adquira um pacote no seu painel para liberar o agendamento.',
+      detalhe: 'Adquira um pacote em "Meu pacote" para liberar o agendamento.',
     };
   }
 
@@ -136,7 +136,7 @@ export function bloqueioParaAgendar(params: {
   if (creditosDisponiveis(carteira) < custoDaAula) {
     return {
       motivo: 'Saldo de créditos insuficiente.',
-      detalhe: `Esta aula custa ${formatarCreditos(custoDaAula)} e você tem ${formatarCreditos(creditosDisponiveis(carteira))} disponíveis. Adquira um novo pacote para continuar agendando.`,
+      detalhe: `Esta aula custa ${formatarCreditos(custoDaAula)} e você tem ${formatarCreditos(creditosDisponiveis(carteira))} disponíveis. Adquira um novo pacote em "Meu pacote" para continuar agendando.`,
     };
   }
 

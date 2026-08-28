@@ -71,6 +71,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
     {
       itens: [
         { to: '/aluna', label: 'Painel', fim: true },
+        { to: '/aluna/meu-pacote', label: 'Meu pacote' },
         { to: '/aluna/grade', label: 'Grade disponível' },
         { to: '/aluna/minhas-aulas', label: 'Minhas aulas' },
       ],

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSessao } from '../../hooks/useSessao';
 import { useAgendaDaAluna } from '../../hooks/useAgendaDaAluna';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -83,6 +84,18 @@ export function GradeDaAlunaPage() {
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-semibold text-amber-900">{agenda.bloqueio.motivo}</p>
           {agenda.bloqueio.detalhe && <p className="mt-1 text-sm text-amber-800">{agenda.bloqueio.detalhe}</p>}
+          {/* UX-01: bloqueio de saldo ou de pacote leva direto para onde a
+              aluna resolve — não faz sentido listar aulas que ela não pode
+              marcar sem indicar a saída. */}
+          {(agenda.bloqueio.motivo === 'Nenhum pacote ativo.' ||
+            agenda.bloqueio.motivo === 'Saldo de créditos insuficiente.') && (
+            <Link
+              to="/aluna/meu-pacote"
+              className="mt-2 inline-block text-sm font-semibold text-amber-900 underline hover:no-underline"
+            >
+              Ir para Meu pacote →
+            </Link>
+          )}
         </div>
       )}
 
