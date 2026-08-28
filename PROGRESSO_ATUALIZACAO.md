@@ -8,8 +8,8 @@ O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0,
 - [x] Etapa 2 — Carteira de créditos e venda avulsa (a virada)
 - [x] Etapa 3 — Trancamento e reembolso
 - [x] Etapa 4 — Aulas excepcionais (M9, módulo novo)
-- [ ] Etapa 5 — Agendamento, cancelamento e presença sobre créditos
-- [ ] Etapa 6 — Comissão e convênios
+- [x] Etapa 5 — Agendamento, cancelamento e presença sobre créditos
+- [x] Etapa 6 — Comissão e convênios
 - [ ] Etapa 7 — Experimental, painéis, notificações, perfis e relatórios
 - [ ] Etapa 8 — Varredura final e consolidação
 
@@ -327,3 +327,144 @@ Dois defeitos apareceram no teste e foram corrigidos antes da entrega: o acerto 
 O fluxo foi percorrido no navegador: criação com alerta de horário fora do funcionamento, vínculo de professora com comissão própria, recusa da aluna sem pacote ativo, alocação com consumo imediato (9 → 7 disponíveis, sem passar por reserva), chamada finalizada gerando R$ 180,00 pelo valor do cadastro, e a aula aparecendo nas próximas aulas da aluna. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
 
 Um problema apareceu no teste e foi corrigido: **os dois campos de horário não tinham rótulo visível**. O `TimePicker` carrega só um rótulo acessível, o que basta nas telas onde a posição diz qual é qual (as faixas de horário da grade e do studio), mas não num formulário em grid com outros campos rotulados — não dava para saber qual era início e qual era término.
+
+---
+
+## Etapa 5 — o que foi entregue
+
+**O refino do ciclo reserva → consumo que a Etapa 2 deixou no mínimo.** Boa parte do que o plano lista para esta etapa já tinha sido entregue junto com a virada do modelo comercial — a grade com custo em créditos, o saldo persistente, os bloqueios, a janela diferenciada, a reserva no agendamento, o cancelamento dentro e fora da antecedência, o estorno por justificativa aprovada e a conversão de reserva em consumo na chamada. O trabalho aqui foi fechar as lacunas que sobraram e que só apareceram ao percorrer o ciclo inteiro.
+
+### O histórico da aluna passou a dizer o destino dos créditos (RF-PRE-07)
+
+O requisito pede que a aluna veja **os créditos consumidos em cada ocorrência**, e a tela mostrava só data, modalidade, professora e situação. Duas aulas canceladas apareciam idênticas na lista tendo efeitos opostos sobre o saldo — sem isso, a aluna não conseguia conferir o extrato contra o próprio histórico.
+
+Cada linha agora traz uma frase que diz o que aconteceu, derivada em `destinoDosCreditos` (`useAgendaDaAluna.ts`):
+
+- **1 crédito reservado** — aula marcada, ainda não realizada;
+- **1 crédito utilizado** — presença confirmada;
+- **1 crédito consumido — falta** — ausência sem justificativa aprovada (RF-CRE-05);
+- **1 crédito consumido — cancelamento fora do prazo** (RF-CAN-02);
+- **1 crédito devolvido ao saldo** — cancelamento dentro da antecedência (RF-CAN-01);
+- **1 crédito devolvido — justificativa aprovada** (RF-JUS-04);
+- **1 crédito devolvido — aula cancelada pelo studio** (RF-CPR-04, RF-EXC-04);
+- **1 crédito consumido na alocação** — aula excepcional, que consome na hora sem passar por reserva (RF-AEX-04);
+- **Sem consumo de créditos** — aula experimental e reserva de convênio.
+
+O que é devolução aparece em verde; o particípio concorda com a quantidade, em vez de sair como "devolvido(s)".
+
+### A correção da chamada passou a ajustar o crédito, não só a comissão (RF-PRE-05)
+
+O requisito diz que a correção ajusta "a comissão apurada **e o saldo de créditos da aluna quando aplicável**". A comissão já era recalculada; o crédito, não.
+
+O caso aplicável é um só, e ele acontece: a aluna faltou, o crédito foi consumido, ela justificou, a administração aprovou e o crédito voltou ao saldo — então a correção da chamada mostra que ela **estava presente**. A aula aconteceu para ela, e o crédito precisa voltar a ser consumido. A justificativa passa à situação **`sem_efeito`**: ela justificava uma falta que não existiu. Marcá-la como "recusada" mentiria sobre o que a administração decidiu.
+
+O caminho inverso não existe e o código não finge que existe: presença e ausência consomem igual, então corrigir de presente para ausente não mexe no saldo. O crédito só volta por justificativa aprovada.
+
+### A administração passou a cancelar e remarcar (RF-AGD-08)
+
+O requisito é "agendar, cancelar **e remarcar** em nome de qualquer aluna, com registro de autoria". Só o agendar existia. No histórico de frequência da ficha, as aulas da grade ainda por acontecer ganharam os dois botões:
+
+- **Cancelar** devolve o crédito sempre, mesmo em cima da hora — a antecedência mínima existe para a aluna desistir, não para o studio desmarcar. A confirmação diz isso antes de executar.
+- **Remarcar** reaproveita a mesma listagem do portal, em `remarcarAgendamento`: cancela e agenda **nessa ordem**, para que a vaga e o crédito da aula antiga voltem antes de a nova ser reservada. Sem isso, mover uma aluna para um horário quase cheio exigiria dela um crédito a mais do que precisa, e a última vaga da sessão de origem ficaria presa. Se o novo horário falhar (turma lotou entre abrir a tela e confirmar), a mensagem diz explicitamente que a aula original foi desmarcada e o crédito voltou — em vez de deixar quem opera sem saber o que ficou.
+
+O histórico de frequência da ficha também deixou de exibir a situação crua do registro (`ativo`, `realizado`) e passou a usar os mesmos selos da tela da aluna, com horário e modalidade em cada linha.
+
+### O botão de justificar respeita o prazo (RF-JUS-02)
+
+O envio já era recusado no domínio depois do prazo configurado, mas a tela oferecia o botão assim mesmo — a aluna clicava, preenchia e só então descobria que não dava. Agora o botão só aparece dentro do prazo.
+
+### Decisões desta etapa
+
+- **`sem_efeito` entrou como situação de justificativa**, e não como recusa. As três situações do escopo descrevem decisões da administração; esta descreve um fato posterior que as tornou obsoletas. Reusar "recusada" registraria uma decisão que ninguém tomou, e a aluna leria como se a justificativa dela tivesse sido rejeitada.
+- **O parecer da análise é omitido quando a justificativa fica sem efeito.** Ele descreve uma decisão que a correção desfez — apareceu no teste como "Justificativa sem efeito … — Justificativa aceita, crédito devolvido", dizendo o oposto do que tinha acabado de acontecer com o saldo.
+- **A remarcação cancela antes de agendar**, com a consequência assumida de que uma falha no segundo passo deixa a aluna sem aula. A ordem inversa evitaria isso, mas cobraria um crédito extra e prenderia a vaga de origem — e o erro, quando acontece, é recuperável com uma segunda tentativa pela própria ficha.
+- **A prorrogação cumulativa do PA-11 já valia nos três caminhos** e foi conferida, não reescrita: solicitação da professora aprovada sem substituta, exceção de calendário e exclusão de sessão passam todas por `cancelarOcorrencia`, que prorroga uma vez por ocorrência cancelada. O conflito com aula excepcional (RF-AEX-03) usa o mesmo caminho.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. Entrar como **Larissa Prado** (Aluna) → **Minhas aulas**. Cada aula, nas próximas e no histórico, traz a linha de créditos: a agendada diz "1 crédito reservado", e a de 12/08 diz "1 crédito consumido — cancelamento fora do prazo".
+3. **Agendar** uma aula pela grade e conferir que ela entra como "1 crédito reservado". **Cancelar** com mais de 4h de antecedência: a linha vira "1 crédito devolvido ao saldo", em verde.
+4. **Ciclo da correção (RF-PRE-05)**, o teste central da etapa:
+   - Como **Beatriz Nogueira** (Professora), abrir a chamada pendente de 17/08, marcar **Larissa como ausente** e finalizar. Na ficha da Larissa, o extrato recebe "Consumo — Aula realizada em 17/08/2026".
+   - Como **Larissa**, a aula aparece como "Falta", com "1 crédito consumido — falta". Clicar em **Justificar** e enviar. (Se a data já estiver fora dos 7 dias, o botão não aparece — é a regra do RF-JUS-02; aumente o prazo em Parâmetros para testar.)
+   - Como **Camila Duarte** (Administração) → **Justificativas**, aprovar. O extrato recebe "Estorno — Justificativa de falta aprovada", e o crédito volta ao saldo.
+   - Ainda na administração, abrir a chamada de 17/08, marcar **Larissa como presente**, escrever a justificativa do ajuste e salvar. O extrato recebe **"Consumo — Correção da chamada de 17/08/2026: presença confirmada"**, e na tela da aluna a linha vira "1 crédito utilizado" com "Justificativa sem efeito — a chamada foi corrigida e você consta como presente".
+5. **Remarcação (RF-AGD-08)**: na ficha da Larissa, no histórico de frequência, clicar em **Remarcar** numa aula futura. O texto do modal explica que a troca não custa crédito adicional. Escolher outro horário e conferir que **o saldo não muda** — o extrato mostra o par "Liberação +1" e "Reserva −1".
+6. **Cancelamento pela administração**: clicar em **Cancelar** na mesma aula. A confirmação avisa que o crédito volta ao saldo e que o registro fica como feito pela administração.
+7. **Prazo da justificativa**: em **Parâmetros**, reduzir "Prazo para envio de justificativa de falta" e conferir que o botão **Justificar** some das aulas fora do prazo.
+
+### Verificação executada
+
+O ciclo completo foi percorrido no navegador: chamada finalizada com falta (reservados 3 → 2, utilizados 1 → 2), justificativa enviada, aprovada com estorno, e a correção da chamada reconsumindo o crédito — os três movimentos aparecem no extrato na ordem certa, e o saldo final bate. A remarcação de 28/08 para 31/08 manteve o saldo em 8 disponíveis e 2 reservados, e o cancelamento pela ficha devolveu o crédito. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes de fast-refresh.
+
+Um defeito de texto apareceu no teste e foi corrigido: o parecer da análise continuava sendo exibido depois que a justificativa ficava sem efeito, afirmando que o crédito tinha sido devolvido logo abaixo da linha que dizia que ele voltou a ser consumido.
+
+---
+
+## Etapa 6 — o que foi entregue
+
+**Os dois módulos ajustados ao que mudou na v2.0.** A comissão de aula excepcional já tinha entrado na Etapa 4, junto com a chamada que a gera. O que faltava aqui era a regra da aula sem presenças, o detalhamento que separa os dois tipos de aula, e as regras novas do convênio que o protótipo cumpria por construção mas não dizia em lugar nenhum.
+
+### RF-COM-03 — sessão sem presenças não gera comissão
+
+A chamada era finalizada e a comissão saía igual, tivesse comparecido a turma inteira ou ninguém. Agora `lancarComissao` recebe a quantidade de presenças e **não lança quando ela é zero**.
+
+A ordem importa: gerar o lançamento e esperar que alguém o remova depois inverteria o requisito — o padrão passaria a ser pagar. Como o escopo manda não gerar, a decisão sobre pagamento fica com a administração, e para isso a aula precisa continuar visível:
+
+- **A professora sabe na hora.** O toast da finalização passa a dizer que nenhuma comissão foi gerada e por quê, em vez de deixá-la descobrir no fechamento do mês.
+- **A administração vê no fechamento.** `sessoesSemPresencaNoPeriodo` lista as aulas finalizadas sem nenhuma presença, e a tela de Comissões as destaca em bloco próprio, com link para a chamada. Sem isso, a aula desapareceria da conferência: ela não gera lançamento, não entra em nenhum total, e a professora esteve no studio.
+
+O bloco é separado do de chamadas pendentes, que já existia e diz outra coisa — lá a comissão ainda não existe porque a chamada não foi feita; aqui ela não vai existir.
+
+### RF-COM-02 — quantidade de presenças gravada no lançamento
+
+`Comissao` ganhou o campo `presencas`. Ele é gravado, e não recontado na tela: a chamada pode ser corrigida depois, e o detalhamento precisa dizer o que valeu quando a comissão foi apurada.
+
+### REL-07 — detalhamento separando regulares e excepcionais
+
+A tela resolvia a descrição da aula apenas pela ocorrência de sessão. Uma comissão de aula excepcional não tem ocorrência, então aparecia como **"Aula ·"** — sem nome e sem horário, no relatório que existe justamente para conferir antes de pagar.
+
+A descrição saiu da tela e virou `detalharComissoes` no domínio, que resolve cada lançamento pelo caminho certo e devolve o `tipoDeAula`. Com isso:
+
+- o resumo por professora mostra quanto veio de cada tipo ("R$ 35,00 em regulares, R$ 180,00 em excepcionais");
+- o detalhamento marca a aula excepcional com selo, exibe a **base de cálculo** de cada linha e fecha com os dois subtotais;
+- o CSV ganhou as colunas de tipo e de base de cálculo;
+- a tela da professora usa a mesma função, e a aula excepcional dela deixou de aparecer sem nome.
+
+### Convênios — as regras novas do v2.0 passaram a aparecer na tela
+
+Três regras que o protótipo já cumpria, mas que ninguém que abrisse a tela saberia:
+
+- **RF-CNV-01 — aulas excepcionais não são espelhadas.** Só sessões da grade recorrente chegam aos convênios. A ausência delas na lista de espelhamento parecia falha; agora está dita.
+- **RF-CNV-08 — o studio não controla quantas aulas a aluna de convênio pode fazer.** A falta de um "usadas / restantes" no relatório é decisão de escopo, e o relatório explica que o limite é do parceiro.
+- **RF-CNV-09 — pacote e convênio convivem na mesma pessoa.** A lista de reservas marca a aluna que também tem carteira no studio, e o histórico de frequência — na ficha e na tela dela — identifica cada aula pela origem: "reserva pelo convênio" não consome crédito, e agora diz isso em vez de um "sem consumo de créditos" sem explicação.
+
+### Referências de requisito realinhadas ao v2.0
+
+A numeração do M11 e do M14 mudou entre as versões do escopo, e os comentários do código ainda apontavam para os IDs da v1.0 — RF-CNV-13 para credenciais (hoje RF-CNV-13 é isso, mas era 12), presença sem check-in como RF-CNV-10 (hoje RF-CNV-11), fechamento como RF-COM-06/08 (hoje RF-COM-07/09), substituição como RF-COM-03 (hoje RF-COM-04), entre outros. Todos corrigidos, porque a Etapa 8 confere requisito a requisito e um comentário desatualizado vira uma conferência errada.
+
+### Decisões desta etapa
+
+- **A regra do RF-COM-03 não se aplica à aula excepcional.** Ela fala de "sessão", que no escopo é a aula da grade recorrente (M5), e o RF-AEX-12 condiciona o lançamento da excepcional à finalização da chamada, não ao comparecimento. O valor foi combinado individualmente para aquela aula, que a professora conduziu — um workshop em que só uma aluna apareceu continua gerando a comissão acordada.
+- **A aula sem presença não é destacada como erro.** O bloco é neutro, não âmbar: nada deu errado, apenas ninguém foi. O que a tela precisa é lembrar que existe uma decisão a tomar.
+- **`presencas` é gravado, não derivado.** Recontar na tela pareceria equivalente e não é: depois de uma correção de chamada, a contagem de hoje deixa de ser a que originou o valor.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. **RF-COM-03**: entrar como **Beatriz Nogueira** (Professora), abrir a chamada pendente de 17/08 e marcar **as duas alunas como ausentes**. Ao finalizar, o toast avisa que nenhuma comissão foi gerada. Em **Meus pagamentos**, o total continua zerado.
+3. Entrar como **Camila Duarte** (Administração) → **Comissões**: a aula de 17/08 aparece no bloco "1 aula(s) finalizada(s) sem nenhuma presença", com o nome da professora e a quantidade de faltas, separada do bloco de chamadas não finalizadas.
+4. **Comissão regular**: finalizar a chamada de 13/08 (DANÇA) com presenças — R$ 35,00 entram no período.
+5. **REL-07**: em **Aulas excepcionais**, criar um workshop com **Beatriz Nogueira** e comissão de R$ 180,00, alocar a **Larissa Prado** e finalizar a chamada. Em **Comissões**, o resumo dela passa a dizer "R$ 35,00 em regulares, R$ 180,00 em excepcionais". Em **Detalhar**, o workshop aparece **com nome e horário**, com selo "Excepcional", a base de cálculo de cada linha e os dois subtotais antes do total.
+6. **Exportar CSV** e conferir as colunas **Tipo** e **Base de cálculo**.
+7. **Painel da professora**: como Beatriz, em **Meus pagamentos**, as duas aulas aparecem com a base de cálculo — a categoria numa, o valor combinado na outra.
+8. **RF-CNV-01**: Administração → **Convênios** → aba **Grade espelhada**. A nota explica que workshops e aulas particulares não são espelhados.
+9. **RF-CNV-08**: aba **Relatório do período** — a nota explica que o limite de aulas é do convênio, não do studio.
+10. **RF-CNV-09**: na ficha da **Renata Souza** (aluna de convênio), usar **Comprar pacote**. Depois: na aba **Reservas**, as reservas dela passam a trazer "Também tem pacote de créditos no studio"; a ficha mostra a carteira convivendo com o histórico de "reserva pelo convênio"; e, entrando como ela, o painel traz o aviso do parceiro **junto** do saldo e da grade — ela agenda por crédito normalmente.
+
+### Verificação executada
+
+O ciclo foi percorrido no navegador: chamada com duas faltas finalizada sem gerar comissão e destacada no fechamento; comissão regular de R$ 35,00 e excepcional de R$ 180,00 convivendo no mesmo período, com os subtotais corretos e o workshop identificado por nome no detalhamento; e a aluna de convênio comprando pacote, aparecendo marcada na lista de reservas e agendando pelo portal com o aviso do convênio ao lado. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
+
+Um defeito de texto apareceu no teste e foi corrigido: a base de cálculo da aula regular saía como **"Categoria Categoria I"**, porque o nome da categoria cadastrada já traz a palavra e o código a prefixava de novo.

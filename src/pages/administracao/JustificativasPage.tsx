@@ -31,12 +31,16 @@ const ROTULO_SITUACAO: Record<SituacaoJustificativa, string> = {
   pendente: 'Pendente',
   aprovada: 'Aprovada',
   recusada: 'Recusada',
+  // A correção da chamada mostrou presença: não houve falta a justificar
+  // (RF-PRE-05). Não é decisão da administração, e o rótulo diz isso.
+  sem_efeito: 'Sem efeito',
 };
 
-const TOM_SITUACAO: Record<SituacaoJustificativa, 'aviso' | 'sucesso' | 'erro'> = {
+const TOM_SITUACAO: Record<SituacaoJustificativa, 'aviso' | 'sucesso' | 'erro' | 'neutro'> = {
   pendente: 'aviso',
   aprovada: 'sucesso',
   recusada: 'erro',
+  sem_efeito: 'neutro',
 };
 
 function FormularioAnalise({

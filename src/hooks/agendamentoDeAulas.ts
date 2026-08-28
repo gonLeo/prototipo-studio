@@ -476,3 +476,72 @@ export async function cancelarAgendamentoDaAluna(params: {
     podeJustificar: !creditoDevolvido && !agendamento.experimental,
   };
 }
+
+/**
+ * Remarcação pela administração (RF-AGD-08).
+ *
+ * Cancelar e agendar de novo, na ordem, é o que faz a vaga e o crédito da
+ * aula antiga voltarem antes de a nova ser reservada — sem isso, remarcar
+ * de um horário lotado para outro exigiria da aluna um crédito a mais do
+ * que ela precisa, e a última vaga da sessão de origem ficaria presa.
+ *
+ * Se o novo agendamento falhar (turma lotou, saldo acabou), o cancelamento
+ * já aconteceu: em vez de deixar a aluna sem nenhuma das duas aulas, a
+ * falha é propagada com a informação explícita de que a aula original foi
+ * desmarcada, para quem está operando saber o que ficou.
+ */
+export async function remarcarAgendamento(params: {
+  aluna: Aluna;
+  agendamento: Agendamento;
+  dataAtual: string;
+  horaAtual: string;
+  novaSessao: Sessao;
+  novaData: string;
+  autorId: string;
+}): Promise<ResultadoAgendamento> {
+  const { aluna, agendamento, dataAtual, horaAtual, novaSessao, novaData, autorId } = params;
+
+  await cancelarAgendamentoDaAluna({
+    agendamento,
+    dataAula: dataAtual,
+    horaAula: horaAtual,
+    // A remarcação é decisão do studio: o crédito volta integralmente,
+    // mesmo em cima da hora. A regra de antecedência vale para a aluna
+    // desistir da aula, não para a administração movê-la de horário.
+    origemCancelamento: 'administracao',
+    autorId,
+  });
+
+  let resultado: ResultadoAgendamento;
+  try {
+    resultado = await agendarAula({
+      aluna,
+      sessao: novaSessao,
+      data: novaData,
+      origem: 'administracao',
+      autorId,
+    });
+  } catch (erro) {
+    const motivo = erro instanceof Error ? erro.message : 'Erro inesperado.';
+    throw new RegraNegocioError(
+      `A aula de ${formatarDataBR(dataAtual)} foi desmarcada e os créditos voltaram ao saldo, mas o novo horário não pôde ser agendado: ${motivo} Agende novamente pela ficha da aluna.`,
+    );
+  }
+
+  await registroAuditoriaRepositorio.criar({
+    entidadeAfetada: 'Agendamento',
+    operacao: 'remarcacao_pela_administracao',
+    autorId,
+    dataHora: new Date().toISOString(),
+    valorAnterior: { agendamentoId: agendamento.id, data: dataAtual, hora: horaAtual },
+    valorNovo: { agendamentoId: resultado.agendamento.id, data: novaData, hora: novaSessao.horarioInicio },
+  });
+
+  await notificar({
+    destinatario: { tipo: 'aluna', id: aluna.id },
+    evento: 'agendamento_remarcado',
+    conteudo: `Sua aula de ${formatarDataBR(dataAtual)} às ${horaAtual} foi remarcada para ${formatarDataBR(novaData)} às ${novaSessao.horarioInicio}. Seu saldo não foi alterado pela troca.`,
+  });
+
+  return resultado;
+}

@@ -14,7 +14,7 @@ import {
 } from '../services/repositorios';
 import type { Agendamento, Aluna, Carteira, Justificativa, Pacote } from '../types/domain';
 import { hojeISO, horasAteAula } from '../utils/data';
-import { lerCarteira, type LeituraDaCarteira } from '../utils/creditos';
+import { formatarCreditos, lerCarteira, type LeituraDaCarteira } from '../utils/creditos';
 import { limiaresFinalizando } from './carteiraDeCreditos';
 import { alocacoesDaAluna } from './aulasExcepcionais';
 import {
@@ -46,6 +46,91 @@ export interface AulaDaAluna extends Agendamento {
   horasAteAAula: number;
   /** Presença registrada na chamada, quando ela já foi finalizada (RF-PRE-07). */
   presenca: 'presente' | 'ausente' | undefined;
+}
+
+/**
+ * O que aconteceu com os créditos daquela aula (RF-PRE-07).
+ *
+ * O histórico da aluna precisa dizer não só quantos créditos a aula
+ * custou, mas o que foi feito deles: uma aula cancelada dentro do prazo e
+ * outra cancelada fora dele aparecem igual na lista e têm efeitos opostos
+ * sobre o saldo. Sem essa linha, a aluna não consegue conferir o extrato.
+ */
+export type DestinoDosCreditos = 'reservados' | 'utilizados' | 'devolvidos' | 'sem_consumo';
+
+export function destinoDosCreditos(aula: AulaDaAluna): {
+  destino: DestinoDosCreditos;
+  texto: string;
+} {
+  const creditos = aula.creditosReservados ?? 0;
+
+  // Aula experimental é cobrada à parte (RF-EXP-06) e a reserva de
+  // convênio não toca em crédito nenhum (RN-33). A origem é dita porque a
+  // mesma aluna pode ter pacote **e** convênio (RF-CNV-09): sem isso, ela
+  // veria uma aula "sem consumo" no meio das que gastaram crédito e não
+  // saberia por quê.
+  if (creditos === 0) {
+    if (aula.origem === 'convenio') {
+      return { destino: 'sem_consumo', texto: 'Reserva pelo convênio — sem consumo de créditos' };
+    }
+    return { destino: 'sem_consumo', texto: 'Sem consumo de créditos' };
+  }
+
+  const quantidade = formatarCreditos(creditos);
+  // "1 crédito reservado", "3 créditos reservados": o particípio concorda
+  // com a quantidade em vez de sair como "reservado(s)".
+  const flexionar = (singular: string, plural: string) => `${quantidade} ${creditos > 1 ? plural : singular}`;
+
+  // A justificativa aprovada devolve ao saldo o que já tinha sido
+  // consumido (RF-JUS-04) — vale mais que qualquer outro estado.
+  if (aula.justificativa?.situacao === 'aprovada') {
+    return {
+      destino: 'devolvidos',
+      texto: `${flexionar('devolvido', 'devolvidos')} — justificativa aprovada`,
+    };
+  }
+
+  // Cancelamento pelo studio nunca cobra da aluna (RF-CPR-04, RF-EXC-04).
+  if (aula.canceladaPeloStudio) {
+    return {
+      destino: 'devolvidos',
+      texto: `${flexionar('devolvido', 'devolvidos')} — aula cancelada pelo studio`,
+    };
+  }
+
+  if (aula.tipoDeAula === 'excepcional') {
+    // Quem cancela a alocação é a administração, e o estorno é a regra
+    // (RF-AEX-07): não existe cancelamento "fora do prazo" aqui.
+    if (aula.situacao === 'cancelado') {
+      return {
+        destino: 'devolvidos',
+        texto: `${flexionar('estornado', 'estornados')} — alocação cancelada`,
+      };
+    }
+    // A alocação consome na hora, sem passar por reserva (RF-AEX-04):
+    // dizer "reservado" aqui contaria uma história que não aconteceu.
+    return { destino: 'utilizados', texto: `${flexionar('consumido', 'consumidos')} na alocação` };
+  }
+
+  if (aula.situacao === 'cancelado') {
+    return aula.creditoDevolvido === false
+      ? {
+          destino: 'utilizados',
+          texto: `${flexionar('consumido', 'consumidos')} — cancelamento fora do prazo`,
+        }
+      : { destino: 'devolvidos', texto: `${flexionar('devolvido', 'devolvidos')} ao saldo` };
+  }
+
+  // RF-CRE-05: presença confirmada e falta sem justificativa aprovada
+  // convertem a reserva em consumo, do mesmo jeito.
+  if (aula.presenca === 'ausente') {
+    return { destino: 'utilizados', texto: `${flexionar('consumido', 'consumidos')} — falta` };
+  }
+  if (aula.presenca === 'presente' || aula.situacao === 'realizado') {
+    return { destino: 'utilizados', texto: flexionar('utilizado', 'utilizados') };
+  }
+
+  return { destino: 'reservados', texto: flexionar('reservado', 'reservados') };
 }
 
 /**

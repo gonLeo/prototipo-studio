@@ -480,6 +480,11 @@ export function ConveniosPage() {
                       <CelulaTabela>
                         <p className="font-medium text-ink">{item.nomeAluna}</p>
                         <p className="text-xs text-neutral-500">{item.identificadorExterno}</p>
+                        {/* RF-CNV-09: esta aula é do convênio, mas a aluna
+                            também tem créditos — as duas coisas convivem. */}
+                        {item.tambemTemPacote && (
+                          <p className="text-xs text-neutral-500">Também tem pacote de créditos no studio</p>
+                        )}
                       </CelulaTabela>
                       <CelulaTabela>
                         <p>{item.descricaoAula}</p>
@@ -548,8 +553,15 @@ export function ConveniosPage() {
           {aba === 'espelhamento' && (
             <>
               <p className="mt-6 text-sm text-neutral-500">
-                A administração escolhe quais sessões são publicadas nos aplicativos dos convênios. As vagas ocupadas
-                por convênio contam na mesma capacidade da modalidade.
+                A administração escolhe quais sessões da grade recorrente são publicadas nos aplicativos dos convênios
+                (RF-CNV-02). As vagas ocupadas por convênio contam na mesma capacidade da modalidade.
+              </p>
+              {/* RF-CNV-01: a regra nova do v2.0. Sem dizer isso aqui, a
+                  ausência das aulas excepcionais na lista parece falha. */}
+              <p className="mt-2 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-600 ring-1 ring-inset ring-neutral-200">
+                <strong className="font-medium text-ink">Workshops e aulas particulares não são espelhados.</strong> As
+                aulas excepcionais são criadas pela administração e alocadas por ela, e não chegam aos convênios — por
+                isso não aparecem nesta lista.
               </p>
               <Tabela
                 rotulo="Sessões e espelhamento"
@@ -670,6 +682,13 @@ export function ConveniosPage() {
               <p className="mt-6 text-sm text-neutral-500 first-letter:uppercase">
                 {nomeDoMes(periodo.mes)} de {periodo.ano} · base de conferência do repasse: só o check-in validado
                 autoriza o pagamento pelo convênio.
+              </p>
+              {/* RF-CNV-08: a ausência de um "usadas / restantes" na tabela é
+                  regra de escopo, não lacuna — e precisa estar dita. */}
+              <p className="mt-2 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-600 ring-1 ring-inset ring-neutral-200">
+                <strong className="font-medium text-ink">O studio não controla quantas aulas cada aluna pode fazer.</strong>{' '}
+                Esse limite é do próprio convênio: aqui o que se confere é o que aconteceu no período — reservas,
+                check-ins validados, ausências e reservas sem check-in.
               </p>
               <Tabela
                 rotulo="Relatório de convênios"

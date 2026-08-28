@@ -6,22 +6,22 @@ import { useToast } from '../../hooks/useToast';
 import {
   comissoesEmAberto,
   dataPrevistaDePagamento,
+  detalharComissoes,
   fecharPeriodo,
   marcarFechamentoComoPago,
   periodoAtual,
+  sessoesSemPresencaNoPeriodo,
 } from '../../hooks/comissoes';
+import type { LinhaDeComissao, SessaoSemPresenca } from '../../hooks/comissoes';
 import { chamadasPendentes } from '../../hooks/chamadaDeAulas';
 import {
-  chamadaRepositorio,
   fechamentoComissaoRepositorio,
   modalidadeRepositorio,
-  ocorrenciaSessaoRepositorio,
   professoraRepositorio,
-  registroPresencaRepositorio,
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../../services/repositorios';
-import type { Comissao, FechamentoComissao } from '../../types/domain';
+import type { FechamentoComissao } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
@@ -29,16 +29,14 @@ import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/creditos';
 
-interface AulaDaComissao extends Comissao {
-  descricaoAula: string;
-  presencas: number;
-}
-
 interface ResumoDeProfessora {
   professoraId: string;
   nome: string;
-  aulas: AulaDaComissao[];
+  aulas: LinhaDeComissao[];
   total: number;
+  /** REL-07: o fechamento separa aula regular de aula excepcional. */
+  totalRegulares: number;
+  totalExcepcionais: number;
 }
 
 interface PendenciaDeChamada {
@@ -62,6 +60,7 @@ export function ComissoesPage() {
   const [resumos, setResumos] = useState<ResumoDeProfessora[]>([]);
   const [fechamentos, setFechamentos] = useState<FechamentoComissao[]>([]);
   const [pendencias, setPendencias] = useState<PendenciaDeChamada[]>([]);
+  const [semPresenca, setSemPresenca] = useState<SessaoSemPresenca[]>([]);
   const [detalhando, setDetalhando] = useState<ResumoDeProfessora | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -73,52 +72,41 @@ export function ComissoesPage() {
   const carregar = useCallback(async () => {
     setCarregando(true);
 
-    const [professoras, usuarios, chamadas, ocorrencias, sessoes, modalidades, registros, listaFechamentos] =
-      await Promise.all([
-        professoraRepositorio.listar(),
-        usuarioRepositorio.listar(),
-        chamadaRepositorio.listar(),
-        ocorrenciaSessaoRepositorio.listar(),
-        sessaoRepositorio.listar(),
-        modalidadeRepositorio.listar(),
-        registroPresencaRepositorio.listar(),
-        fechamentoComissaoRepositorio.listar(),
-      ]);
+    const [professoras, usuarios, sessoes, modalidades, listaFechamentos] = await Promise.all([
+      professoraRepositorio.listar(),
+      usuarioRepositorio.listar(),
+      sessaoRepositorio.listar(),
+      modalidadeRepositorio.listar(),
+      fechamentoComissaoRepositorio.listar(),
+    ]);
 
     const nomeDaProfessora = (professoraId: string) => {
       const professora = professoras.find((p) => p.id === professoraId);
       return usuarios.find((u) => u.id === professora?.usuarioId)?.nome ?? 'Professora removida';
     };
 
-    const descreverAula = (comissao: Comissao) => {
-      const chamada = chamadas.find((c) => c.id === comissao.chamadaId);
-      const ocorrencia = ocorrencias.find((o) => o.id === chamada?.ocorrenciaSessaoId);
-      const sessao = sessoes.find((s) => s.id === ocorrencia?.sessaoId);
-      const modalidade = modalidades.find((m) => m.id === sessao?.modalidadeId);
-      return `${modalidade?.nome ?? 'Aula'} · ${sessao?.horarioInicio ?? ''}`;
-    };
-
-    const emAberto = await comissoesEmAberto(periodo);
+    const emAberto = await detalharComissoes(await comissoesEmAberto(periodo));
     const porProfessora = new Map<string, ResumoDeProfessora>();
 
     for (const comissao of emAberto) {
       const atual = porProfessora.get(comissao.professoraId) ?? {
         professoraId: comissao.professoraId,
-        nome: nomeDaProfessora(comissao.professoraId),
+        nome: comissao.nomeProfessora,
         aulas: [],
         total: 0,
+        totalRegulares: 0,
+        totalExcepcionais: 0,
       };
-      atual.aulas.push({
-        ...comissao,
-        descricaoAula: descreverAula(comissao),
-        presencas: registros.filter((r) => r.chamadaId === comissao.chamadaId && r.situacao === 'presente').length,
-      });
+      atual.aulas.push(comissao);
       atual.total += comissao.valor;
+      if (comissao.tipoDeAula === 'excepcional') atual.totalExcepcionais += comissao.valor;
+      else atual.totalRegulares += comissao.valor;
       porProfessora.set(comissao.professoraId, atual);
     }
 
     setResumos([...porProfessora.values()].sort((a, b) => a.nome.localeCompare(b.nome)));
     setFechamentos(listaFechamentos.sort((a, b) => b.dataInicio.localeCompare(a.dataInicio)));
+    setSemPresenca(await sessoesSemPresencaNoPeriodo(periodo));
 
     const pendentes = await chamadasPendentes();
     setPendencias(
@@ -209,8 +197,14 @@ export function ComissoesPage() {
                 colunas: [
                   { cabecalho: 'Professora', valor: ({ resumo }) => resumo.nome },
                   { cabecalho: 'Data da aula', valor: ({ aula }) => aula.dataAula },
+                  // REL-07: o repasse é conferido separando os dois tipos.
+                  {
+                    cabecalho: 'Tipo',
+                    valor: ({ aula }) => (aula.tipoDeAula === 'excepcional' ? 'Excepcional' : 'Regular'),
+                  },
                   { cabecalho: 'Aula', valor: ({ aula }) => aula.descricaoAula },
                   { cabecalho: 'Presenças', valor: ({ aula }) => aula.presencas },
+                  { cabecalho: 'Base de cálculo', valor: ({ aula }) => aula.baseDeCalculo },
                   { cabecalho: 'Valor', valor: ({ aula }) => aula.valor },
                   {
                     cabecalho: 'Lançamento',
@@ -255,6 +249,36 @@ export function ComissoesPage() {
         </div>
       )}
 
+      {/* RF-COM-03: a aula sem presença não gerou comissão e não aparece em
+          nenhum total — sem este bloco, ela sumiria da conferência. */}
+      {semPresenca.length > 0 && (
+        <div className="mt-4 rounded-lg border border-neutral-300 bg-neutral-50 p-4">
+          <p className="text-sm font-semibold text-ink">
+            {semPresenca.length} aula(s) finalizada(s) sem nenhuma presença
+          </p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Nenhuma comissão foi gerada para estas aulas. A professora esteve no studio, então a decisão sobre pagar
+            ou não é da administração — o pagamento, se houver, é feito por fora do fechamento.
+          </p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {semPresenca.map((aula) => (
+              <li key={aula.chamadaId} className="text-sm">
+                <Link
+                  to={`/administracao/chamada/${aula.sessaoId}/${aula.data}`}
+                  className="font-medium text-primary-700 hover:text-primary-800"
+                >
+                  {formatarDataBR(aula.data)} · {aula.descricaoAula}
+                </Link>
+                <span className="text-neutral-600">
+                  {' '}
+                  — {aula.nomeProfessora}, {aula.ausencias} falta(s)
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-4 grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
           <p className="text-xs uppercase tracking-wide text-neutral-500">Professoras</p>
@@ -280,7 +304,11 @@ export function ComissoesPage() {
             <li key={resumo.professoraId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-ink">{resumo.nome}</p>
-                <p className="text-xs text-neutral-500">{resumo.aulas.length} aula(s) no período</p>
+                <p className="text-xs text-neutral-500">
+                  {resumo.aulas.length} aula(s) no período
+                  {resumo.totalExcepcionais > 0 &&
+                    ` · ${formatarMoeda(resumo.totalRegulares)} em regulares, ${formatarMoeda(resumo.totalExcepcionais)} em excepcionais`}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold text-ink">{formatarMoeda(resumo.total)}</span>
@@ -334,12 +362,18 @@ export function ComissoesPage() {
             <ul className="max-h-80 divide-y divide-neutral-100 overflow-y-auto rounded-lg border border-neutral-200">
               {detalhando.aulas.map((aula) => (
                 <li key={aula.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-                  <div>
-                    <p className="text-sm text-ink">
-                      {formatarDataBR(aula.dataAula)} · {aula.descricaoAula}
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-ink">
+                      <span>
+                        {formatarDataBR(aula.dataAula)} · {aula.descricaoAula}
+                      </span>
+                      {aula.tipoDeAula === 'excepcional' && <Badge tom="info">Excepcional</Badge>}
                     </p>
+                    {/* RF-COM-02: a base aplicada fica visível na conferência —
+                        é o que distingue a categoria da professora do valor
+                        combinado para uma aula excepcional. */}
                     <p className="text-xs text-neutral-500">
-                      {aula.presencas} presença(s)
+                      {aula.baseDeCalculo} · {aula.presencas} presença(s)
                       {aula.situacao === 'ajuste' ? ' · ajuste de período anterior' : ''}
                     </p>
                   </div>
@@ -347,6 +381,18 @@ export function ComissoesPage() {
                 </li>
               ))}
             </ul>
+            {detalhando.totalExcepcionais > 0 && (
+              <div className="flex flex-col gap-1 rounded-lg bg-neutral-50 px-3 py-2 text-sm ring-1 ring-inset ring-neutral-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-600">Aulas regulares</span>
+                  <span className="text-ink">{formatarMoeda(detalhando.totalRegulares)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-600">Aulas excepcionais</span>
+                  <span className="text-ink">{formatarMoeda(detalhando.totalExcepcionais)}</span>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-neutral-200 pt-3">
               <span className="text-sm font-medium text-ink">Total</span>
               <span className="text-base font-semibold text-ink">{formatarMoeda(detalhando.total)}</span>

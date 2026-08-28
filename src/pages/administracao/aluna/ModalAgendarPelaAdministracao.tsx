@@ -6,22 +6,29 @@ import { Button } from '../../../components/ui/Button';
 import { formatarDataBR } from '../../../utils/data';
 
 /**
- * Agendamento em nome da aluna (RF-AGD-09).
+ * Agendamento e remarcação em nome da aluna (RF-AGD-08).
  *
  * Usa a mesma listagem e as mesmas validações do portal da aluna — a
  * administração agenda pelos mesmos critérios, o que muda é só a autoria
  * do registro.
+ *
+ * `remarcandoDe` alterna a tela para remarcação: o texto passa a dizer de
+ * onde a aula está saindo, e o saldo não é apresentado como custo novo,
+ * porque a troca devolve o crédito da aula original antes de reservar o da
+ * nova.
  */
 export function ModalAgendarPelaAdministracao({
   aluna,
   carteira,
   custoDaAula,
+  remarcandoDe,
   onAgendar,
   onFechar,
 }: {
   aluna: Aluna;
   carteira: Carteira | undefined;
   custoDaAula: number;
+  remarcandoDe?: string;
   onAgendar: (aula: AulaDisponivel) => Promise<void>;
   onFechar: () => void;
 }) {
@@ -81,8 +88,9 @@ export function ModalAgendarPelaAdministracao({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-neutral-600">
-        Saldo disponível: {creditosDisponiveis} crédito(s). Cada aula reserva {custoDaAula} crédito(s), e o agendamento
-        fica registrado como feito pela administração.
+        {remarcandoDe
+          ? `Escolha o novo horário para a aula de ${remarcandoDe}. O crédito da aula atual volta ao saldo antes de a nova ser reservada, então a troca não custa crédito adicional.`
+          : `Saldo disponível: ${creditosDisponiveis} crédito(s). Cada aula reserva ${custoDaAula} crédito(s), e o agendamento fica registrado como feito pela administração.`}
       </p>
 
       {carregando && <p className="text-sm text-neutral-500">Carregando aulas disponíveis…</p>}
@@ -107,7 +115,13 @@ export function ModalAgendarPelaAdministracao({
                   </p>
                 </div>
                 <Button onClick={() => agendar(aula)} disabled={agendando !== undefined}>
-                  {agendando === chave ? 'Agendando…' : 'Agendar'}
+                  {agendando === chave
+                    ? remarcandoDe
+                      ? 'Remarcando…'
+                      : 'Agendando…'
+                    : remarcandoDe
+                      ? 'Remarcar aqui'
+                      : 'Agendar'}
                 </Button>
               </li>
             );

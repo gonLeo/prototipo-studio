@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSessao } from '../../hooks/useSessao';
-import { useAgendaDaAluna } from '../../hooks/useAgendaDaAluna';
-import type { AulaDaAluna } from '../../hooks/useAgendaDaAluna';
+import { destinoDosCreditos, useAgendaDaAluna } from '../../hooks/useAgendaDaAluna';
+import type { AulaDaAluna, DestinoDosCreditos } from '../../hooks/useAgendaDaAluna';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
 import { cancelarAgendamentoDaAluna } from '../../hooks/agendamentoDeAulas';
@@ -14,7 +14,7 @@ import { TextField } from '../../components/ui/Field';
 import { ControlesDePaginacao } from '../../components/ui/Paginacao';
 import { usePaginacao } from '../../components/ui/usePaginacao';
 import { ResumoDoPacote } from './ResumoDoPacote';
-import { formatarDataBR } from '../../utils/data';
+import { diferencaEmDias, formatarDataBR, hojeISO } from '../../utils/data';
 
 function ModalJustificativa({
   aula,
@@ -99,6 +99,14 @@ function SituacaoDaAula({ aula }: { aula: AulaDaAluna }) {
   return <Badge tom="info">Agendada</Badge>;
 }
 
+/** Cor da linha de créditos conforme o efeito no saldo (RF-PRE-07). */
+const COR_DO_DESTINO: Record<DestinoDosCreditos, string> = {
+  reservados: 'text-neutral-600',
+  utilizados: 'text-neutral-600',
+  devolvidos: 'text-emerald-700',
+  sem_consumo: 'text-neutral-500',
+};
+
 function ItemDeAula({
   aula,
   podeCancelar,
@@ -112,6 +120,8 @@ function ItemDeAula({
   onCancelar: () => void;
   onJustificar: () => void;
 }) {
+  const creditos = destinoDosCreditos(aula);
+
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
@@ -121,20 +131,31 @@ function ItemDeAula({
         <p className="text-xs text-neutral-500">
           {aula.nomeModalidade} · {aula.nomeProfessora}
         </p>
+        {/* RF-PRE-07: o histórico diz o que aconteceu com os créditos
+            daquela ocorrência, não só quantos ela custou. */}
+        <p className={`mt-0.5 text-xs font-medium ${COR_DO_DESTINO[creditos.destino]}`}>{creditos.texto}</p>
         {aula.canceladaPeloStudio && aula.motivoCancelamento && (
           <p className="mt-1 text-xs font-medium text-amber-700">{aula.motivoCancelamento}</p>
         )}
-        {aula.justificativa && (
-          <p className="mt-1 text-xs text-neutral-600">
-            Justificativa{' '}
-            {aula.justificativa.situacao === 'pendente'
-              ? 'em análise'
-              : aula.justificativa.situacao === 'aprovada'
-                ? 'aprovada'
-                : 'recusada'}
-            {aula.justificativa.parecer ? ` — ${aula.justificativa.parecer}` : ''}
-          </p>
-        )}
+        {aula.justificativa &&
+          // O parecer da análise é omitido quando a justificativa fica sem
+          // efeito: ele descreve uma decisão que a correção da chamada
+          // desfez, e repeti-lo aqui contradiria a própria linha.
+          (aula.justificativa.situacao === 'sem_efeito' ? (
+            <p className="mt-1 text-xs text-neutral-600">
+              Justificativa sem efeito — a chamada foi corrigida e você consta como presente.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-neutral-600">
+              Justificativa{' '}
+              {aula.justificativa.situacao === 'pendente'
+                ? 'em análise'
+                : aula.justificativa.situacao === 'aprovada'
+                  ? 'aprovada'
+                  : 'recusada'}
+              {aula.justificativa.parecer ? ` — ${aula.justificativa.parecer}` : ''}
+            </p>
+          ))}
       </div>
 
       <div className="flex items-center gap-2">
@@ -215,6 +236,13 @@ export function MinhasAulasPage() {
     // administração (RF-AEX-04/07), então não há falta da aluna a justificar.
     if (aula.tipoDeAula === 'excepcional') return false;
     if (aula.justificativa || aula.experimental || aula.canceladaPeloStudio) return false;
+
+    // RF-JUS-02: o prazo é contado da data da aula. Fora dele o envio é
+    // recusado no domínio — oferecer o botão só para falhar depois seria
+    // prometer à aluna uma saída que não existe mais.
+    const diasDecorridos = diferencaEmDias(aula.data, hojeISO());
+    if (diasDecorridos < 0 || diasDecorridos > agenda.prazoJustificativaDias) return false;
+
     if (aula.presenca === 'ausente') return true;
     return aula.situacao === 'cancelado' && aula.creditoDevolvido === false;
   }

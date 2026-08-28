@@ -3,8 +3,12 @@ import {
   agendamentoRepositorio,
   alunaRepositorio,
   anamneseRepositorio,
+  chamadaRepositorio,
+  modalidadeRepositorio,
   ocorrenciaSessaoRepositorio,
   pacoteRepositorio,
+  registroPresencaRepositorio,
+  sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
 import type {
@@ -30,6 +34,18 @@ export interface FrequenciaDaAluna extends Agendamento {
   dataAula: string;
   /** Nome da aula excepcional, quando a linha vem de uma alocação (RF-AEX-09). */
   nomeAulaExcepcional?: string;
+  horarioInicio: string;
+  horarioFim: string;
+  nomeModalidade: string;
+  /** A ocorrência daquela data foi cancelada pelo studio. */
+  canceladaPeloStudio: boolean;
+  /** Presença registrada na chamada, quando ela já foi finalizada (RF-PRE-07). */
+  presenca: 'presente' | 'ausente' | undefined;
+  /**
+   * A administração pode cancelar e remarcar em nome da aluna (RF-AGD-08),
+   * mas só faz sentido em aula da grade que ainda vai acontecer.
+   */
+  podeRemanejar: boolean;
 }
 
 export interface FichaAluna {
@@ -91,6 +107,10 @@ export function useFichaAluna(alunaId: string | undefined) {
       anamneses,
       agendamentos,
       ocorrencias,
+      sessoes,
+      modalidades,
+      chamadas,
+      registrosPresenca,
       carteiras,
       movimentos,
       compras,
@@ -104,6 +124,10 @@ export function useFichaAluna(alunaId: string | undefined) {
       anamneseRepositorio.listar(),
       agendamentoRepositorio.listar(),
       ocorrenciaSessaoRepositorio.listar(),
+      sessaoRepositorio.listar(),
+      modalidadeRepositorio.listar(),
+      chamadaRepositorio.listar(),
+      registroPresencaRepositorio.listar(),
       carteirasDaAluna(alunaId),
       extratoDaAluna(alunaId),
       historicoDeComprasDaAluna(alunaId),
@@ -128,10 +152,29 @@ export function useFichaAluna(alunaId: string | undefined) {
 
     const daGrade: FrequenciaDaAluna[] = agendamentos
       .filter((a) => a.alunaId === aluna.id)
-      .map((agendamento) => ({
-        ...agendamento,
-        dataAula: ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId)?.data ?? '',
-      }));
+      .map((agendamento) => {
+        const ocorrencia = ocorrencias.find((o) => o.id === agendamento.ocorrenciaSessaoId);
+        const sessao = sessoes.find((s) => s.id === ocorrencia?.sessaoId);
+        const dataAula = ocorrencia?.data ?? '';
+        const chamada = chamadas.find((c) => c.ocorrenciaSessaoId === agendamento.ocorrenciaSessaoId);
+        const registro =
+          chamada?.situacao === 'finalizada'
+            ? registrosPresenca.find((r) => r.chamadaId === chamada.id && r.alunaId === aluna.id)
+            : undefined;
+        const canceladaPeloStudio = ocorrencia?.situacao === 'cancelada';
+
+        return {
+          ...agendamento,
+          dataAula,
+          horarioInicio: sessao?.horarioInicio ?? '',
+          horarioFim: sessao?.horarioFim ?? '',
+          nomeModalidade: modalidades.find((m) => m.id === sessao?.modalidadeId)?.nome ?? 'Modalidade removida',
+          canceladaPeloStudio,
+          presenca: registro?.situacao,
+          podeRemanejar:
+            agendamento.situacao === 'ativo' && !canceladaPeloStudio && dataAula >= hoje && !agendamento.experimental,
+        };
+      });
 
     const deAulasExcepcionais: FrequenciaDaAluna[] = alocacoes.map((alocacao) => ({
       id: alocacao.id,
@@ -144,6 +187,13 @@ export function useFichaAluna(alunaId: string | undefined) {
       creditosReservados: alocacao.creditosConsumidos,
       dataAula: alocacao.aula.data,
       nomeAulaExcepcional: alocacao.aula.nome,
+      horarioInicio: alocacao.aula.horarioInicio,
+      horarioFim: alocacao.aula.horarioFim,
+      nomeModalidade: alocacao.aula.nome,
+      canceladaPeloStudio: alocacao.aula.situacao === 'cancelada',
+      presenca: undefined,
+      // Quem remaneja alocação é a tela de aulas excepcionais (RF-AEX-07).
+      podeRemanejar: false,
     }));
 
     const frequencia = [...daGrade, ...deAulasExcepcionais].sort((a, b) =>

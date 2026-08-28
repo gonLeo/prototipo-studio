@@ -47,6 +47,7 @@ export const EVENTOS_NOTIFICACAO: Record<string, { rotulo: string; requisito: st
     rotulo: 'Cancelamento pela administração',
     requisito: 'RF-NOT-05',
   },
+  agendamento_remarcado: { rotulo: 'Remarcação pela administração', requisito: 'RF-AGD-08' },
   aula_cancelada_pelo_studio: { rotulo: 'Cancelamento pelo studio', requisito: 'RF-NOT-05' },
   troca_de_professora: { rotulo: 'Substituição de professora', requisito: 'RF-NOT-06' },
   sessao_alterada: { rotulo: 'Alteração de sessão', requisito: 'RF-NOT-07' },

@@ -1,6 +1,7 @@
 import {
   agendamentoRepositorio,
   alunaRepositorio,
+  carteiraRepositorio,
   chamadaRepositorio,
   convenioIntegracaoRepositorio,
   modalidadeRepositorio,
@@ -39,7 +40,7 @@ import { validarIdentificacaoUnica } from './cadastroDeAlunas';
  * (reserva, cancelamento, check-in) são disparadas pela administração,
  * exatamente como decidido para o M11 e o gateway: o que entra e o que sai
  * do sistema é o mesmo; muda apenas quem aperta o botão. Por isso o mesmo
- * caminho serve à contingência prevista no RF-CNV-13.
+ * caminho serve à contingência prevista no RF-CNV-14.
  */
 
 export const NOMES_CONVENIO: { valor: NomeConvenio; rotulo: string }[] = [
@@ -51,7 +52,7 @@ export function rotuloDoConvenio(convenio: NomeConvenio): string {
   return NOMES_CONVENIO.find((c) => c.valor === convenio)?.rotulo ?? convenio;
 }
 
-/** Janela de agendamento própria dos convênios (RF-CNV-08). */
+/** Janela de agendamento própria dos convênios (RF-AGD-03). */
 export async function janelaDoConvenioEmDias(): Promise<number> {
   const parametros = await parametroRepositorio.listar();
   const valor = Number(parametros.find((p) => p.chave === 'janela_agendamento_convenio_dias')?.valor);
@@ -59,7 +60,7 @@ export async function janelaDoConvenioEmDias(): Promise<number> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Credenciais de integração (RF-CNV-12)                               */
+/* Credenciais de integração (RF-CNV-13)                               */
 /* ------------------------------------------------------------------ */
 
 export async function listarIntegracoes(): Promise<ConvenioIntegracao[]> {
@@ -212,7 +213,7 @@ export async function listarAlunasDeConvenio(): Promise<Array<Aluna & { nome: st
 }
 
 /* ------------------------------------------------------------------ */
-/* Reservas (RF-CNV-03 a 07, 13)                                        */
+/* Reservas (RF-CNV-03 a 07, 14)                                        */
 /* ------------------------------------------------------------------ */
 
 export interface AulaEspelhadaDisponivel {
@@ -226,7 +227,7 @@ export interface AulaEspelhadaDisponivel {
 /**
  * O que os aplicativos dos convênios enxergam (RF-CNV-01): apenas sessões
  * marcadas para espelhamento, dentro da janela própria do convênio
- * (RF-CNV-08), com as vagas atualizadas.
+ * (RF-AGD-03), com as vagas atualizadas.
  */
 export async function listarAulasEspelhadas(): Promise<AulaEspelhadaDisponivel[]> {
   const [sessoes, ocorrencias, agendamentos, modalidades, janela] = await Promise.all([
@@ -388,7 +389,7 @@ export async function cancelarReserva(params: { reserva: ReservaConvenio; autorI
 /**
  * Check-in validado (RF-CNV-06): chega do aplicativo do parceiro e é
  * aceito sem confirmação manual. É ele que autoriza o repasse — por isso a
- * presença marcada pela professora (RF-CNV-10) não o substitui.
+ * presença marcada pela professora (RF-CNV-11) não o substitui.
  */
 export async function validarCheckin(reserva: ReservaConvenio): Promise<ReservaConvenio> {
   if (reserva.situacao === 'cancelada') {
@@ -408,19 +409,27 @@ export interface ReservaDetalhada extends ReservaConvenio {
   descricaoAula: string;
   /** Presença registrada na chamada, quando a aula já teve chamada finalizada. */
   presenca: 'presente' | 'ausente' | undefined;
+  /**
+   * A aluna também tem carteira de créditos no studio (RF-CNV-09). Fica
+   * visível na lista para que a conferência do repasse não confunda uma
+   * aula paga pelo convênio com outra paga pelo pacote dela.
+   */
+  tambemTemPacote: boolean;
 }
 
 export async function listarReservas(): Promise<ReservaDetalhada[]> {
-  const [reservas, ocorrencias, sessoes, modalidades, alunas, usuarios, registros, chamadas] = await Promise.all([
-    reservaConvenioRepositorio.listar(),
-    ocorrenciaSessaoRepositorio.listar(),
-    sessaoRepositorio.listar(),
-    modalidadeRepositorio.listar(),
-    alunaRepositorio.listar(),
-    usuarioRepositorio.listar(),
-    registroPresencaRepositorio.listar(),
-    chamadaRepositorio.listar(),
-  ]);
+  const [reservas, ocorrencias, sessoes, modalidades, alunas, usuarios, registros, chamadas, carteiras] =
+    await Promise.all([
+      reservaConvenioRepositorio.listar(),
+      ocorrenciaSessaoRepositorio.listar(),
+      sessaoRepositorio.listar(),
+      modalidadeRepositorio.listar(),
+      alunaRepositorio.listar(),
+      usuarioRepositorio.listar(),
+      registroPresencaRepositorio.listar(),
+      chamadaRepositorio.listar(),
+      carteiraRepositorio.listar(),
+    ]);
 
   return reservas
     .map((reserva) => {
@@ -437,6 +446,7 @@ export async function listarReservas(): Promise<ReservaDetalhada[]> {
       return {
         ...reserva,
         nomeAluna: usuarios.find((u) => u.id === aluna?.usuarioId)?.nome ?? 'Aluna removida',
+        tambemTemPacote: carteiras.some((c) => c.alunaId === reserva.alunaId && c.situacao === 'ativa'),
         dataAula: ocorrencia?.data ?? reserva.data ?? '',
         descricaoAula: sessao
           ? `${modalidades.find((m) => m.id === sessao.modalidadeId)?.nome ?? 'Modalidade'} · ${sessao.horarioInicio}`
@@ -448,7 +458,7 @@ export async function listarReservas(): Promise<ReservaDetalhada[]> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Relatório de conferência do repasse (RF-CNV-11)                      */
+/* Relatório de conferência do repasse (RF-CNV-12)                      */
 /* ------------------------------------------------------------------ */
 
 export interface LinhaRelatorioConvenio {

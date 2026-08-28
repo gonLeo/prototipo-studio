@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useFichaAluna } from '../../hooks/useFichaAluna';
+import type { FrequenciaDaAluna } from '../../hooks/useFichaAluna';
 import { useSessao } from '../../hooks/useSessao';
 import { useToast } from '../../hooks/useToast';
 import { ROTULO_SITUACAO_ALUNA } from '../../hooks/useAlunas';
@@ -34,7 +35,7 @@ import {
   ModalVendaManual,
 } from './aluna/ModaisCarteira';
 import { ModalAgendarPelaAdministracao } from './aluna/ModalAgendarPelaAdministracao';
-import { agendarAula } from '../../hooks/agendamentoDeAulas';
+import { agendarAula, cancelarAgendamentoDaAluna, remarcarAgendamento } from '../../hooks/agendamentoDeAulas';
 import { useEffect } from 'react';
 
 const TOM_POR_SITUACAO: Record<SituacaoAluna, 'sucesso' | 'aviso' | 'info'> = {
@@ -127,7 +128,24 @@ type ModalAberto =
   | 'agendar'
   | 'trancar'
   | { reembolso: Venda }
+  | { remarcar: FrequenciaDaAluna }
   | null;
+
+/** Situação da aula no histórico de frequência, em linguagem de tela. */
+function SituacaoDaFrequencia({ item }: { item: FrequenciaDaAluna }) {
+  if (item.canceladaPeloStudio) return <Badge tom="aviso">Cancelada pelo studio</Badge>;
+  if (item.situacao === 'cancelado') {
+    return (
+      <Badge tom="neutro">
+        {item.creditoDevolvido === false ? 'Cancelada fora do prazo' : 'Cancelada'}
+      </Badge>
+    );
+  }
+  if (item.presenca === 'presente') return <Badge tom="sucesso">Presente</Badge>;
+  if (item.presenca === 'ausente') return <Badge tom="erro">Falta</Badge>;
+  if (item.situacao === 'realizado') return <Badge tom="sucesso">Realizada</Badge>;
+  return <Badge tom="info">Agendada</Badge>;
+}
 
 export function AlunaFichaPage() {
   const { alunaId } = useParams<{ alunaId: string }>();
@@ -165,6 +183,33 @@ export function AlunaFichaPage() {
     } catch (erroCapturado) {
       mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
     }
+  }
+
+  /**
+   * Cancelamento em nome da aluna (RF-AGD-08). O crédito volta sempre: a
+   * antecedência mínima existe para a aluna desistir, não para o studio
+   * desmarcar — e é isso que a confirmação diz antes de executar.
+   */
+  async function cancelarPelaAdministracao(item: FrequenciaDaAluna) {
+    const ok = await confirmar({
+      titulo: 'Cancelar aula da aluna',
+      mensagem: `A aula de ${formatarDataBR(item.dataAula)} às ${item.horarioInicio} será cancelada e ${formatarCreditos(item.creditosReservados)} voltam ao saldo disponível. A aluna é notificada, e o cancelamento fica registrado como feito pela administração.`,
+      textoConfirmar: 'Cancelar aula',
+      perigo: true,
+    });
+    if (!ok) return;
+
+    await executar(
+      () =>
+        cancelarAgendamentoDaAluna({
+          agendamento: item,
+          dataAula: item.dataAula,
+          horaAula: item.horarioInicio,
+          origemCancelamento: 'administracao',
+          autorId: usuario!.id,
+        }).then(() => undefined),
+      'Aula cancelada e créditos devolvidos ao saldo.',
+    );
   }
 
   return (
@@ -374,26 +419,50 @@ export function AlunaFichaPage() {
           )}
         </Secao>
 
+        {/* RF-PRE-07 e RF-AGD-08: o histórico diz o que aconteceu com os
+            créditos, e a administração cancela ou remarca daqui mesmo. */}
         <Secao titulo="Histórico de frequência">
           {ficha.frequencia.length === 0 ? (
             <p className="text-sm text-neutral-500">Nenhuma aula agendada ou realizada até agora.</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {ficha.frequencia.map((item) => (
-                <li key={item.id} className="flex justify-between gap-2 rounded-md border border-neutral-200 p-2 text-sm">
-                  <span className="text-ink">
-                    {item.dataAula ? formatarDataBR(item.dataAula) : '—'}
-                    {item.experimental && <span className="ml-1 text-xs text-neutral-500">· experimental</span>}
-                    {item.nomeAulaExcepcional && (
-                      <span className="ml-1 text-xs text-neutral-500">· {item.nomeAulaExcepcional}</span>
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-200 p-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="text-ink">
+                      {item.dataAula ? formatarDataBR(item.dataAula) : '—'}
+                      {item.horarioInicio && (
+                        <span className="ml-1 text-xs text-neutral-500">
+                          · {item.horarioInicio}–{item.horarioFim}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {item.nomeAulaExcepcional ?? item.nomeModalidade}
+                      {item.experimental && ' · experimental'}
+                      {/* RF-CNV-09: a mesma pessoa pode ter pacote e convênio,
+                          e cada agendamento registra sua origem. */}
+                      {item.origem === 'convenio' && ' · reserva pelo convênio'}
+                      {item.creditosReservados > 0 && ` · ${formatarCreditos(item.creditosReservados)}`}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <SituacaoDaFrequencia item={item} />
+                    {item.podeRemanejar && (
+                      <>
+                        <Button variante="fantasma" onClick={() => cancelarPelaAdministracao(item)}>
+                          Cancelar
+                        </Button>
+                        <Button variante="secundaria" onClick={() => setModalAberto({ remarcar: item })}>
+                          Remarcar
+                        </Button>
+                      </>
                     )}
-                  </span>
-                  <span className="text-neutral-500">
-                    {item.situacao}
-                    {item.creditosReservados > 0 && (
-                      <span className="ml-1 text-xs">· {formatarCreditos(item.creditosReservados)}</span>
-                    )}
-                  </span>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -666,6 +735,34 @@ export function AlunaFichaPage() {
                     autorId: usuario!.id,
                   }).then(() => undefined),
                 'Aula agendada e créditos reservados.',
+              );
+            }}
+            onFechar={() => setModalAberto(null)}
+          />
+        </Modal>
+      )}
+
+      {modalAberto && typeof modalAberto === 'object' && 'remarcar' in modalAberto && (
+        <Modal titulo="Remarcar aula" largura="larga" onFechar={() => setModalAberto(null)}>
+          <ModalAgendarPelaAdministracao
+            aluna={aluna}
+            carteira={carteira}
+            custoDaAula={custoDaAula}
+            remarcandoDe={`${formatarDataBR(modalAberto.remarcar.dataAula)} às ${modalAberto.remarcar.horarioInicio}`}
+            onAgendar={async (aula) => {
+              const original = modalAberto.remarcar;
+              await executar(
+                () =>
+                  remarcarAgendamento({
+                    aluna,
+                    agendamento: original,
+                    dataAtual: original.dataAula,
+                    horaAtual: original.horarioInicio,
+                    novaSessao: aula.sessao,
+                    novaData: aula.data,
+                    autorId: usuario!.id,
+                  }).then(() => undefined),
+                `Aula remarcada para ${formatarDataBR(aula.data)} às ${aula.sessao.horarioInicio}.`,
               );
             }}
             onFechar={() => setModalAberto(null)}

@@ -501,7 +501,14 @@ export interface RegistroPresenca {
   autorId: ID;
 }
 
-export type SituacaoJustificativa = 'pendente' | 'aprovada' | 'recusada';
+/**
+ * `sem_efeito` não é uma decisão da administração: é o que acontece com
+ * uma justificativa aprovada quando a correção da chamada (RF-PRE-05)
+ * mostra que a aluna esteve presente. A falta que ela justificava não
+ * existiu, o crédito volta a ser consumido e o registro fica visível —
+ * marcar como "recusada" mentiria sobre o que a administração decidiu.
+ */
+export type SituacaoJustificativa = 'pendente' | 'aprovada' | 'recusada' | 'sem_efeito';
 
 export interface Justificativa {
   id: ID;
@@ -551,6 +558,12 @@ export interface Comissao {
   aulaExcepcionalId?: ID;
   valor: number;
   dataAula: string;
+  /**
+   * Quantidade de presenças da aula (RF-COM-02). Gravada no lançamento, e
+   * não recontada na tela: a chamada pode ser corrigida depois, e o
+   * detalhamento precisa dizer o que valeu quando a comissão foi apurada.
+   */
+  presencas: number;
   periodoFechamentoId?: ID;
   situacao: SituacaoComissao;
 }

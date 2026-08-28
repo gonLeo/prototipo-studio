@@ -1,10 +1,17 @@
 import {
+  aulaExcepcionalRepositorio,
   categoriaProfessoraRepositorio,
+  chamadaRepositorio,
   comissaoRepositorio,
   fechamentoComissaoRepositorio,
   historicoCategoriaRepositorio,
+  modalidadeRepositorio,
+  ocorrenciaSessaoRepositorio,
   professoraRepositorio,
   registroAuditoriaRepositorio,
+  registroPresencaRepositorio,
+  sessaoRepositorio,
+  usuarioRepositorio,
 } from '../services/repositorios';
 import type { CategoriaProfessora, Comissao, FechamentoComissao } from '../types/domain';
 import { hojeISO, primeiroDiaDoMes, quintoDiaUtil, ultimoDiaDoMes } from '../utils/data';
@@ -12,10 +19,10 @@ import { RegraNegocioError } from './useModalidades';
 import { formatarMoeda } from '../utils/creditos';
 
 /**
- * Comissão e fechamento (M10).
+ * Comissão e fechamento (M11).
  *
- * A comissão nasce na finalização da chamada (M9) e é atribuída a quem
- * **conduziu** a aula — em caso de substituição, à substituta (RF-COM-03),
+ * A comissão nasce na finalização da chamada (M10) e é atribuída a quem
+ * **conduziu** a aula — em caso de substituição, à substituta (RF-COM-04),
  * o que já vem resolvido pela `professoraEfetivaId` da ocorrência.
  */
 
@@ -27,7 +34,7 @@ export interface PeriodoDeApuracao {
   dataFim: string;
 }
 
-/** RF-COM-04: apuração mensal, do primeiro ao último dia do mês. */
+/** RF-COM-05: apuração mensal, do primeiro ao último dia do mês. */
 export function periodoDoMes(ano: number, mes: number): PeriodoDeApuracao {
   return {
     ano,
@@ -77,7 +84,7 @@ export async function categoriaVigenteNaData(
 
 /**
  * Fechamento que cobre uma data, se existir. Serve para saber se uma
- * correção cai em período já fechado (RF-COM-10).
+ * correção cai em período já fechado (RF-COM-11).
  */
 export async function fechamentoQueCobre(data: string): Promise<FechamentoComissao | undefined> {
   const fechamentos = await fechamentoComissaoRepositorio.listar();
@@ -88,6 +95,12 @@ export async function fechamentoQueCobre(data: string): Promise<FechamentoComiss
  * Lança a comissão de uma **aula regular** (RF-COM-01): usa o valor por
  * aula da categoria vigente da professora na data.
  *
+ * **Sessão sem nenhuma presença não gera comissão** (RF-COM-03). A decisão
+ * sobre eventual pagamento é da administração, que vê a aula destacada no
+ * fechamento por `sessoesSemPresencaNoPeriodo`. Gerar o lançamento e
+ * esperar que alguém o remova depois inverteria o requisito: o padrão
+ * passaria a ser pagar.
+ *
  * Quando a data já pertence a um período fechado, o lançamento entra como
  * **ajuste** e fica sem período: ele será absorvido pelo próximo
  * fechamento, preservando o anterior (RF-COM-11).
@@ -96,9 +109,10 @@ export async function lancarComissao(params: {
   chamadaId: string;
   professoraId: string;
   dataAula: string;
+  presencas: number;
   autorId: string;
-}): Promise<{ comissao: Comissao | undefined; ehAjuste: boolean }> {
-  const { chamadaId, professoraId, dataAula, autorId } = params;
+}): Promise<{ comissao: Comissao | undefined; ehAjuste: boolean; semPresencas: boolean }> {
+  const { chamadaId, professoraId, dataAula, presencas, autorId } = params;
 
   const categoria = await categoriaVigenteNaData(professoraId, dataAula);
   if (!categoria) {
@@ -109,7 +123,12 @@ export async function lancarComissao(params: {
 
   const existentes = await comissaoRepositorio.listar();
   const jaLancada = existentes.find((c) => c.chamadaId === chamadaId && c.situacao === 'gerada');
-  if (jaLancada) return { comissao: jaLancada, ehAjuste: false };
+  if (jaLancada) return { comissao: jaLancada, ehAjuste: false, semPresencas: false };
+
+  // RF-COM-03: ninguém compareceu, não há comissão a gerar.
+  if (presencas === 0) {
+    return { comissao: undefined, ehAjuste: false, semPresencas: true };
+  }
 
   const fechamento = await fechamentoQueCobre(dataAula);
   const ehAjuste = fechamento !== undefined;
@@ -118,9 +137,12 @@ export async function lancarComissao(params: {
     chamadaId,
     professoraId,
     categoriaAplicadaId: categoria.id,
-    baseDeCalculo: `Categoria ${categoria.nome} — ${formatarMoeda(categoria.valorPorAula)} por aula regular`,
+    // O nome da categoria já costuma trazer a palavra ("Categoria I"), então
+    // prefixar de novo produziria "Categoria Categoria I" na conferência.
+    baseDeCalculo: `${categoria.nome} — ${formatarMoeda(categoria.valorPorAula)} por aula regular`,
     valor: categoria.valorPorAula,
     dataAula,
+    presencas,
     situacao: ehAjuste ? 'ajuste' : 'gerada',
   });
 
@@ -134,7 +156,7 @@ export async function lancarComissao(params: {
     });
   }
 
-  return { comissao, ehAjuste };
+  return { comissao, ehAjuste, semPresencas: false };
 }
 
 /**
@@ -144,6 +166,12 @@ export async function lancarComissao(params: {
  * cada uma no cadastro da aula. São tantos lançamentos quantas forem as
  * professoras vinculadas — e aula sem professora vinculada não gera
  * comissão nenhuma.
+ *
+ * A regra do RF-COM-03 — sessão sem presenças não gera comissão — **não
+ * se aplica aqui**. Ela fala de "sessão", que no escopo é a aula da grade
+ * recorrente (M5), e o RF-AEX-12 condiciona o lançamento da excepcional à
+ * finalização da chamada, não ao comparecimento: o valor foi combinado
+ * individualmente para aquela aula, que a professora conduziu.
  */
 export async function lancarComissoesDaAulaExcepcional(params: {
   chamadaId: string;
@@ -151,9 +179,10 @@ export async function lancarComissoesDaAulaExcepcional(params: {
   nomeAula: string;
   professoras: Array<{ professoraId: string; valorComissao: number }>;
   dataAula: string;
+  presencas: number;
   autorId: string;
 }): Promise<{ comissoes: Comissao[]; ehAjuste: boolean }> {
-  const { chamadaId, aulaExcepcionalId, nomeAula, professoras, dataAula, autorId } = params;
+  const { chamadaId, aulaExcepcionalId, nomeAula, professoras, dataAula, presencas, autorId } = params;
 
   const existentes = await comissaoRepositorio.listar();
   const jaLancadas = existentes.filter((c) => c.chamadaId === chamadaId);
@@ -175,6 +204,7 @@ export async function lancarComissoesDaAulaExcepcional(params: {
         baseDeCalculo: `Valor informado no cadastro de "${nomeAula}" — ${formatarMoeda(vinculo.valorComissao)}`,
         valor: vinculo.valorComissao,
         dataAula,
+        presencas,
         situacao: ehAjuste ? 'ajuste' : 'gerada',
       }),
     );
@@ -191,6 +221,130 @@ export async function lancarComissoesDaAulaExcepcional(params: {
   }
 
   return { comissoes, ehAjuste };
+}
+
+/* ------------------------------------------------------------------ */
+/* Detalhamento e conferência (RF-COM-08, REL-07)                       */
+/* ------------------------------------------------------------------ */
+
+export type TipoDeAulaDaComissao = 'regular' | 'excepcional';
+
+export interface LinhaDeComissao extends Comissao {
+  tipoDeAula: TipoDeAulaDaComissao;
+  descricaoAula: string;
+  nomeProfessora: string;
+}
+
+/**
+ * Descreve cada lançamento para conferência antes do pagamento
+ * (RF-COM-08), separando aula regular de aula excepcional (REL-07).
+ *
+ * A descrição sai daqui, e não da tela, porque as duas origens são
+ * resolvidas por caminhos diferentes — a regular pela ocorrência de
+ * sessão, a excepcional pelo cadastro da aula — e a tela que só conhecia
+ * o primeiro exibia a excepcional como "Aula ·", sem nome nem horário.
+ */
+export async function detalharComissoes(comissoes: Comissao[]): Promise<LinhaDeComissao[]> {
+  const [chamadas, ocorrencias, sessoes, modalidades, excepcionais, professoras, usuarios] = await Promise.all([
+    chamadaRepositorio.listar(),
+    ocorrenciaSessaoRepositorio.listar(),
+    sessaoRepositorio.listar(),
+    modalidadeRepositorio.listar(),
+    aulaExcepcionalRepositorio.listar(),
+    professoraRepositorio.listar(),
+    usuarioRepositorio.listar(),
+  ]);
+
+  return comissoes.map((comissao) => {
+    const professora = professoras.find((p) => p.id === comissao.professoraId);
+    const nomeProfessora = usuarios.find((u) => u.id === professora?.usuarioId)?.nome ?? 'Professora removida';
+
+    if (comissao.aulaExcepcionalId) {
+      const aula = excepcionais.find((a) => a.id === comissao.aulaExcepcionalId);
+      return {
+        ...comissao,
+        tipoDeAula: 'excepcional' as const,
+        descricaoAula: aula ? `${aula.nome} · ${aula.horarioInicio}` : 'Aula excepcional removida',
+        nomeProfessora,
+      };
+    }
+
+    const chamada = chamadas.find((c) => c.id === comissao.chamadaId);
+    const ocorrencia = ocorrencias.find((o) => o.id === chamada?.ocorrenciaSessaoId);
+    const sessao = sessoes.find((s) => s.id === ocorrencia?.sessaoId);
+    const modalidade = modalidades.find((m) => m.id === sessao?.modalidadeId);
+
+    return {
+      ...comissao,
+      tipoDeAula: 'regular' as const,
+      descricaoAula: sessao ? `${modalidade?.nome ?? 'Modalidade'} · ${sessao.horarioInicio}` : 'Aula removida',
+      nomeProfessora,
+    };
+  });
+}
+
+export interface SessaoSemPresenca {
+  chamadaId: string;
+  sessaoId: string;
+  data: string;
+  descricaoAula: string;
+  professoraId: string;
+  nomeProfessora: string;
+  /** Quantas alunas estavam agendadas e não compareceram. */
+  ausencias: number;
+}
+
+/**
+ * Sessões finalizadas no período **sem nenhuma presença** (RF-COM-03).
+ *
+ * Elas não geraram comissão, e por isso não aparecem em lugar nenhum do
+ * fechamento — a professora esteve no studio e a aula sumiria da
+ * conferência. Ficam destacadas para a administração decidir sobre
+ * pagamento manual.
+ *
+ * A aula excepcional fica de fora: ela gera comissão independentemente de
+ * presença (ver `lancarComissoesDaAulaExcepcional`).
+ */
+export async function sessoesSemPresencaNoPeriodo(periodo: PeriodoDeApuracao): Promise<SessaoSemPresenca[]> {
+  const [chamadas, registros, ocorrencias, sessoes, modalidades, professoras, usuarios] = await Promise.all([
+    chamadaRepositorio.listar(),
+    registroPresencaRepositorio.listar(),
+    ocorrenciaSessaoRepositorio.listar(),
+    sessaoRepositorio.listar(),
+    modalidadeRepositorio.listar(),
+    professoraRepositorio.listar(),
+    usuarioRepositorio.listar(),
+  ]);
+
+  const linhas: SessaoSemPresenca[] = [];
+
+  for (const chamada of chamadas) {
+    if (chamada.situacao !== 'finalizada' || !chamada.ocorrenciaSessaoId) continue;
+
+    const ocorrencia = ocorrencias.find((o) => o.id === chamada.ocorrenciaSessaoId);
+    if (!ocorrencia || ocorrencia.data < periodo.dataInicio || ocorrencia.data > periodo.dataFim) continue;
+
+    const daChamada = registros.filter((r) => r.chamadaId === chamada.id);
+    if (daChamada.length === 0 || daChamada.some((r) => r.situacao === 'presente')) continue;
+
+    const sessao = sessoes.find((s) => s.id === ocorrencia.sessaoId);
+    const professoraId = chamada.professoraId ?? ocorrencia.professoraEfetivaId;
+    const professora = professoras.find((p) => p.id === professoraId);
+
+    linhas.push({
+      chamadaId: chamada.id,
+      sessaoId: ocorrencia.sessaoId,
+      data: ocorrencia.data,
+      descricaoAula: sessao
+        ? `${modalidades.find((m) => m.id === sessao.modalidadeId)?.nome ?? 'Modalidade'} · ${sessao.horarioInicio}`
+        : 'Aula removida',
+      professoraId: professoraId ?? '',
+      nomeProfessora: usuarios.find((u) => u.id === professora?.usuarioId)?.nome ?? 'Professora removida',
+      ausencias: daChamada.length,
+    });
+  }
+
+  return linhas.sort((a, b) => a.data.localeCompare(b.data));
 }
 
 /** Remove a comissão de uma chamada que deixou de ser válida (chamada reaberta). */
@@ -222,7 +376,7 @@ export async function comissoesEmAberto(periodo: PeriodoDeApuracao): Promise<Com
   });
 }
 
-/** Fecha o período (RF-COM-06/08): vincula as comissões e trava novos lançamentos. */
+/** Fecha o período (RF-COM-07): vincula as comissões e trava novos lançamentos. */
 export async function fecharPeriodo(params: {
   periodo: PeriodoDeApuracao;
   autorId: string;
@@ -265,7 +419,7 @@ export async function fecharPeriodo(params: {
   return fechamento;
 }
 
-/** RF-COM-08: registra o pagamento do período fechado. */
+/** RF-COM-09: registra o pagamento do período fechado. */
 export async function marcarFechamentoComoPago(params: {
   fechamento: FechamentoComissao;
   autorId: string;

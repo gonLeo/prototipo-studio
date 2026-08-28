@@ -4,16 +4,14 @@ import {
   categoriaVigenteNaData,
   comissoesEmAberto,
   dataPrevistaDePagamento,
+  detalharComissoes,
   periodoAtual,
 } from '../../hooks/comissoes';
+import type { LinhaDeComissao } from '../../hooks/comissoes';
 import {
-  chamadaRepositorio,
   comissaoRepositorio,
   fechamentoComissaoRepositorio,
-  modalidadeRepositorio,
-  ocorrenciaSessaoRepositorio,
   professoraRepositorio,
-  sessaoRepositorio,
 } from '../../services/repositorios';
 import type { Comissao, FechamentoComissao } from '../../types/domain';
 import { Badge } from '../../components/ui/Badge';
@@ -21,13 +19,12 @@ import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { formatarDataBR, hojeISO, nomeDoMes, ultimoDiaDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/creditos';
 
-interface ComissaoDetalhada extends Comissao {
-  descricaoAula: string;
+interface ComissaoDetalhada extends LinhaDeComissao {
   ehAjuste: boolean;
 }
 
 /**
- * Painel de ganhos da professora (RF-COM-05/09): aulas realizadas no
+ * Painel de ganhos da professora (RF-COM-06/10): aulas realizadas no
  * período, valor por aula vigente, total acumulado, quando o período
  * fecha e quando o pagamento cai.
  */
@@ -49,16 +46,11 @@ export function MeusPagamentosPage() {
     if (!usuario) return;
     setCarregando(true);
 
-    const [professoras, comissoes, chamadas, ocorrencias, sessoes, modalidades, listaFechamentos] =
-      await Promise.all([
-        professoraRepositorio.listar(),
-        comissaoRepositorio.listar(),
-        chamadaRepositorio.listar(),
-        ocorrenciaSessaoRepositorio.listar(),
-        sessaoRepositorio.listar(),
-        modalidadeRepositorio.listar(),
-        fechamentoComissaoRepositorio.listar(),
-      ]);
+    const [professoras, comissoes, listaFechamentos] = await Promise.all([
+      professoraRepositorio.listar(),
+      comissaoRepositorio.listar(),
+      fechamentoComissaoRepositorio.listar(),
+    ]);
 
     const minha = professoras.find((p) => p.usuarioId === usuario.id);
     if (!minha) {
@@ -70,22 +62,11 @@ export function MeusPagamentosPage() {
     setValorPorAula(categoria?.valorPorAula ?? 0);
 
     const emAberto = await comissoesEmAberto(periodo);
-    const descreverAula = (comissao: Comissao) => {
-      const chamada = chamadas.find((c) => c.id === comissao.chamadaId);
-      const ocorrencia = ocorrencias.find((o) => o.id === chamada?.ocorrenciaSessaoId);
-      const sessao = sessoes.find((s) => s.id === ocorrencia?.sessaoId);
-      const modalidade = modalidades.find((m) => m.id === sessao?.modalidadeId);
-      return `${modalidade?.nome ?? 'Aula'} · ${sessao?.horarioInicio ?? ''}`;
-    };
+    const detalhadas = await detalharComissoes(emAberto.filter((c) => c.professoraId === minha.id));
 
     setDoPeriodo(
-      emAberto
-        .filter((c) => c.professoraId === minha.id)
-        .map((comissao) => ({
-          ...comissao,
-          descricaoAula: descreverAula(comissao),
-          ehAjuste: comissao.situacao === 'ajuste',
-        }))
+      detalhadas
+        .map((comissao) => ({ ...comissao, ehAjuste: comissao.situacao === 'ajuste' }))
         .sort((a, b) => b.dataAula.localeCompare(a.dataAula)),
     );
 
@@ -162,7 +143,15 @@ export function MeusPagamentosPage() {
                   </span>
                 )}
               </CelulaTabela>
-              <CelulaTabela>{item.descricaoAula}</CelulaTabela>
+              <CelulaTabela>
+                <span className="flex flex-wrap items-center gap-2">
+                  {item.descricaoAula}
+                  {item.tipoDeAula === 'excepcional' && <Badge tom="info">Excepcional</Badge>}
+                </span>
+                {/* RF-COM-02: a professora confere de onde saiu o valor —
+                    a categoria dela ou o combinado da aula excepcional. */}
+                <span className="block text-xs text-neutral-500">{item.baseDeCalculo}</span>
+              </CelulaTabela>
               <CelulaTabela alinhamento="direita">{formatarMoeda(item.valor)}</CelulaTabela>
             </LinhaTabela>
           )}

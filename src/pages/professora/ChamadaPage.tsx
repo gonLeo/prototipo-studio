@@ -102,11 +102,17 @@ export function ChamadaPage() {
           })
         : await finalizarChamada({ sessao, alunas, dataAula: data, autorId: usuario.id });
 
+      const inicio = `${finalizada ? 'Chamada corrigida' : 'Chamada finalizada'}: ${resultado.presentes} presente(s), ${resultado.ausentes} ausente(s).`;
+
       mostrarToast(
-        `${finalizada ? 'Chamada corrigida' : 'Chamada finalizada'}: ${resultado.presentes} presente(s), ${resultado.ausentes} ausente(s). Comissão de ${formatarMoeda(resultado.valorComissao)}${
-          resultado.ehAjuste ? ' lançada como ajuste no próximo período.' : ' gerada para o período atual.'
-        }`,
-        'sucesso',
+        // RF-COM-03: sem nenhuma presença não há comissão. Dizer isso aqui
+        // evita que a professora só descubra no fechamento do mês.
+        resultado.semPresencas
+          ? `${inicio} Como não houve nenhuma presença, nenhuma comissão foi gerada — a aula fica destacada no fechamento para a administração decidir.`
+          : `${inicio} Comissão de ${formatarMoeda(resultado.valorComissao)}${
+              resultado.ehAjuste ? ' lançada como ajuste no próximo período.' : ' gerada para o período atual.'
+            }`,
+        resultado.semPresencas ? 'aviso' : 'sucesso',
       );
       navegar(voltarPara);
     } catch (erroCapturado) {

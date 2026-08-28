@@ -2,6 +2,7 @@ import {
   agendamentoRepositorio,
   alunaRepositorio,
   chamadaRepositorio,
+  justificativaRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   registroAuditoriaRepositorio,
@@ -14,7 +15,7 @@ import { notificar } from '../services/notificador';
 import type { AulaExcepcional, Chamada, RegistroPresenca, Sessao } from '../types/domain';
 import { diferencaEmDias, formatarDataBR, hojeISO } from '../utils/data';
 import { RegraNegocioError } from './useModalidades';
-import { carteiraVigenteDaAluna, consumirReserva } from './carteiraDeCreditos';
+import { carteiraVigenteDaAluna, consumirDireto, consumirReserva } from './carteiraDeCreditos';
 import { garantirOcorrencia } from './cancelamentoDeAulas';
 import {
   categoriaVigenteNaData,
@@ -44,8 +45,8 @@ export interface AlunaNaChamada {
   /** RF-EXP-06: a aluna experimental aparece identificada como tal. */
   experimental: boolean;
   /**
-   * RF-CNV-09: check-in do aplicativo do convênio já validado. Quando
-   * falta, a professora ainda pode marcar presença (RF-CNV-10) — o
+   * RF-CNV-10: check-in do aplicativo do convênio já validado. Quando
+   * falta, a professora ainda pode marcar presença (RF-CNV-11) — o
    * registro vale para o controle interno de ocupação e não gera repasse.
    */
   checkinConvenio: boolean;
@@ -156,7 +157,7 @@ async function garantirChamada(sessao: Sessao, data: string): Promise<Chamada> {
   return chamadaRepositorio.criar({
     ocorrenciaSessaoId: ocorrencia.id,
     // Quem conduziu a aula, não quem é titular da sessão: é essa
-    // professora que recebe a comissão (RF-COM-03).
+    // professora que recebe a comissão (RF-COM-04).
     professoraId: ocorrencia.professoraEfetivaId,
     situacao: 'aberta',
   });
@@ -182,6 +183,8 @@ export interface ResultadoFinalizacao {
   presentes: number;
   ausentes: number;
   ehAjuste: boolean;
+  /** RF-COM-03: ninguém compareceu, então nenhuma comissão foi gerada. */
+  semPresencas: boolean;
 }
 
 /**
@@ -214,21 +217,24 @@ export async function finalizarChamada(params: {
     throw new RegraNegocioError('Esta chamada não tem professora vinculada.');
   }
 
-  const { ehAjuste } = await lancarComissao({
+  const presentes = alunas.filter((a) => a.presente).length;
+
+  const { ehAjuste, semPresencas } = await lancarComissao({
     chamadaId: chamada.id,
     professoraId,
     dataAula,
+    presencas: presentes,
     autorId,
   });
 
   const categoria = await categoriaVigenteNaData(professoraId, dataAula);
-  const presentes = alunas.filter((a) => a.presente).length;
 
   return {
-    valorComissao: categoria?.valorPorAula ?? 0,
+    valorComissao: semPresencas ? 0 : (categoria?.valorPorAula ?? 0),
     presentes,
     ausentes: alunas.length - presentes,
     ehAjuste,
+    semPresencas,
   };
 }
 
@@ -239,9 +245,10 @@ async function gravarRegistrosDePresenca(params: {
   autorId: string;
 }): Promise<void> {
   const { chamada, dataAula, alunas, autorId } = params;
-  const [registros, agendamentos] = await Promise.all([
+  const [registros, agendamentos, justificativas] = await Promise.all([
     registroPresencaRepositorio.listar(),
     agendamentoRepositorio.listar(),
+    justificativaRepositorio.listar(),
   ]);
 
   for (const aluna of alunas) {
@@ -257,7 +264,7 @@ async function gravarRegistrosDePresenca(params: {
         situacao,
         // O check-in vem validado do aplicativo do parceiro (RF-CNV-06). A
         // presença marcada aqui sem check-in vale para o controle interno
-        // de ocupação e não gera repasse (RF-CNV-10).
+        // de ocupação e não gera repasse (RF-CNV-11).
         checkinConvenio: aluna.checkinConvenio,
         dataHora: new Date().toISOString(),
         autorId,
@@ -284,6 +291,41 @@ async function gravarRegistrosDePresenca(params: {
           autorId,
         });
       }
+    }
+
+    // RF-PRE-05: a correção ajusta o saldo de créditos "quando aplicável".
+    // O caso que existe na prática é este: a falta foi justificada, a
+    // administração aprovou e o crédito voltou ao saldo (RF-JUS-04); a
+    // correção mostra que a aluna estava presente. A aula aconteceu para
+    // ela, então o crédito volta a ser consumido e a justificativa perde
+    // efeito — ela justificava uma falta que não houve.
+    //
+    // O caminho inverso não existe: presença e ausência consomem igual
+    // (RF-CRE-05), então corrigir de presente para ausente não mexe no
+    // saldo. O crédito só volta por justificativa aprovada.
+    const justificativaAprovada = justificativas.find(
+      (j) => j.agendamentoId === aluna.agendamentoId && j.situacao === 'aprovada',
+    );
+
+    if (agendamento && jaConsumido && justificativaAprovada && aluna.presente && creditos > 0) {
+      const carteira = await carteiraVigenteDaAluna(aluna.alunaId);
+      if (carteira) {
+        await consumirDireto({
+          carteira,
+          quantidade: creditos,
+          origem: `Correção da chamada de ${formatarDataBR(dataAula)}: presença confirmada`,
+          referenciaId: agendamento.id,
+          autorId,
+        });
+      }
+
+      await justificativaRepositorio.atualizar(justificativaAprovada.id, { situacao: 'sem_efeito' });
+
+      await notificar({
+        destinatario: { tipo: 'aluna', id: aluna.alunaId },
+        evento: 'presenca_corrigida',
+        conteudo: `A chamada da aula de ${formatarDataBR(dataAula)} foi corrigida e você consta como presente. Como a aula aconteceu para você, o crédito que havia sido devolvido pela justificativa voltou a ser consumido.`,
+      });
     }
 
     await agendamentoRepositorio.atualizar(aluna.agendamentoId, { situacao: 'realizado' });
@@ -328,11 +370,14 @@ export async function corrigirChamada(params: {
     throw new RegraNegocioError('Esta chamada não tem professora vinculada.');
   }
 
+  const presentes = alunas.filter((a) => a.presente).length;
+
   await estornarComissaoDaChamada(chamada.id);
-  const { ehAjuste } = await lancarComissao({
+  const { ehAjuste, semPresencas } = await lancarComissao({
     chamadaId: chamada.id,
     professoraId,
     dataAula,
+    presencas: presentes,
     autorId,
   });
 
@@ -359,13 +404,13 @@ export async function corrigirChamada(params: {
   }
 
   const categoria = await categoriaVigenteNaData(professoraId, dataAula);
-  const presentes = alunas.filter((a) => a.presente).length;
 
   return {
-    valorComissao: categoria?.valorPorAula ?? 0,
+    valorComissao: semPresencas ? 0 : (categoria?.valorPorAula ?? 0),
     presentes,
     ausentes: alunas.length - presentes,
     ehAjuste,
+    semPresencas,
   };
 }
 
@@ -463,16 +508,17 @@ export async function finalizarChamadaDeAulaExcepcional(params: {
     dataHoraFinalizacao: new Date().toISOString(),
   });
 
+  const presentes = alunas.filter((a) => a.presente).length;
+
   const { comissoes, ehAjuste } = await lancarComissoesDaAulaExcepcional({
     chamadaId: chamada.id,
     aulaExcepcionalId: aula.id,
     nomeAula: aula.nome,
     professoras: vinculos.map((v) => ({ professoraId: v.professoraId, valorComissao: v.valorComissao })),
     dataAula: aula.data,
+    presencas: presentes,
     autorId,
   });
-
-  const presentes = alunas.filter((a) => a.presente).length;
 
   return {
     presentes,
