@@ -195,7 +195,8 @@ export function VendasPage() {
       await recarregar();
       mostrarToast(
         `Rotina concluída: ${r.encerradasPorConsumo} carteira(s) consumida(s), ${r.encerradasPorVencimento} expirada(s), ` +
-          `${r.creditosExpirados} crédito(s) perdido(s), ${r.bolsasRenovadas} bolsa(s) renovada(s).`,
+          `${r.creditosExpirados} crédito(s) perdido(s), ${r.bolsasRenovadas} bolsa(s) renovada(s), ` +
+          `${r.avisosDeFinalizando} aviso(s) de pacote finalizando.`,
         'info',
       );
     } catch (erroCapturado) {

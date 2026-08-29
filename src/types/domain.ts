@@ -129,8 +129,16 @@ export interface HistoricoCategoria {
   autorId: ID;
 }
 
+/**
+ * Quem assina o termo. Aluna e professora têm textos próprios e versões
+ * independentes (RF-ALU-06, RF-PRO-04): publicar um novo termo de aluna
+ * não pode invalidar o aceite que as professoras já deram.
+ */
+export type PublicoDoTermo = 'aluna' | 'professora';
+
 export interface TermoAceite {
   id: ID;
+  publicoAlvo: PublicoDoTermo;
   versao: number;
   conteudo: string;
   dataPublicacao: string;
@@ -239,6 +247,17 @@ export type SituacaoVenda = 'pendente' | 'confirmada' | 'cancelada' | 'reembolsa
 /** Compra de pacote (RF-VEN-01) ou da aula experimental, que é cobrada à parte (RF-EXP-04). */
 export type TipoVenda = 'pacote' | 'aula_experimental';
 
+export type TipoBeneficioConversao = 'credito_adicional' | 'desconto_valor';
+
+/**
+ * O que a aluna ganhou por comprar depois da aula experimental. A
+ * quantidade é em créditos ou em reais, conforme o tipo (PA-04).
+ */
+export interface BeneficioAplicado {
+  tipo: TipoBeneficioConversao;
+  quantidade: number;
+}
+
 export interface Venda {
   id: ID;
   alunaId: ID;
@@ -269,6 +288,13 @@ export interface Venda {
    * como restaurá-la depois.
    */
   validadeAnteriorDaCarteira?: string;
+  /**
+   * Benefício concedido por esta compra ter vindo depois de uma aula
+   * experimental (RF-EXP-08, PA-04). Fica gravado na venda porque é o que
+   * explica, na conferência, por que os créditos ou o valor divergem do
+   * catálogo — e o parâmetro pode mudar depois.
+   */
+  beneficioConversao?: BeneficioAplicado;
   motivoCancelamento?: string;
   observacao?: string;
   /**
@@ -615,6 +641,12 @@ export interface Notificacao {
   evento: string;
   canal: 'email' | 'whatsapp';
   conteudo: string;
+  /**
+   * Registro que originou o aviso — carteira, venda, agendamento. Serve
+   * para não repetir um aviso já enviado sobre o mesmo fato, como o de
+   * "Finalizando", que a rotina reavalia a cada passagem (RF-NOT-08).
+   */
+  referenciaId?: ID;
   dataEnvio: string;
   situacaoEnvio: 'enviada' | 'falha';
 }

@@ -7,10 +7,10 @@ import {
 import type { Notificacao } from '../types/domain';
 
 /**
- * Camada de notificação (M15).
+ * Camada de notificação (M16).
  *
  * Toda comunicação transacional do sistema passa por aqui — nenhuma regra
- * de negócio grava `Notificacao` direto. É isso que o RF-NOT-10 pede: as
+ * de negócio grava `Notificacao` direto. É isso que o RF-NOT-13 pede: as
  * regras dizem **o que** comunicar e **para quem**, e esta camada decide
  * **por qual canal**. Na Fase 1 tudo sai por e-mail; incluir WhatsApp
  * depois é mudar `canalDoEvento`, sem tocar em nenhuma regra de disparo.
@@ -26,7 +26,7 @@ export type DestinatarioNotificacao =
   | { tipo: 'usuario'; id: string }
   | { tipo: 'aluna'; id: string }
   | { tipo: 'professora'; id: string }
-  /** Todas as usuárias com perfil de administração (RF-NOT-09). */
+  /** Todas as usuárias com perfil de administração (RF-NOT-11). */
   | { tipo: 'administracao' };
 
 /**
@@ -52,6 +52,8 @@ export const EVENTOS_NOTIFICACAO: Record<string, { rotulo: string; requisito: st
   troca_de_professora: { rotulo: 'Substituição de professora', requisito: 'RF-NOT-06' },
   sessao_alterada: { rotulo: 'Alteração de sessão', requisito: 'RF-NOT-07' },
   link_de_pagamento_reenviado: { rotulo: 'Link de pagamento reenviado', requisito: 'RF-VEN-03' },
+  pacote_finalizando: { rotulo: 'Pacote finalizando', requisito: 'RF-NOT-08' },
+  pacote_encerrado: { rotulo: 'Pacote encerrado', requisito: 'RF-NOT-09' },
   reembolso_aplicado: { rotulo: 'Reembolso aplicado', requisito: 'RF-NOT-12' },
   pacote_trancado: { rotulo: 'Pacote trancado', requisito: 'RF-TRA-01' },
   retorno_de_trancamento: { rotulo: 'Retorno do trancamento', requisito: 'RF-TRA-02' },
@@ -81,7 +83,7 @@ export function requisitoDoEvento(evento: string): string | undefined {
 /**
  * Canal de saída do evento.
  *
- * Ponto único de decisão: na Fase 1 tudo é e-mail (decisão do escopo, M15).
+ * Ponto único de decisão: na Fase 1 tudo é e-mail (decisão do escopo, M16).
  * Quando o WhatsApp entrar, é esta função que passa a devolver outro canal
  * por evento ou por preferência da usuária — nenhuma regra de disparo muda.
  */
@@ -112,17 +114,19 @@ async function resolverUsuarioId(destinatario: DestinatarioNotificacao): Promise
 }
 
 /**
- * Dispara uma notificação e registra o envio (RF-NOT-11): destinatário,
+ * Dispara uma notificação e registra o envio (RF-NOT-14): destinatário,
  * evento, canal, data e situação ficam gravados para consulta.
  */
 export async function notificar(params: {
   destinatario: DestinatarioNotificacao;
   evento: string;
   conteudo: string;
+  /** Registro que originou o aviso, quando houver um a apontar. */
+  referenciaId?: string;
   /** Só para forçar um canal específico; o normal é deixar a camada decidir. */
   canal?: CanalNotificacao;
 }): Promise<Notificacao[]> {
-  const { destinatario, evento, conteudo } = params;
+  const { destinatario, evento, conteudo, referenciaId } = params;
   const canal = params.canal ?? canalDoEvento(evento);
 
   const destinatarios = await resolverUsuarioId(destinatario);
@@ -135,6 +139,7 @@ export async function notificar(params: {
         evento,
         canal,
         conteudo,
+        referenciaId,
         dataEnvio: new Date().toISOString(),
         // Sem provedor de e-mail real no protótipo, o envio é registrado
         // como concluído. É aqui que o retorno do provedor entraria.

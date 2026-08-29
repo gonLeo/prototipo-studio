@@ -34,7 +34,7 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 - **Toda lista paginada — tabela ou cartão — deixa a usuária escolher quantos itens ver por página.** A paginação vive em `usePaginacao` (`src/components/ui/usePaginacao.ts`) + `ControlesDePaginacao` (`Paginacao.tsx`), já embutidos na `Tabela` e reaproveitáveis em listas que não são tabela (ver "Minhas aulas" da aluna). Não reimplemente paginação na tela.
 - **Exportação de listagem usa `baixarCSV` (`src/utils/csv.ts`)**, com o botão "Exportar CSV" ao lado da ação principal do cabeçalho da tela. O arquivo sai com separador `;` e BOM UTF-8 — é o que faz o Excel em português abrir com as colunas e os acentos certos sem importação manual. Exporte o que está **filtrado na tela**, não a base inteira: o recorte que a usuária montou é o que ela quer levar.
 - **Lista secundária e longa (histórico, registros antigos) fica em collapse fechado por padrão**, para não empurrar o conteúdo principal para fora da tela. Ver "Histórico" em `MinhasAulasPage`.
-- **Tela de agenda por dia usa `NavegadorDeDatas` + `CartaoDeAula`** (`src/components/ui/`): faixa de 7 dias navegável com mês, setas e atalho "Hoje", e cartões da data selecionada. A faixa é limitada por `dataMinima`/`dataMaxima` — a mínima é sempre hoje, porque não existe agendamento retroativo, e a máxima vem da janela configurada para o perfil. Ver `GradeDaAlunaPage` e `MinhasAulasProfessoraPage`. O `CartaoDeAula` tem um espaço opcional para `valor`, usado só onde a aula é cobrada à parte (aula experimental, M12) — nas aulas do pacote não há preço por aula.
+- **Tela de agenda por dia usa `NavegadorDeDatas` + `CartaoDeAula`** (`src/components/ui/`): faixa de 7 dias navegável com mês, setas e atalho "Hoje", e cartões da data selecionada. A faixa é limitada por `dataMinima`/`dataMaxima` — a mínima é sempre hoje, porque não existe agendamento retroativo, e a máxima vem da janela configurada para o perfil. Ver `GradeDaAlunaPage` e `MinhasAulasProfessoraPage`. O `CartaoDeAula` tem um espaço opcional para `valor`, usado só onde a aula é cobrada à parte (aula experimental, M13) — nas aulas do pacote não há preço por aula.
 - **Formulários (inclusive dentro de modal) usam grid de 2 colunas (`grid grid-cols-1 sm:grid-cols-2 gap-4`), não pilha vertical de campos.** Campo que precisa ocupar a linha toda usa `wrapperClassName="sm:col-span-2"` em `TextField`/`SelectField` (o `className` comum só chega no `<input>`/`<select>`, não no `<label>` que é o item do grid — é o `wrapperClassName` que controla o layout do campo inteiro).
 - **Confirmação de ação nunca usa `window.confirm`/`alert`.** Use `useConfirm()` (`src/hooks/useConfirm.tsx`) — abre um modal (`titulo`, `mensagem`, `perigo?`) e retorna uma Promise<boolean>. Toda exclusão e toda ação destrutiva/irreversível passa por aqui.
 - **Erros e confirmações de sucesso de uma ação (não de um campo de formulário) usam toast, nunca texto solto na página.** Use `useToast()` (`src/hooks/useToast.tsx`) — `mostrarToast(mensagem, 'sucesso' | 'erro' | 'aviso' | 'info')`. Aparece no canto superior, empilha, some sozinho.
@@ -44,7 +44,26 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 - **Bloco de configuração longo repetido por item (ex.: um card por dia da semana) usa collapse, fechado por padrão, mostrando um resumo de uma linha quando fechado** (ex.: "08:00–11:00, 15:00–18:00" ou badge "Fechado"). Ver `LinhaDia` em `StudioPage.tsx` como referência do padrão.
 - **Campo com histórico/auditoria (ex.: categoria vigente de uma professora, que gera registro em `HistoricoCategoria`) não é editável inline na tabela.** A tabela mostra o valor como texto; a troca só acontece pelo modal de edição do item, onde a ação tem contexto (confirmação, dica sobre o efeito). Evita trocas acidentais de um campo sensível direto na listagem.
 - Kit de UI compartilhado em `src/components/ui/`: `Button`, `Field` (TextField/SelectField/CheckboxField), `Badge`, `Modal`, `TimePicker`, `Table` (Tabela/LinhaTabela/CelulaTabela), `Paginacao`/`usePaginacao`, `NavegadorDeDatas`, `CartaoDeAula`. Novas telas devem reusar esses componentes em vez de estilizar elementos HTML crus.
+- **Aviso que a usuária precisa entender fica na tela, não só no impedimento.** Quando o sistema recusa ou esconde algo, ele diz por quê e, quando existe, oferece a saída: a data de exceção mostra o motivo em vez de sumir da grade (RF-EXC-05), o bloqueio por saldo leva a "Meu pacote", a aula sem presença fica destacada no fechamento em vez de desaparecer. Antes de esconder um caso da tela, verifique se ele não precisa ser explicado.
+- **Frase gerada por código concorda com o número.** "1 crédito reservado" e "3 créditos reservados", não "reservado(s)"; "Resta apenas 1 crédito", não "Restam". Ver `destinoDosCreditos` (`useAgendaDaAluna.ts`) e `explicarFinalizando` (`utils/creditos.ts`).
 - Utilize skill de frontend instalada para criar boas telas
+
+## Glossário do modelo de créditos
+
+O vocabulário abaixo é o do escopo v2.0 e deve ser usado tal e qual no código e nas telas. O modelo é **pacote de créditos pré-pago com pagamento único** — não existe mensalidade, contrato, ciclo de cobrança nem inadimplência.
+
+| Termo | O que é |
+| --- | --- |
+| **Pacote** | Item do catálogo: quantidade de créditos, validade em dias e valor único. Alterá-lo não muda compras já feitas. |
+| **Carteira** | O saldo vivo da aluna. Nasce na primeira compra e é alimentada pelas seguintes, sempre com **uma única validade corrente**. A aluna tem no máximo uma carteira ativa. |
+| **Crédito disponível / reservado / utilizado** | As três dimensões do saldo. Agendar **reserva**; a chamada finalizada, a falta e o cancelamento fora do prazo **consomem**; cancelar dentro do prazo **libera** de volta. |
+| **Movimento de crédito** | Todo lançamento que altera o saldo, gravado por `aplicarMovimento` — único caminho de escrita. O saldo é sempre reconstituível pelo extrato. |
+| **Finalizando** | Status **derivado**, não gravado: poucos créditos ou vencimento próximo, pelos limiares configuráveis. Coexiste com a carteira ativa. |
+| **Venda** | O registro comercial da compra, com créditos, validade e valor **congelados** no momento em que foi feita. É dela que a carteira tira os créditos, não do catálogo. |
+| **Categoria de aula** | Define quanto cada tipo de aula custa em créditos (regular 1, workshop 2, particular 4 — configurável). |
+| **Aula excepcional** | Workshop ou aula particular (M9): fora da grade recorrente, criada e alocada pela administração, com consumo **imediato** de créditos, sem passar por reserva. |
+| **Trancamento** | Pausa que congela a validade e a devolve prorrogada no retorno. |
+| **Reembolso** | Devolução do valor pago, aplicada pela administração. Invisível para quem não teve um aplicado ao próprio cadastro. |
 
 ## Fora de escopo deste protótipo
 

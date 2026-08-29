@@ -89,13 +89,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Enquanto o termo não é aceito, a aluna só tem o painel — é lá que ela
-  // conclui o aceite e o pagamento (RF-ALU-08).
+  // Enquanto o termo não é aceito, a usuária só tem o painel — é lá que
+  // ela conclui o aceite, e o pagamento no caso da aluna (RF-ALU-08 para a
+  // aluna, RF-PRO-04 para a professora).
   const aguardandoAceite = usuario?.situacao === 'aguardando_aceite';
   const gruposNav = !perfilAtivo
     ? []
-    : perfilAtivo === 'aluna' && aguardandoAceite
-      ? [{ itens: [{ to: '/aluna', label: 'Painel', fim: true }] }]
+    : aguardandoAceite && (perfilAtivo === 'aluna' || perfilAtivo === 'professora')
+      ? [{ itens: [{ to: perfilAtivo === 'aluna' ? '/aluna' : '/professora', label: 'Painel', fim: true }] }]
       : NAV_POR_PERFIL[perfilAtivo];
   const outrosPerfis = usuario?.perfis.filter((p) => p !== perfilAtivo) ?? [];
 

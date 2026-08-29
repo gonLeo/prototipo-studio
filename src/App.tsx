@@ -29,6 +29,7 @@ import { GradeDaAlunaPage } from './pages/aluna/GradeDaAlunaPage';
 import { MinhasAulasPage } from './pages/aluna/MinhasAulasPage';
 import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfessoraPage';
 import { PainelProfessoraPage } from './pages/professora/PainelProfessoraPage';
+import { AceiteDaProfessoraPage } from './pages/professora/AceiteDaProfessoraPage';
 import { ChamadaPage } from './pages/professora/ChamadaPage';
 import { ChamadaExcepcionalPage } from './pages/professora/ChamadaExcepcionalPage';
 import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
@@ -56,6 +57,12 @@ function RotaComPerfil({ perfilExigido, children }: { perfilExigido: PerfilAcess
   if (perfilAtivo !== perfilExigido) return <Navigate to={ROTA_PERFIL[perfilAtivo]} replace />;
 
   return <AppShell>{children}</AppShell>;
+}
+
+/** RF-PRO-04: o acesso da professora só abre depois do aceite do termo. */
+function EntradaDaProfessora() {
+  const { usuario } = useSessao();
+  return usuario?.situacao === 'aguardando_aceite' ? <AceiteDaProfessoraPage /> : <PainelProfessoraPage />;
 }
 
 function RotaInicial() {
@@ -116,7 +123,10 @@ function App() {
                   </RotaComPerfil>
                 }
               >
-                <Route index element={<PainelProfessoraPage />} />
+                {/* RF-PRO-04: enquanto o termo não é aceito, o painel dá
+                    lugar ao aceite — mesmo desenho do primeiro acesso da
+                    aluna, que também acontece dentro do painel dela. */}
+                <Route index element={<EntradaDaProfessora />} />
                 <Route path="aulas" element={<MinhasAulasProfessoraPage />} />
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
                 <Route path="chamada-excepcional/:aulaId" element={<ChamadaExcepcionalPage />} />

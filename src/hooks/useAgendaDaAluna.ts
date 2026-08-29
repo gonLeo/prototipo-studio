@@ -3,6 +3,7 @@ import {
   agendamentoRepositorio,
   alunaRepositorio,
   chamadaRepositorio,
+  excecaoCalendarioRepositorio,
   justificativaRepositorio,
   modalidadeRepositorio,
   ocorrenciaSessaoRepositorio,
@@ -12,7 +13,14 @@ import {
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
-import type { Agendamento, Aluna, Carteira, Justificativa, Pacote } from '../types/domain';
+import type {
+  Agendamento,
+  Aluna,
+  Carteira,
+  ExcecaoCalendario,
+  Justificativa,
+  Pacote,
+} from '../types/domain';
 import { hojeISO, horasAteAula } from '../utils/data';
 import { formatarCreditos, lerCarteira, type LeituraDaCarteira } from '../utils/creditos';
 import { limiaresFinalizando } from './carteiraDeCreditos';
@@ -149,6 +157,9 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
   const [janelaDias, setJanelaDias] = useState(0);
   const [antecedenciaHoras, setAntecedenciaHoras] = useState(4);
   const [prazoJustificativaDias, setPrazoJustificativaDias] = useState(7);
+  // RF-EXC-05: a aluna precisa entender por que uma data não tem aula. Sem
+  // isso, o dia some da grade e parece falha do sistema.
+  const [excecoes, setExcecoes] = useState<ExcecaoCalendario[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const recarregar = useCallback(async () => {
@@ -186,6 +197,7 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
 
     const minha = alunas.find((a) => a.usuarioId === usuarioId);
     setAluna(minha);
+    setExcecoes(await excecaoCalendarioRepositorio.listar());
 
     if (!minha) {
       setCarteira(undefined);
@@ -303,6 +315,7 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
     janelaDias,
     antecedenciaHoras,
     prazoJustificativaDias,
+    excecoes,
     carregando,
     recarregar,
     hoje,

@@ -207,6 +207,12 @@ export function AlunasPage() {
                   { cabecalho: 'Validade', valor: (item) => item.carteira?.dataValidade ?? '' },
                   { cabecalho: 'Status da carteira', valor: (item) => (item.leitura ? rotuloStatusCarteira(item.leitura.status) : 'Sem pacote ativo') },
                   { cabecalho: 'Bolsista', valor: (item) => (item.bolsista ? 'Sim' : 'Não') },
+                  // REL-09: a relação de bolsistas precisa do valor de
+                  // tabela que deixou de ser faturado, não só da marcação.
+                  {
+                    cabecalho: 'Valor não faturado (bolsa)',
+                    valor: (item) => (item.bolsista ? (item.pacote?.valor ?? 0).toFixed(2) : ''),
+                  },
                 ],
               })
             }

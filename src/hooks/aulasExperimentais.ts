@@ -23,7 +23,7 @@ import { venderAulaExperimental } from './vendas';
 import { validarIdentificacaoUnica } from './cadastroDeAlunas';
 
 /**
- * Aula experimental (M12).
+ * Aula experimental (M13).
  *
  * O fluxo é **invertido** em relação ao da matrícula (definido na reunião,
  * seção 5.12 do escopo): primeiro a interessada escolhe o horário na

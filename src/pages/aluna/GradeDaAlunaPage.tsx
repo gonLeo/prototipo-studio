@@ -37,6 +37,9 @@ export function GradeDaAlunaPage() {
 
   const dataMaxima = somarDias(hoje, agenda.janelaDias);
   const aulasDoDia = agenda.disponiveis.filter((aula) => aula.data === dataSelecionada);
+  // RF-EXC-05: o studio não abre nesta data, e a aluna vê o motivo em vez
+  // de um dia vazio sem explicação.
+  const excecaoDoDia = agenda.excecoes.find((e) => e.data === dataSelecionada);
 
   async function tentarAgendar(aula: AulaDisponivel) {
     if (!agenda.aluna || !usuario) return;
@@ -108,7 +111,12 @@ export function GradeDaAlunaPage() {
         />
       </div>
 
-      {aulasDoDia.length === 0 ? (
+      {excecaoDoDia ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
+          <p className="text-sm font-semibold text-amber-900">O studio não abre em {formatarDataBR(dataSelecionada)}.</p>
+          <p className="mt-1 text-sm text-amber-800">{excecaoDoDia.descricao}</p>
+        </div>
+      ) : aulasDoDia.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500">
           Nenhuma aula nesta data.
         </p>

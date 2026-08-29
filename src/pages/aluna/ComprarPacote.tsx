@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { usePacotes } from '../../hooks/usePacotes';
 import { comprarPacoteParaAluna } from '../../hooks/cadastroDeAlunas';
 import { registrarConversao } from '../../hooks/aulasExperimentais';
 import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS } from '../../hooks/vendas';
+import { aplicarBeneficio, beneficioDeConversaoDisponivel } from '../../hooks/beneficioDeConversao';
+import type { BeneficioDeConversao } from '../../hooks/beneficioDeConversao';
 import type { Aluna, FormaPagamento, Pacote } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { SelectField } from '../../components/ui/Field';
@@ -42,12 +44,32 @@ export function ComprarPacote({
   const [parcelas, setParcelas] = useState(String(PARCELAS_DISPONIVEIS[0]));
   const [erro, setErro] = useState<string>();
   const [processando, setProcessando] = useState(false);
+  const [beneficio, setBeneficio] = useState<BeneficioDeConversao>();
+
+  // RF-EXP-08: quem fez a aula experimental precisa ver o benefício na
+  // prévia, antes de confirmar — não descobri-lo no extrato depois.
+  useEffect(() => {
+    let valido = true;
+    if (!aluna) return;
+    beneficioDeConversaoDisponivel(aluna.id).then((encontrado) => {
+      if (valido) setBeneficio(encontrado);
+    });
+    return () => {
+      valido = false;
+    };
+  }, [aluna]);
 
   const ativos = pacotes.filter((p) => p.situacao === 'ativo');
   const escolhido = ativos.find((p) => p.id === pacoteId);
-  const previa = escolhido
-    ? calcularPreviaDeCompra({ carteiraVigente: carteira, pacote: escolhido, hoje: hojeISO() })
-    : undefined;
+  const comBeneficio = escolhido ? aplicarBeneficio(escolhido, beneficio) : undefined;
+  const previa =
+    escolhido && comBeneficio
+      ? calcularPreviaDeCompra({
+          carteiraVigente: carteira,
+          pacote: { ...escolhido, ...comBeneficio },
+          hoje: hojeISO(),
+        })
+      : undefined;
 
   async function comprar(e: FormEvent) {
     e.preventDefault();
@@ -71,10 +93,20 @@ export function ComprarPacote({
       }
 
       // Compra depois da aula experimental fica marcada como conversão
-      // (RF-EXP-09), para separá-la de uma compra comum no relatório.
-      await registrarConversao({ alunaId: aluna.id, vendaId: venda.id, autorId: aluna.usuarioId });
+      // (RF-EXP-09), para separá-la de uma compra comum na auditoria. Só
+      // quem tinha benefício disponível veio de uma experimental — antes
+      // isso era gravado em toda compra, inclusive de quem nunca fez uma.
+      if (beneficio) {
+        await registrarConversao({ alunaId: aluna.id, vendaId: venda.id, autorId: aluna.usuarioId });
+      }
 
-      await onComprado(`Compra confirmada: ${formatarCreditos(escolhido.creditos)} adicionados à sua carteira.`, true);
+      await onComprado(
+        `Compra confirmada: ${formatarCreditos(venda.creditos)} adicionados à sua carteira.` +
+          (beneficio?.tipo === 'credito_adicional'
+            ? ` Inclui ${formatarCreditos(beneficio.quantidade)} de bônus da aula experimental.`
+            : ''),
+        true,
+      );
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
     } finally {
@@ -167,12 +199,19 @@ export function ComprarPacote({
             >
               {PARCELAS_DISPONIVEIS.map((n) => (
                 <option key={n} value={n}>
-                  {n}x de {formatarMoeda(escolhido.valor / n)}
+                  {n}x de {formatarMoeda((comBeneficio?.valor ?? escolhido.valor) / n)}
                 </option>
               ))}
             </SelectField>
           )}
         </div>
+      )}
+
+      {beneficio && (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-200">
+          Você fez uma aula experimental e ganhou <strong className="font-semibold">{beneficio.rotulo}</strong> na
+          primeira compra. Válido até {formatarDataBR(beneficio.validoAte)}.
+        </p>
       )}
 
       {previa && (
@@ -194,7 +233,11 @@ export function ComprarPacote({
 
       <div className="flex justify-end">
         <Button type="submit" disabled={!escolhido || processando}>
-          {processando ? 'Processando…' : escolhido ? `Pagar ${formatarMoeda(escolhido.valor)}` : 'Escolha um pacote'}
+          {processando
+            ? 'Processando…'
+            : comBeneficio
+              ? `Pagar ${formatarMoeda(comBeneficio.valor)}`
+              : 'Escolha um pacote'}
         </Button>
       </div>
     </form>

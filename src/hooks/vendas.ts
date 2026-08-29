@@ -14,6 +14,7 @@ import { formatarDataBR, hojeISO } from '../utils/data';
 import { formatarCreditos, formatarMoeda, rotuloFormaPagamento } from '../utils/creditos';
 import { RegraNegocioError } from './useModalidades';
 import { aplicarCompra } from './carteiraDeCreditos';
+import { aplicarBeneficio, beneficioDeConversaoDisponivel } from './beneficioDeConversao';
 
 /**
  * Vendas e pagamentos (M12).
@@ -84,15 +85,21 @@ export async function registrarVendaDePacote(params: {
     throw new RegraNegocioError('Informe em quantas parcelas a compra será feita.');
   }
 
+  // RF-EXP-08: quem comprou depois da aula experimental leva o benefício
+  // configurado, apurado aqui e congelado na venda junto do resto.
+  const beneficio = await beneficioDeConversaoDisponivel(aluna.id, hoje);
+  const comBeneficio = aplicarBeneficio(pacote, beneficio);
+
   const venda = await vendaRepositorio.criar({
     alunaId: aluna.id,
     tipo: 'pacote',
     pacoteId: pacote.id,
     // Créditos, validade e valor ficam congelados na venda: alterar o
     // catálogo depois não pode mudar uma compra já feita (RF-PAC-01).
-    creditos: pacote.creditos,
+    creditos: comBeneficio.creditos,
     validadeDias: pacote.validadeDias,
-    valor: pacote.valor,
+    valor: comBeneficio.valor,
+    beneficioConversao: beneficio ? { tipo: beneficio.tipo, quantidade: beneficio.quantidade } : undefined,
     formaPagamento,
     parcelas: formaPagamento === 'cartao_parcelado' ? parcelas : undefined,
     data: hoje,

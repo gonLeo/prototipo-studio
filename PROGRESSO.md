@@ -440,3 +440,62 @@ Próxima fase (Fase 8) fecha o protótipo com painéis e indicadores (M14), noti
   - `mesesDeVigencia(pacote)` e `calcularDatasDoContrato(dataInicio, pacote)` não recebem mais `tipo` — leem `pacote.tipo`. Novo utilitário `rotuloTipoContrato(tipo)` para os rótulos de tela.
   - Na **alteração de plano**, `contrato.tipo` passa a acompanhar o pacote novo (é ele que define se a pausa é trancamento ou suspensão); a data de término continua inalterada, como manda o RF-PLN-05. O comparativo do modal ganhou a linha "Duração".
   - Seed: `pac-4` e `pac-8` são mensais; `pac-12` e `pac-livre` são semestrais (duração 6 meses). Os contratos de exemplo continuam coerentes com o pacote de cada aluna.
+
+---
+
+# Atualização para o escopo v2.0 — consolidação
+
+As Fases 0 a 8 registradas acima construíram o protótipo sobre o **escopo v1.0**, cujo modelo comercial era contrato com mensalidade recorrente. Em agosto de 2026 o escopo foi substituído pela **versão 2.0**, com um modelo comercial diferente: **pacote de créditos pré-pago, pagamento único**.
+
+A migração foi feita em 8 etapas, todas concluídas. O registro detalhado de cada uma — o que implementou, as decisões tomadas e como testar — está em **[PROGRESSO_ATUALIZACAO.md](./PROGRESSO_ATUALIZACAO.md)**. Este capítulo existe para quem chega ao `PROGRESSO.md` e precisa saber o que continua valendo do que está escrito acima.
+
+## As 8 etapas
+
+| Etapa | O que fez |
+| --- | --- |
+| 1 | Documento de escopo v2.0 no lugar da v1.0; catálogo de créditos e parâmetros novos configurados |
+| 2 | **A virada**: carteira de créditos e venda avulsa substituem contrato e cobrança recorrente |
+| 3 | Trancamento e reembolso (M3.6 e M12.2, ambos novos) |
+| 4 | Aulas excepcionais — workshop e aula particular (M9, módulo novo) |
+| 5 | Agendamento, cancelamento e presença refinados sobre créditos |
+| 6 | Comissão de aula excepcional, aula sem presença e convênios ajustados |
+| 7 | Benefício de conversão da experimental, notificações de carteira, relatórios |
+| 8 | Varredura final, conferência requisito a requisito e consolidação |
+
+## O que saiu do produto
+
+Removido de fato — arquivos, tipos, chaves do seed, rotas e itens de menu —, não desativado:
+
+- **Contrato** como entidade, com vigência, renovação e alteração de plano;
+- **Cobrança recorrente**: mensalidade, régua de inadimplência, multa, juros e avisos de vencimento;
+- **Suspensão de contrato** e **encerramento com motivo**;
+- **Bolsa parcial** (a bolsa passou a ser sempre integral);
+- **Saldo de aulas do ciclo**, substituído pela carteira de créditos com validade própria.
+
+O histórico está no git. O escopo antigo ficou arquivado em `escopo_funcional_contratado_v1.md`.
+
+## O que passou a existir
+
+- **Carteira de créditos** com saldo em três dimensões (disponível, reservado, utilizado), validade única e extrato completo — todo movimento passa por `aplicarMovimento`, e o saldo é sempre reconstituível pelo histórico.
+- **Venda** como registro comercial com créditos, validade e valor congelados na compra.
+- **Trancamento** (congela a validade e a devolve prorrogada) e **reembolso** (com as regras de prazo, percentual e o caso PA-09 da renovação antecipada).
+- **Aulas excepcionais** (M9): workshop e aula particular, com alocação, consumo imediato e comissão por professora vinculada.
+- **Benefício de conversão** da aula experimental, parametrizado em tipo, quantidade e validade.
+
+## Como está o atendimento ao escopo
+
+Conferência feita na Etapa 8, requisito a requisito do capítulo 4 (RF-CFG-01 a RF-PER-05) e fluxo a fluxo do capítulo 6. Os **11 fluxos** do capítulo 6 são executáveis ponta a ponta no protótipo.
+
+Ficam fora, com o motivo:
+
+| Requisito | Por que está fora |
+| --- | --- |
+| RF-BOL-09 — desconto parcial | Marcado **Evolução** no escopo |
+| RF-CPR-08 — filtro de professoras habilitadas | Marcado **Evolução** no escopo |
+| RF-ALU-12 — anexo do contrato jurídico | Condicionado a documento que ainda não existe |
+| RF-REE-11 — prazo de processamento do reembolso | **Em definição**; o texto exibido à aluna já é parametrizável |
+| RF-EXP-08 — benefício de conversão | Estava "Em definição"; **implementado** com os valores do PA-04 |
+| RF-VEN-08 — recebimento de venda parcelada | **Em definição** (PA-02); não altera o protótipo, que simula o gateway |
+| RF-CNV-04 — resposta de confirmação ao convênio | Depende de integração real; no protótipo a resposta é a própria devolução da função |
+
+Fora do protótipo por decisão de projeto, como sempre esteve: testes automatizados, autenticação real, banco de dados real e as evoluções EV-01 a EV-15.

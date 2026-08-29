@@ -10,8 +10,8 @@ O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0,
 - [x] Etapa 4 — Aulas excepcionais (M9, módulo novo)
 - [x] Etapa 5 — Agendamento, cancelamento e presença sobre créditos
 - [x] Etapa 6 — Comissão e convênios
-- [ ] Etapa 7 — Experimental, painéis, notificações, perfis e relatórios
-- [ ] Etapa 8 — Varredura final e consolidação
+- [x] Etapa 7 — Experimental, painéis, notificações, perfis e relatórios
+- [x] Etapa 8 — Varredura final e consolidação
 
 ## Decisões fixadas para a migração
 
@@ -468,3 +468,134 @@ A numeração do M11 e do M14 mudou entre as versões do escopo, e os comentári
 O ciclo foi percorrido no navegador: chamada com duas faltas finalizada sem gerar comissão e destacada no fechamento; comissão regular de R$ 35,00 e excepcional de R$ 180,00 convivendo no mesmo período, com os subtotais corretos e o workshop identificado por nome no detalhamento; e a aluna de convênio comprando pacote, aparecendo marcada na lista de reservas e agendando pelo portal com o aviso do convênio ao lado. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
 
 Um defeito de texto apareceu no teste e foi corrigido: a base de cálculo da aula regular saía como **"Categoria Categoria I"**, porque o nome da categoria cadastrada já traz a palavra e o código a prefixava de novo.
+
+---
+
+## Etapa 7 — o que foi entregue
+
+**Os módulos de superfície.** Os painéis já estavam completos — o administrativo desde a Etapa 2 (sem inadimplência, com créditos em circulação e valor não faturado das bolsas) e o da aluna desde o UX-01/02. O que faltava de fato era o benefício de conversão, que existia como parâmetro e não fazia nada, e dois avisos que o escopo v2.0 criou.
+
+### RF-EXP-08 e PA-04 — o benefício de conversão passou a existir
+
+Os três parâmetros (tipo, quantidade e validade) estavam configuráveis desde a Etapa 1 e não eram lidos por ninguém: quem fazia a aula experimental e comprava um pacote pagava o preço cheio.
+
+A regra vive em `src/hooks/beneficioDeConversao.ts` — módulo próprio, e não junto do M13, porque quem aplica o benefício é a venda, e `aulasExperimentais` já importa de `vendas`: pôr a regra lá fecharia um ciclo entre os dois arquivos.
+
+**Três condições cumulativas** para ter direito: fez uma aula experimental que já aconteceu, está dentro do prazo contado **da aula** (não da compra), e ainda não comprou nenhum pacote desde então. A terceira é o que faz o benefício valer uma vez só — o escopo o concede a quem "adquire um pacote após realizar a aula experimental", não a cada compra futura. Uma venda cancelada não consome o direito; uma pendente sim, porque a compra existe.
+
+**Os dois tipos funcionam:**
+- **crédito adicional** soma à quantidade da compra — o extrato registra "Compra do pacote Starter + 1 crédito de bônus da aula experimental", porque a concessão diverge do catálogo e isso precisa estar explicado;
+- **desconto no valor** reduz o preço, sem nunca deixá-lo negativo: um benefício maior que o pacote zera a compra em vez de gerar crédito a devolver.
+
+O benefício aparece **antes de confirmar**, nas duas telas de compra — a da aluna e a da administração —, com a data da aula que o originou e até quando vale. Descobri-lo só no extrato seria tarde.
+
+**A quantidade zero desliga o benefício** sem mudança de código: é como a administração o suspende pela tela de parâmetros.
+
+Junto disso, `aplicarCompra` passou a usar os créditos **da venda**, não do catálogo. É onde os números da compra ficam congelados (RF-PAC-01) e onde o bônus já foi somado; ler o pacote de novo na hora de creditar descartaria o benefício e usaria um catálogo que pode ter mudado desde que a venda ficou pendente.
+
+O registro de auditoria da conversão também foi corrigido: ele era gravado em **toda** compra, inclusive de quem nunca fez uma aula experimental. Agora só quem tinha benefício disponível é registrado como conversão.
+
+### RF-NOT-08 e RF-NOT-09 — os dois avisos que faltavam
+
+- **Pacote finalizando.** O status é derivado na leitura, então quem dispara o aviso é a rotina de carteiras — carregar a tela não escreve nada, nem notificação. O aviso sai uma vez por carteira: a rotina reavalia a cada passagem e a `referenciaId` da notificação impede a repetição.
+- **Pacote encerrado.** Vai junto com o encerramento, dizendo o motivo — e, no vencimento, quantos créditos foram perdidos. É a informação que a aluna cobra depois.
+
+`Notificacao` ganhou `referenciaId` para isso, e o registro de envios (RF-NOT-14) ficou mais útil de modo geral. A rotina agora reporta quantos avisos enviou.
+
+### Relatórios e realinhamento
+
+- **REL-09**: a exportação de alunas ganhou a coluna de **valor não faturado** da bolsa. A marcação "bolsista" sozinha não atende ao requisito, que pede o valor.
+- **Referências do M16 realinhadas ao v2.0**: o módulo é M16 (era M15), a abstração de canal é RF-NOT-13 (era 10) e o registro de envio é RF-NOT-14 (era 11).
+- **REL-01 a REL-13 conferidos** contra as telas: os treze têm cobertura. REL-11 (aulas excepcionais) já traz participantes, créditos e comissão; REL-13 (reembolsos) tem tela e exportação desde a Etapa 3; REL-07 saiu na Etapa 6. Nenhum relatório menciona motivos de encerramento de contrato, que saíram com o modelo antigo.
+- **RF-PER-03 conferido**: trancamento, ajuste de créditos, bolsa, aulas excepcionais e reembolso vivem apenas sob `/administracao`, protegido por perfil, e nenhuma tela de aluna ou professora oferece caminho de solicitação para eles.
+
+### Decisões desta etapa
+
+- **O prazo do benefício conta da aula, não da compra da experimental.** O PA-04 fala em validade "após a aula experimental", e é a aula que a pessoa experimentou — pagar dois dias antes não deveria encurtar o prazo dela.
+- **Venda cancelada não consome o direito ao benefício.** Se a compra não se concretizou, a aluna não usufruiu de nada. Foi assim que o teste conseguiu ser feito: a venda pendente que o gateway recusou foi cancelada, e o direito voltou.
+- **A venda manual não aplica benefício.** Ali a administração informa o valor efetivamente cobrado; descontar por cima do valor digitado o descontaria duas vezes.
+- **O aviso de "Finalizando" é uma vez por carteira, não por passagem da rotina.** Repetir a cada execução transformaria um aviso útil em ruído, e a aluna deixaria de ler.
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"**.
+2. **Benefício de crédito adicional (padrão do seed)**: em **Parâmetros**, aumente a "Validade do benefício de conversão" para 30 dias. Em **Vendas**, cancele a venda pendente da **Juliana Rocha** (ela fez experimental em 13/08 e a compra recusada bloqueava o direito). Na ficha dela, **Comprar pacote**: o aviso verde mostra o direito a 1 crédito de bônus e a prévia passa de 4 para **5 créditos**. Confirme e veja o extrato: "Compra do pacote Starter + 1 crédito de bônus da aula experimental — +5".
+3. **Uma vez só**: abra **Comprar pacote** de novo na mesma aluna — o aviso não aparece mais e a prévia soma só os créditos do pacote.
+4. **Benefício de desconto**: em **Parâmetros**, troque o tipo para "Desconto no valor do pacote" e a quantidade para 50. Faça o fluxo público em `/experimental` com uma pessoa nova, escolhendo uma aula **de hoje**, e conclua o pagamento. Entre como ela → **Meu pacote**: o aviso mostra R$ 50,00 de desconto, e ao escolher o Starter o botão diz **"Pagar R$ 170,00"**. O histórico de compras registra R$ 170,00.
+5. **RF-NOT-08**: em **Vendas**, "Rodar rotina de carteiras". O toast informa "1 aviso(s) de pacote finalizando" — é a **Patrícia Lima**, com 1 crédito. Em **Notificações**, o envio aparece com o requisito RF-NOT-08 e o texto "Resta apenas 1 crédito…". Rode a rotina de novo: agora são **0 avisos**, porque o aviso não se repete.
+6. **RF-NOT-09**: encerre uma carteira (consumindo todos os créditos, ou aguardando o vencimento) e rode a rotina. A notificação de pacote encerrado registra o motivo e, no vencimento, os créditos perdidos.
+7. **REL-09**: em **Alunas**, "Exportar CSV" — a coluna "Valor não faturado (bolsa)" traz o valor do pacote das bolsistas.
+
+### Verificação executada
+
+O benefício foi percorrido nos dois tipos: crédito adicional na compra pela administração (4 → 5 créditos, com a origem explicada no extrato) e desconto em valor pelo fluxo público completo — experimental agendada e paga, depois compra do Starter por R$ 170,00 em vez de R$ 220,00. A regra de uma vez só foi confirmada abrindo a compra outra vez na mesma aluna. As duas notificações novas foram disparadas pela rotina e conferidas no registro de envios, incluindo a não-repetição do aviso de "Finalizando". `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
+
+Dois defeitos apareceram no teste e foram corrigidos:
+
+- **A deduplicação do aviso de "Finalizando" não funcionava.** A condição casava `destinatarioId` da notificação com o id da **aluna**, mas o campo guarda o id da **usuária** — nunca batia, e o aviso saía de novo a cada rotina. A comparação passou a ser só por evento e carteira, que já identifica a aluna.
+- **"Restam apenas 1 crédito"**, em `explicarFinalizando`. O verbo não concordava com a quantidade, justamente no caso mais comum da mensagem. Corrigido também para o prazo ("Falta 1 dia" / "Faltam N dias").
+
+---
+
+## Etapa 8 — o que foi entregue
+
+**A varredura final.** O objetivo era não deixar resíduo do modelo antigo e conferir o protótipo contra o escopo inteiro. A varredura encontrou o código limpo — e a conferência encontrou dois requisitos MVP que ninguém tinha implementado.
+
+### Varredura de vocabulário: limpa
+
+Nenhum resíduo. As oito palavras do modelo antigo foram procuradas em todo o `src/`:
+
+- **"saldo de aulas", "alteração de plano", "suspensão"**: zero ocorrências;
+- **"mensalidade", "cobrança recorrente", "inadimplência"**: aparecem apenas em **negações** — no termo de aceite ("Não há cobrança recorrente nem mensalidade automática"), no aviso de pagamento da matrícula e em comentários que explicam o que o modelo novo não tem. É vocabulário correto: afirmam a mudança em vez de arrastá-la;
+- **"contrato"**: uma ocorrência, em `notificador.ts`, no sentido de contrato de código ("serve de contrato: evento novo entra aqui junto com a regra que o dispara") — nada a ver com o modelo antigo.
+
+Nenhum tipo, campo `@deprecated` ou chave de seed do modelo antigo sobrou. As 36 chaves do `seed.json` são todas do v2.0.
+
+### Conferência requisito a requisito: dois gaps reais
+
+Os 205 requisitos do capítulo 4 foram cruzados com as citações no código. Trinta apareceram sem menção — a maioria implementada sem comentário citando o RF (cadastro de modalidades, espaços, horário de funcionamento, acúmulo de perfis, inativação de professora, uso do crédito liberado). Cada um foi verificado individualmente. Dois eram gaps de verdade:
+
+**RF-EXC-05 — o motivo da exceção não aparecia para a aluna.** A data de feriado simplesmente sumia da grade: `listarAulasDisponiveis` pulava a data, e a tela dizia "Nenhuma aula nesta data" — a mesma frase de um dia sem sessão cadastrada. A aluna não tinha como distinguir "o studio não abre" de "não há aula neste horário", e um feriado parecia falha do sistema. Agora a grade mostra **"O studio não abre em 07/09/2026 — Feriado da Independência"**.
+
+**RF-PRO-04 — a professora não assinava termo nenhum.** O requisito pede o mesmo mecanismo aplicado às alunas, com o acesso bloqueado até o aceite, e nada disso existia. Foi implementado reaproveitando a estrutura que já havia:
+
+- `TermoAceite` ganhou **`publicoAlvo`**, e cada público tem sua própria sequência de versões. Publicar um termo novo de aluna não pode inativar o que as professoras já aceitaram — sem essa separação, uma publicação invalidaria o aceite do outro grupo.
+- A tela de **Termo de aceite** ganhou as abas "Alunas" e "Professoras", com o texto padrão de partida de cada uma.
+- **Professora nova nasce aguardando aceite**, aparece assim no login, e o painel dela dá lugar à tela do termo — mesmo desenho do primeiro acesso da aluna. O menu fica reduzido a "Painel" até ela assinar.
+- Diferente da aluna, **o aceite sozinho libera o acesso**: não há pagamento nem anamnese a esperar.
+
+### Os 11 fluxos do capítulo 6
+
+Todos executáveis ponta a ponta, e todos foram percorridos no navegador ao longo das etapas. O único que ainda não tinha sido fechado inteiro — **6.11, fechamento de comissão** — foi percorrido nesta etapa: chamada finalizada, período fechado com o aviso das chamadas pendentes, e pagamento registrado.
+
+### Consolidação da documentação
+
+- **`PROGRESSO.md`** ganhou o capítulo "Atualização para o escopo v2.0", com a tabela das 8 etapas, o que saiu do produto, o que passou a existir e a **lista do que ficou fora do escopo com o motivo de cada item** — os marcados "Evolução", os "Em definição" e os que dependem de integração real.
+- **`README.md`** ganhou o **glossário do modelo de créditos** (pacote, carteira, as três dimensões do saldo, movimento, Finalizando, venda, categoria de aula, aula excepcional, trancamento, reembolso) e dois padrões de UI que surgiram durante a migração: o aviso que explica em vez de esconder, e a concordância das frases geradas por código.
+- **`CLAUDE.md`** registra que a migração está concluída, acrescenta a regra de que carregar tela nunca escreve no banco, e aponta para o glossário.
+
+### Decisões desta etapa
+
+- **Os dois gaps foram implementados, não apenas registrados.** A etapa previa "a lista do que ficou fora e por quê", mas RF-EXC-05 e RF-PRO-04 são MVP e o mecanismo de ambos já existia — deixá-los na lista seria registrar como escolha o que era esquecimento.
+- **Termo de professora é texto próprio, não o mesmo da aluna.** Os dois falam de coisas diferentes: um de créditos, validade e cancelamento; o outro de remuneração por aula, apuração mensal e responsabilidade pela chamada.
+- **O texto do termo da professora é provisório**, como o da aluna: o definitivo é responsabilidade da cliente (capítulo 12 do escopo).
+
+### Como testar
+
+1. `npm run dev` e **"Resetar protótipo"** — o reset traz o termo da professora, que é chave nova no seed.
+2. **RF-EXC-05**: entrar como **Larissa Prado** → **Grade disponível**. Navegar até **07/09/2026** (feriado cadastrado no seed): em vez do dia vazio, a tela informa que o studio não abre e mostra o motivo.
+3. **RF-PRO-04**: como **Camila Duarte** (Administração) → **Termo de aceite**. As abas "Alunas" e "Professoras" mostram versões independentes. Em **Professoras** → **Nova professora**, cadastre alguém. No login, ela aparece com "Aguardando aceite do termo"; ao entrar, o painel dá lugar ao termo e o menu fica só com "Painel". Aceite: o acesso abre e o menu completo aparece.
+4. **Fluxo 6.11**: finalize uma chamada, vá em **Comissões**, **Fechar período** (a confirmação avisa se há chamadas pendentes) e **Registrar pagamento** — o fechamento passa a "Pago".
+5. **Varredura**: `grep -rin "mensalidade\|inadimpl\|cobrança recorrente" src/` — todas as ocorrências devem ser negações.
+
+### Verificação executada
+
+A varredura de vocabulário e a conferência dos 205 requisitos foram feitas sobre o código. No navegador: o motivo do feriado aparecendo na grade da aluna, o ciclo completo do termo da professora (cadastro → login bloqueado → aceite → acesso liberado) e o fechamento de comissão com registro de pagamento. O **"Resetar protótipo" foi verificado** trazendo a chave nova do seed — sem ele, a tela de termos nasceria sem o termo de professora. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes de fast-refresh.
+
+Um defeito de texto apareceu no teste e foi corrigido: na aba de professoras, o contador de aceites dizia **"0 aluna(s)"**, porque o rótulo estava fixo em vez de acompanhar o público selecionado.
+
+---
+
+## Migração concluída
+
+As 8 etapas do `PLANO_ATUALIZACAO_ESCOPO.md` estão entregues. O protótipo opera inteiramente sobre o escopo v2.0 — pacote de créditos pré-pago com pagamento único —, sem resíduo do modelo de contrato com mensalidade. O panorama consolidado está em `PROGRESSO.md`, no capítulo "Atualização para o escopo v2.0".

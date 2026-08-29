@@ -1,16 +1,26 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTermos } from '../../hooks/useTermos';
+import type { PublicoDoTermo } from '../../types/domain';
 import { useToast } from '../../hooks/useToast';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
-import { TERMO_PADRAO } from '../../data/anamnese';
+import { TERMO_PADRAO, TERMO_PADRAO_PROFESSORA } from '../../data/anamnese';
 import { formatarDataBR } from '../../utils/data';
 
+const PUBLICOS: { valor: PublicoDoTermo; rotulo: string }[] = [
+  { valor: 'aluna', rotulo: 'Alunas' },
+  { valor: 'professora', rotulo: 'Professoras' },
+];
+
 export function TermosPage() {
-  const { termos, vigente, carregando, publicarNovaVersao, quantidadeDeAceites } = useTermos();
+  // RF-ALU-06 e RF-PRO-04: cada público tem seu texto e sua sequência de
+  // versões. Publicar um termo novo de aluna não pode invalidar o aceite
+  // que as professoras já deram, então as duas listas são independentes.
+  const [publicoAlvo, setPublicoAlvo] = useState<PublicoDoTermo>('aluna');
+  const { termos, vigente, carregando, publicarNovaVersao, quantidadeDeAceites } = useTermos(publicoAlvo);
   const mostrarToast = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
@@ -20,7 +30,7 @@ export function TermosPage() {
   const [visualizando, setVisualizando] = useState<string | null>(null);
 
   function abrirNovaVersao() {
-    setConteudo(vigente?.conteudo ?? TERMO_PADRAO);
+    setConteudo(vigente?.conteudo ?? (publicoAlvo === 'professora' ? TERMO_PADRAO_PROFESSORA : TERMO_PADRAO));
     setErro(undefined);
     setModalAberto(true);
   }
@@ -48,8 +58,24 @@ export function TermosPage() {
           <h1 className="mt-1 text-2xl font-semibold text-ink">Termo de aceite</h1>
           <p className="mt-1 text-sm text-neutral-500">
             O termo é versionado: publicar uma nova versão não altera as anteriores, e o sistema guarda qual versão
-            cada aluna aceitou, com data, hora e endereço de IP.
+            cada usuária aceitou, com data, hora e endereço de IP.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {PUBLICOS.map((item) => (
+              <button
+                key={item.valor}
+                type="button"
+                onClick={() => setPublicoAlvo(item.valor)}
+                className={`rounded-md px-3 py-1 text-sm font-medium ${
+                  publicoAlvo === item.valor
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white text-neutral-600 ring-1 ring-inset ring-neutral-300 hover:bg-neutral-50'
+                }`}
+              >
+                {item.rotulo}
+              </button>
+            ))}
+          </div>
         </div>
         <Button onClick={abrirNovaVersao}>{vigente ? 'Publicar nova versão' : 'Publicar primeira versão'}</Button>
       </div>
@@ -79,7 +105,9 @@ export function TermosPage() {
             <LinhaTabela key={termo.id}>
               <CelulaTabela className="font-medium text-ink">v{termo.versao}</CelulaTabela>
               <CelulaTabela>{formatarDataBR(termo.dataPublicacao.slice(0, 10))}</CelulaTabela>
-              <CelulaTabela>{quantidadeDeAceites(termo.id)} aluna(s)</CelulaTabela>
+              <CelulaTabela>
+                {quantidadeDeAceites(termo.id)} {publicoAlvo === 'professora' ? 'professora(s)' : 'aluna(s)'}
+              </CelulaTabela>
               <CelulaTabela>
                 <Badge tom={termo.situacao === 'ativo' ? 'sucesso' : 'neutro'}>
                   {termo.situacao === 'ativo' ? 'Vigente' : 'Substituída'}

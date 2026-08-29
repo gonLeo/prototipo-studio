@@ -6,6 +6,8 @@ import { ROTULOS_AJUSTE, type TipoAjuste } from '../../../hooks/carteiraDeCredit
 import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS } from '../../../hooks/vendas';
 import { calcularPreviaDeTrancamento, type PreviaTrancamento } from '../../../hooks/trancamento';
 import { calcularPreviaDeReembolso, type PreviaDeReembolso } from '../../../hooks/reembolsos';
+import { aplicarBeneficio, beneficioDeConversaoDisponivel } from '../../../hooks/beneficioDeConversao';
+import type { BeneficioDeConversao } from '../../../hooks/beneficioDeConversao';
 import { Button } from '../../../components/ui/Button';
 import { TextField, SelectField, CheckboxField } from '../../../components/ui/Field';
 import {
@@ -85,10 +87,30 @@ export function ModalComprarPacote({
   const [erro, setErro] = useState<string>();
   const [salvando, setSalvando] = useState(false);
 
+  const [beneficio, setBeneficio] = useState<BeneficioDeConversao>();
+
+  // RF-EXP-08: a administração também precisa ver o bônus antes de
+  // confirmar, para não estranhar a diferença entre catálogo e extrato.
+  useEffect(() => {
+    let valido = true;
+    beneficioDeConversaoDisponivel(ficha.aluna.id).then((encontrado) => {
+      if (valido) setBeneficio(encontrado);
+    });
+    return () => {
+      valido = false;
+    };
+  }, [ficha.aluna.id]);
+
   const pacote = ativos.find((p) => p.id === pacoteId);
-  const previa = pacote
-    ? calcularPreviaDeCompra({ carteiraVigente: ficha.carteira, pacote, hoje: hojeISO() })
-    : undefined;
+  const comBeneficio = pacote ? aplicarBeneficio(pacote, beneficio) : undefined;
+  const previa =
+    pacote && comBeneficio
+      ? calcularPreviaDeCompra({
+          carteiraVigente: ficha.carteira,
+          pacote: { ...pacote, ...comBeneficio },
+          hoje: hojeISO(),
+        })
+      : undefined;
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -160,6 +182,14 @@ export function ModalComprarPacote({
           </SelectField>
         )}
       </div>
+
+      {beneficio && (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-200">
+          Esta aluna fez aula experimental em {formatarDataBR(beneficio.dataAula)} e tem direito a{' '}
+          <strong className="font-semibold">{beneficio.rotulo}</strong> nesta compra. Válido até{' '}
+          {formatarDataBR(beneficio.validoAte)}.
+        </p>
+      )}
 
       {previa && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">

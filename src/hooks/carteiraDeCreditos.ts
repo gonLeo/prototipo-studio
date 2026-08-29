@@ -3,6 +3,7 @@ import {
   carteiraRepositorio,
   categoriaAulaRepositorio,
   movimentoCreditoRepositorio,
+  notificacaoRepositorio,
   pacoteRepositorio,
   parametroRepositorio,
   registroAuditoriaRepositorio,
@@ -21,6 +22,7 @@ import { formatarDataBR, hojeISO, somarDias } from '../utils/data';
 import {
   calcularPreviaDeCompra,
   creditosDisponiveis,
+  explicarFinalizando,
   formatarCreditos,
   lerCarteira,
   LIMIARES_PADRAO,
@@ -292,7 +294,25 @@ export async function aplicarCompra(params: {
   const { aluna, pacote, venda, autorId, hoje = hojeISO() } = params;
 
   const vigente = await carteiraVigenteDaAluna(aluna.id, hoje);
-  const previa = calcularPreviaDeCompra({ carteiraVigente: vigente, pacote, hoje });
+
+  // Os créditos vêm da **venda**, não do catálogo: é lá que ficam
+  // congelados os números da compra (RF-PAC-01) e é lá que o benefício de
+  // conversão já foi somado (RF-EXP-08). Ler o pacote de novo aqui
+  // descartaria o bônus e usaria um catálogo que pode ter mudado desde
+  // que a venda ficou pendente.
+  const creditosDaCompra = venda.creditos;
+  const previa = calcularPreviaDeCompra({
+    carteiraVigente: vigente,
+    pacote: { ...pacote, creditos: creditosDaCompra },
+    hoje,
+  });
+
+  // O extrato precisa explicar por que entraram mais créditos do que o
+  // pacote anuncia; sem isso, a concessão parece divergir do catálogo.
+  const origemDaConcessao =
+    venda.beneficioConversao?.tipo === 'credito_adicional'
+      ? `Compra do pacote ${pacote.nome} + ${formatarCreditos(venda.beneficioConversao.quantidade)} de bônus da aula experimental`
+      : `Compra do pacote ${pacote.nome}`;
 
   let carteira: Carteira;
 
@@ -301,13 +321,13 @@ export async function aplicarCompra(params: {
       {
         carteira: vigente,
         tipo: 'concessao',
-        quantidade: pacote.creditos,
-        origem: `Compra do pacote ${pacote.nome}`,
+        quantidade: creditosDaCompra,
+        origem: origemDaConcessao,
         referenciaId: venda.id,
         autorId,
       },
       {
-        creditosTotais: vigente.creditosTotais + pacote.creditos,
+        creditosTotais: vigente.creditosTotais + creditosDaCompra,
         dataValidade: previa.validadeResultante,
       },
     );
@@ -319,7 +339,7 @@ export async function aplicarCompra(params: {
     carteira = await carteiraRepositorio.criar({
       alunaId: aluna.id,
       pacoteId: pacote.id,
-      creditosTotais: pacote.creditos,
+      creditosTotais: creditosDaCompra,
       creditosUtilizados: 0,
       creditosReservados: 0,
       dataAtivacao: pendente ? undefined : hoje,
@@ -331,8 +351,8 @@ export async function aplicarCompra(params: {
     await movimentoCreditoRepositorio.criar({
       carteiraId: carteira.id,
       tipo: 'concessao',
-      quantidade: pacote.creditos,
-      origem: `Compra do pacote ${pacote.nome}`,
+      quantidade: creditosDaCompra,
+      origem: origemDaConcessao,
       referenciaId: venda.id,
       autorId,
       dataHora: new Date().toISOString(),
@@ -356,7 +376,8 @@ export async function aplicarCompra(params: {
     valorNovo: {
       carteiraId: carteira.id,
       pacote: pacote.nome,
-      creditos: pacote.creditos,
+      creditos: creditosDaCompra,
+      beneficioConversao: venda.beneficioConversao,
       validade: previa.validadeResultante,
       validadeMantida: previa.validadeMantida,
     },
@@ -366,7 +387,7 @@ export async function aplicarCompra(params: {
     destinatario: { tipo: 'aluna', id: aluna.id },
     evento: 'compra_confirmada',
     conteudo:
-      `Compra do pacote ${pacote.nome} confirmada: ${formatarCreditos(pacote.creditos)}. ` +
+      `Compra do pacote ${pacote.nome} confirmada: ${formatarCreditos(creditosDaCompra)}. ` +
       `Saldo disponível: ${formatarCreditos(creditosDisponiveis(carteira))}. ` +
       `Validade até ${formatarDataBR(carteira.dataValidade)}.`,
   });
@@ -538,6 +559,8 @@ export interface ResumoRotinaCarteiras {
   encerradasPorVencimento: number;
   creditosExpirados: number;
   bolsasRenovadas: number;
+  /** Avisos de "Finalizando" enviados nesta passagem (RF-NOT-08). */
+  avisosDeFinalizando: number;
 }
 
 /**
@@ -570,12 +593,37 @@ export async function processarRotinaDeCarteiras(params: {
     encerradasPorVencimento: 0,
     creditosExpirados: 0,
     bolsasRenovadas: 0,
+    avisosDeFinalizando: 0,
   };
+
+  const notificacoes = await notificacaoRepositorio.listar();
 
   for (const carteira of carteiras) {
     if (carteira.situacao !== 'ativa') continue;
 
     const leitura = lerCarteira(carteira, hoje, limiares);
+
+    // RF-NOT-08: a carteira entrou em "Finalizando" e a aluna precisa
+    // saber. O status é derivado na leitura, então quem dispara o aviso é
+    // a rotina — carregar a tela não escreve nada, nem notificação.
+    if (!leitura.encerrada && leitura.motivoFinalizando) {
+      // A comparação é só por evento e carteira. O `destinatarioId` da
+      // notificação é o id da **usuária**, não o da aluna — casar por ele
+      // aqui nunca daria certo, e a carteira já identifica a aluna.
+      const jaAvisada = notificacoes.some(
+        (n) => n.evento === 'pacote_finalizando' && n.referenciaId === carteira.id,
+      );
+      if (!jaAvisada) {
+        await notificar({
+          destinatario: { tipo: 'aluna', id: carteira.alunaId },
+          evento: 'pacote_finalizando',
+          referenciaId: carteira.id,
+          conteudo: `${explicarFinalizando(leitura.motivoFinalizando, leitura)} Renove seu pacote em "Meu pacote" para não ficar sem créditos.`,
+        });
+        resumo.avisosDeFinalizando += 1;
+      }
+    }
+
     if (!leitura.encerrada) continue;
 
     const porVencimento = leitura.situacaoCalculada === 'expirada';
@@ -603,6 +651,20 @@ export async function processarRotinaDeCarteiras(params: {
 
     if (porVencimento) resumo.encerradasPorVencimento += 1;
     else resumo.encerradasPorConsumo += 1;
+
+    // RF-NOT-09: o encerramento é comunicado com o motivo, e os créditos
+    // perdidos no vencimento entram na mensagem — é a informação que a
+    // aluna vai cobrar depois.
+    await notificar({
+      destinatario: { tipo: 'aluna', id: carteira.alunaId },
+      evento: 'pacote_encerrado',
+      referenciaId: carteira.id,
+      conteudo: porVencimento
+        ? `Seu pacote venceu em ${formatarDataBR(carteira.dataValidade)}.` +
+          (remanescentes > 0 ? ` ${formatarCreditos(remanescentes)} não utilizados foram perdidos.` : '') +
+          ' Adquira um novo pacote em "Meu pacote" para voltar a agendar.'
+        : 'Você utilizou todos os créditos do seu pacote. Adquira um novo em "Meu pacote" para continuar agendando.',
+    });
 
     await registroAuditoriaRepositorio.criar({
       entidadeAfetada: 'Carteira',

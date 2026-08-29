@@ -60,7 +60,9 @@ export function useProfessoras() {
       nome: dados.nome.trim(),
       email: dados.email.trim(),
       cpf: dados.cpf.trim(),
-      situacao: 'ativo',
+      // RF-PRO-04: o acesso fica bloqueado até a professora assinar o
+      // termo, do mesmo modo que acontece com a aluna.
+      situacao: 'aguardando_aceite',
       perfis: ['professora'],
     });
     const professora = await professoraRepositorio.criar({

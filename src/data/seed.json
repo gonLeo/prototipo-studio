@@ -460,6 +460,15 @@
       "versao": 1,
       "conteudo": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima.",
       "dataPublicacao": "2026-01-15T09:00:00.000Z",
+      "situacao": "ativo",
+      "publicoAlvo": "aluna"
+    },
+    {
+      "id": "termo-professora-1",
+      "publicoAlvo": "professora",
+      "versao": 1,
+      "conteudo": "TERMO DE PRESTAÇÃO DE SERVIÇOS — PROFESSORA\n\n1. OBJETO\nA professora presta serviços de condução de aulas nas modalidades para as quais está habilitada, na condição de prestadora de serviço, sem vínculo empregatício.\n\n2. REMUNERAÇÃO\nA remuneração é por aula efetivamente realizada, conforme o valor da categoria vigente na data da aula. Aulas excepcionais têm o valor informado no cadastro da própria aula.\n\n3. APURAÇÃO E PAGAMENTO\nO período de apuração é mensal, do primeiro ao último dia do mês. O pagamento é feito até o quinto dia útil do mês seguinte ao período apurado.\n\n4. CHAMADA\nA professora é responsável por finalizar a chamada de suas aulas dentro do prazo configurado. A comissão de cada aula é gerada na finalização da chamada.\n\n5. CANCELAMENTO DE AULA\nO cancelamento de uma aula é solicitado à administração, que decide entre designar substituta ou cancelar a sessão. A aula permanece ativa até a decisão.\n\n6. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da professora.\n\nAo aceitar este termo, a professora declara ter lido e concordado integralmente com as condições acima.",
+      "dataPublicacao": "2026-06-01T09:00:00.000Z",
       "situacao": "ativo"
     }
   ],

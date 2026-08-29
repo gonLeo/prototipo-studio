@@ -6,20 +6,24 @@ import {
   termoAceiteRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
-import type { AceiteRegistrado, TermoAceite } from '../types/domain';
+import type { AceiteRegistrado, PublicoDoTermo, TermoAceite } from '../types/domain';
 import { RegraNegocioError } from './useModalidades';
 import { ativarCarteirasPendentes } from './carteiraDeCreditos';
 
 /**
- * Termo de prestação de serviço versionado (RF-ALU-05/06).
+ * Termo de prestação de serviço versionado (RF-ALU-05/06, RF-PRO-04).
  *
  * Publicar uma nova versão nunca reescreve a anterior: a versão vigente
  * passa a ser a nova e as antigas ficam inativas, mas preservadas — é o
- * que permite saber exatamente qual texto cada aluna aceitou. O aceite
+ * que permite saber exatamente qual texto cada usuária aceitou. O aceite
  * grava também o **conteúdo integral** da versão aceita, para que o
  * registro continue íntegro mesmo que o termo mude depois.
+ *
+ * Aluna e professora têm textos e versões independentes: publicar um novo
+ * termo de aluna não pode inativar o que as professoras já aceitaram, e
+ * por isso a vigência é apurada dentro de cada público.
  */
-export function useTermos() {
+export function useTermos(publicoAlvo: PublicoDoTermo = 'aluna') {
   const [termos, setTermos] = useState<TermoAceite[]>([]);
   const [aceites, setAceites] = useState<AceiteRegistrado[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -30,10 +34,10 @@ export function useTermos() {
       termoAceiteRepositorio.listar(),
       aceiteRegistradoRepositorio.listar(),
     ]);
-    setTermos(lista.sort((a, b) => b.versao - a.versao));
+    setTermos(lista.filter((t) => (t.publicoAlvo ?? 'aluna') === publicoAlvo).sort((a, b) => b.versao - a.versao));
     setAceites(listaAceites);
     setCarregando(false);
-  }, []);
+  }, [publicoAlvo]);
 
   useEffect(() => {
     recarregar();
@@ -45,13 +49,16 @@ export function useTermos() {
     const texto = conteudo.trim();
     if (!texto) throw new RegraNegocioError('O conteúdo do termo não pode ficar em branco.');
 
-    const listaAtual = await termoAceiteRepositorio.listar();
+    const listaAtual = (await termoAceiteRepositorio.listar()).filter(
+      (t) => (t.publicoAlvo ?? 'aluna') === publicoAlvo,
+    );
     for (const termo of listaAtual.filter((t) => t.situacao === 'ativo')) {
       await termoAceiteRepositorio.atualizar(termo.id, { situacao: 'inativo' });
     }
 
     const proximaVersao = listaAtual.reduce((maior, t) => Math.max(maior, t.versao), 0) + 1;
     await termoAceiteRepositorio.criar({
+      publicoAlvo,
       versao: proximaVersao,
       conteudo: texto,
       dataPublicacao: new Date().toISOString(),
@@ -122,5 +129,29 @@ export async function liberarAcessoDaAluna(params: { usuarioId: string; alunaId?
     await alunaRepositorio.atualizar(alunaId, { situacao: 'ativa' });
     await ativarCarteirasPendentes({ alunaId, autorId: usuarioId });
   }
+  await usuarioRepositorio.atualizar(usuarioId, { situacao: 'ativo' });
+}
+
+/**
+ * Aceite do termo pela professora (RF-PRO-04).
+ *
+ * Usa o mesmo mecanismo de registro das alunas — mesma entidade, mesmo
+ * conteúdo gravado por extenso —, e é o próprio aceite que libera o
+ * acesso: diferente da aluna, não há pagamento nem anamnese a esperar.
+ */
+export async function registrarAceiteDaProfessora(params: {
+  usuarioId: string;
+  termo: TermoAceite;
+}): Promise<void> {
+  const { usuarioId, termo } = params;
+
+  await aceiteRegistradoRepositorio.criar({
+    usuarioId,
+    termoVersaoId: termo.id,
+    dataHora: new Date().toISOString(),
+    enderecoIp: '203.0.113.10 (simulado no protótipo)',
+    conteudoAceito: termo.conteudo,
+  });
+
   await usuarioRepositorio.atualizar(usuarioId, { situacao: 'ativo' });
 }

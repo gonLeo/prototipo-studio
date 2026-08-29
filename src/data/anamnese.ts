@@ -105,3 +105,30 @@ O cancelamento da compra com reembolso pode ser solicitado à administração do
 Eventual uso de imagem em materiais do studio depende de autorização específica da aluna.
 
 Ao aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima.`;
+
+/**
+ * Texto de partida do termo da professora (RF-PRO-04). Como o da aluna, é
+ * provisório: o texto definitivo é responsabilidade da cliente (capítulo
+ * 12 do escopo).
+ */
+export const TERMO_PADRAO_PROFESSORA = `TERMO DE PRESTAÇÃO DE SERVIÇOS — PROFESSORA
+
+1. OBJETO
+A professora presta serviços de condução de aulas nas modalidades para as quais está habilitada, na condição de prestadora de serviço, sem vínculo empregatício.
+
+2. REMUNERAÇÃO
+A remuneração é por aula efetivamente realizada, conforme o valor da categoria vigente na data da aula. Aulas excepcionais têm o valor informado no cadastro da própria aula.
+
+3. APURAÇÃO E PAGAMENTO
+O período de apuração é mensal, do primeiro ao último dia do mês. O pagamento é feito até o quinto dia útil do mês seguinte ao período apurado.
+
+4. CHAMADA
+A professora é responsável por finalizar a chamada de suas aulas dentro do prazo configurado. A comissão de cada aula é gerada na finalização da chamada.
+
+5. CANCELAMENTO DE AULA
+O cancelamento de uma aula é solicitado à administração, que decide entre designar substituta ou cancelar a sessão. A aula permanece ativa até a decisão.
+
+6. IMAGEM
+Eventual uso de imagem em materiais do studio depende de autorização específica da professora.
+
+Ao aceitar este termo, a professora declara ter lido e concordado integralmente com as condições acima.`;

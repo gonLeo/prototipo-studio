@@ -120,9 +120,15 @@ export function rotuloStatusCarteira(status: StatusCarteira): string {
 }
 
 export function explicarFinalizando(motivo: MotivoFinalizando, leitura: LeituraDaCarteira): string {
-  return motivo === 'poucos_creditos'
-    ? `Restam apenas ${formatarCreditos(leitura.disponiveis)}.`
-    : `Faltam ${leitura.diasParaVencer} dia(s) para o vencimento.`;
+  // O verbo concorda com a quantidade: "Resta apenas 1 crédito", não
+  // "Restam apenas 1 crédito" — e o caso de um crédito é justamente o
+  // mais comum nesta mensagem.
+  if (motivo === 'poucos_creditos') {
+    const verbo = leitura.disponiveis === 1 ? 'Resta' : 'Restam';
+    return `${verbo} apenas ${formatarCreditos(leitura.disponiveis)}.`;
+  }
+  const dias = leitura.diasParaVencer;
+  return dias === 1 ? 'Falta 1 dia para o vencimento.' : `Faltam ${dias} dias para o vencimento.`;
 }
 
 export interface PreviaDeCompra {
