@@ -62,6 +62,12 @@ export function LoginPage() {
               Agendar aula experimental
             </Link>
           </p>
+          <p className="border-t border-neutral-100 pt-2">
+            Primeira vez por aqui?{' '}
+            <Link to="/guia" className="font-medium text-primary-700 hover:text-primary-800">
+              Ver o guia de como usar o protótipo
+            </Link>
+          </p>
         </div>
 
         <ul className="flex flex-col gap-3">

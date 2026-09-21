@@ -48,6 +48,15 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 - **Frase gerada por código concorda com o número.** "1 crédito reservado" e "3 créditos reservados", não "reservado(s)"; "Resta apenas 1 crédito", não "Restam". Ver `destinoDosCreditos` (`useAgendaDaAluna.ts`) e `explicarFinalizando` (`utils/creditos.ts`).
 - Utilize skill de frontend instalada para criar boas telas
 
+## Guia do protótipo (`/guia`)
+
+Página pública, fora do `AppShell`, que ensina a reproduzir cada cenário do escopo: com quem entrar, o que fazer e o que conferir. Acessível pelo link no login e pelo botão "Guia do protótipo" no topo de qualquer tela (abre em outra aba, para acompanhar os passos sem sair da tela testada).
+
+- **O conteúdo é dado, não JSX**: `src/data/guiaDoPrototipo.ts` tem os grupos, cenários e passos tipados. Um cenário novo é uma entrada ali — a página (`src/pages/GuiaDoPrototipoPage.tsx`) só renderiza.
+- **Cada passo declara o perfil** (`administracao` | `professora` | `aluna` | `publico`). A tela só rotula o perfil quando ele muda entre um passo e o seguinte: a troca de perfil é a informação que precisa saltar aos olhos.
+- **Um cenário escreve para o estado pós-reset** e cita a persona pelo nome. Quando depender de data, prefere criar o dado (agendar uma aula) a apontar para uma data fixa do seed, que envelhece.
+- Ao mudar uma regra, uma tela ou o seed, **confira o cenário correspondente**: ele é a única parte do protótipo que descreve o próprio protótipo, e desatualiza sem aviso.
+
 ## Glossário do modelo de créditos
 
 O vocabulário abaixo é o do escopo v2.0 e deve ser usado tal e qual no código e nas telas. O modelo é **pacote de créditos pré-pago com pagamento único** — não existe mensalidade, contrato, ciclo de cobrança nem inadimplência.

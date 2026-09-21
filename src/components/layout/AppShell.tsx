@@ -124,6 +124,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               Ver como {ROTULO_PERFIL[perfil]}
             </button>
           ))}
+          {/* Ferramenta do protótipo, como o reset: abre em outra aba para
+              acompanhar os passos sem sair da tela que está sendo testada. */}
+          <a
+            href="/guia"
+            target="_blank"
+            rel="noopener"
+            className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+          >
+            Guia do protótipo
+          </a>
           <BotaoResetar />
           {usuario && (
             <button

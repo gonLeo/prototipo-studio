@@ -39,6 +39,7 @@ import { AulasExcepcionaisPage } from './pages/administracao/AulasExcepcionaisPa
 import { ConveniosPage } from './pages/administracao/ConveniosPage';
 import { ExperimentaisPage } from './pages/administracao/ExperimentaisPage';
 import { ExperimentalPage } from './pages/ExperimentalPage';
+import { GuiaDoPrototipoPage } from './pages/GuiaDoPrototipoPage';
 import { NotificacoesPage } from './pages/administracao/NotificacoesPage';
 import { AuditoriaPage } from './pages/administracao/AuditoriaPage';
 import type { PerfilAcesso } from './types/domain';
@@ -149,6 +150,8 @@ function App() {
               <Route path="/matricula" element={<MatriculaPage />} />
               {/* Fluxo público da aula experimental (RF-EXP-01): grade primeiro, pagamento depois. */}
               <Route path="/experimental" element={<ExperimentalPage />} />
+              {/* Guia de uso do protótipo: fora da casca, abre em outra aba ao lado do que se está testando. */}
+              <Route path="/guia" element={<GuiaDoPrototipoPage />} />
               <Route path="/" element={<RotaInicial />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

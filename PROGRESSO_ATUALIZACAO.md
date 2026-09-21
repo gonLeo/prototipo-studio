@@ -12,6 +12,7 @@ O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0,
 - [x] Etapa 6 — Comissão e convênios
 - [x] Etapa 7 — Experimental, painéis, notificações, perfis e relatórios
 - [x] Etapa 8 — Varredura final e consolidação
+- [x] Guia do protótipo — tela `/guia` com os cenários do escopo e como reproduzir cada um
 
 ## Decisões fixadas para a migração
 
@@ -599,3 +600,45 @@ Um defeito de texto apareceu no teste e foi corrigido: na aba de professoras, o 
 ## Migração concluída
 
 As 8 etapas do `PLANO_ATUALIZACAO_ESCOPO.md` estão entregues. O protótipo opera inteiramente sobre o escopo v2.0 — pacote de créditos pré-pago com pagamento único —, sem resíduo do modelo de contrato com mensalidade. O panorama consolidado está em `PROGRESSO.md`, no capítulo "Atualização para o escopo v2.0".
+
+---
+
+## Guia do protótipo — o que foi entregue
+
+**Uma tela que ensina a reproduzir o escopo no protótipo**, pedida depois da migração concluída. Quem abre o protótipo pela primeira vez — a cliente, alguém da equipe — não tem como saber que a Patrícia serve para ver o "Finalizando", que o gateway se aprova em Vendas, ou que a rotina de carteiras é um botão. O guia diz isso, por cenário.
+
+### Como é
+
+Rota pública `/guia`, fora da casca do sistema. Chega-se a ela pelo link "Ver o guia de como usar o protótipo" no login e pelo botão **"Guia do protótipo"** no topo de qualquer tela, ao lado de "Resetar protótipo" — as duas ferramentas do protótipo, não do produto. O botão abre em outra aba: o guia fica ao lado enquanto se navega.
+
+A página tem três partes:
+
+1. **Antes de começar** — as oito usuárias de exemplo e o estado de cada uma depois do reset; o que "Resetar protótipo" faz; e o que é simulado (pagamento, e-mail, convênio, rotinas automáticas, datas).
+2. **Cenários** — 28, em 8 grupos: como a aluna entra; créditos e carteira; agendar, cancelar e frequentar; workshop e aula particular; quando o studio cancela; trancamento e reembolso; convênios; comissão. A lista mostra só título e uma linha por cenário. Ao abrir: o preparo (quando o estado inicial não basta), os passos numerados, "O que conferir" e as etiquetas de RN, RF e fluxo do capítulo 6.
+3. **Busca e filtro** — por texto (título, passos, códigos de regra e requisito) e por perfil.
+
+### A escolha de desenho
+
+**Cada passo diz com quem entrar.** Os fluxos do studio cruzam três perfis — a aluna agenda, a professora faz a chamada, a administração fecha —, e o que trava quem testa é a pergunta "com quem eu entro agora?". A coluna à esquerda dos passos rotula o perfil, mas **só quando ele muda** de um passo para o seguinte: a troca salta aos olhos, e os passos seguidos do mesmo perfil ficam limpos. É a única coisa que a página faz de diferente do resto do sistema, e é informação real do conteúdo, não decoração. Todo o resto usa os tokens, a tipografia e os padrões de tela já existentes.
+
+**O conteúdo é dado.** `src/data/guiaDoPrototipo.ts` tem os grupos, cenários e passos tipados; a página só renderiza. Um cenário novo é uma entrada no arquivo.
+
+**Os cenários escrevem contra o estado pós-reset e evitam datas.** Os dados de exemplo são de agosto de 2026 e o protótipo usa a data real como hoje — um passo que dissesse "abra a aula de 17/08" quebraria em poucas semanas. Onde um cenário precisa de aula futura, ele manda agendar uma. Onde um dado de exemplo já está fora de prazo (a justificativa da Larissa, o benefício da Juliana), o preparo diz o que ajustar.
+
+### Decisões
+
+- **Fora da casca, em outra aba.** Dentro do `AppShell`, o guia carregaria o menu de um perfil que raramente é o do passo atual. Fora dele, e aberto ao lado, ele acompanha a troca de perfil em vez de atrapalhá-la.
+- **Vinte e oito cenários, não trinta e oito regras.** As RNs não viram uma lista à parte: cada uma aparece como etiqueta no cenário que a exercita, e a busca por "RN-17" leva a ele. Uma lista de regras com texto seria o documento de escopo de novo, e ele já existe.
+- **Persona pelo nome, botão pelo rótulo.** "Entre como Larissa", "clique em Remarcar" — os passos usam as palavras que estão na tela, para que quem lê encontre o que procura sem traduzir.
+
+### Como testar
+
+1. Na tela de login, clique em **"Ver o guia de como usar o protótipo"**. Ou, logada em qualquer perfil, no botão **"Guia do protótipo"** do topo — abre em outra aba.
+2. Leia "Antes de começar": as usuárias e o que é simulado.
+3. Abra qualquer cenário e siga os passos numa segunda aba. Observe o rótulo de perfil aparecer só quando o perfil troca.
+4. Busque **"RN-17"**: sobra só o trancamento. Busque **"experimental"**: sobram dois. Filtre por **Professora**: ficam os cenários em que ela participa.
+5. Reduza a janela: os cartões empilham e a coluna do perfil encolhe sem quebrar os passos.
+
+### Verificação executada
+
+A página foi aberta no navegador: lista fechada, cenário aberto com o trilho de perfil (Sem login → Aluna → Professora no da aula experimental), busca por código e por palavra, filtro por perfil. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
