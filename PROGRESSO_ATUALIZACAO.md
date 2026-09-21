@@ -642,3 +642,15 @@ A página tem três partes:
 ### Verificação executada
 
 A página foi aberta no navegador: lista fechada, cenário aberto com o trilho de perfil (Sem login → Aluna → Professora no da aula experimental), busca por código e por palavra, filtro por perfil. `tsc` sem erros, `vite build` compilando, `oxlint` com os três avisos preexistentes.
+
+---
+
+## Preparação para a v2.1 — cenários prometidos à cliente
+
+Antes de planejar a atualização para o escopo v2.1 (`docs/Escopo Funcional Atualizado v2.1.docx`), três cenários prometidos à cliente foram conferidos no protótipo. Dois estavam incompletos e foram completados; o registro do que existia e do que faltava está na resposta do plano.
+
+- **Termo único com o nome da aluna (RF-ALU-05, PA-05).** O termo era exibido cru, sem identificar quem assina. O texto passou a trazer `{{nome}}` e `{{cpf}}`, mesclados na exibição e no `conteudoAceito` gravado (`mesclarTermo`, em `useTermos.ts`) — na matrícula pelo site, no primeiro acesso e no aceite da professora. A tela de termos explica os placeholders. Continua um termo por versão; a compra seguinte não pede novo aceite.
+- **Prorrogação de validade em carteira já encerrada (RF-CRE-09).** O domínio já reabria a carteira, mas a ficha só oferecia "Ajustar créditos" com carteira vigente — quem viu o pacote vencer esperando a fatura não tinha como ser atendida. O botão passou a valer para a carteira mais recente, e o modal abre em "Prorrogar validade" quando ela está encerrada. Ao exercitar o caminho, dois defeitos da reabertura apareceram e foram corrigidos: os créditos dados por perdidos no vencimento voltavam ao saldo sem contrapartida no extrato (agora há uma linha de estorno, e o saldo volta a ser reconstituível — RNF-07), e "encerrada em" continuava na carteira reaberta, porque o PATCH com `undefined` não apaga a chave.
+- **Renovação antecipada (RF-CRE-13, PA-10)**: já existia com a regra da validade mais distante. O cenário do guia passou a citar o exemplo literal do escopo e a usar Patrícia Lima como estado equivalente.
+
+O guia (`/guia`) ganhou o cenário "Termo único, com o nome da aluna" e o de ajuste manual passou a cobrir a carteira vencida.

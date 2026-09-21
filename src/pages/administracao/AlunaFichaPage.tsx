@@ -175,6 +175,12 @@ export function AlunaFichaPage() {
 
   const { aluna, usuario: dadosUsuario, carteira, leitura, pacote, trancamentoAtivo } = ficha;
 
+  // RF-CRE-09: o ajuste vale "inclusive para carteira já encerrada" — é o
+  // caso de quem precisou esperar a fatura e viu o pacote vencer. Sem
+  // carteira vigente, o alvo é a mais recente; prorrogar a validade dela
+  // para o futuro a reabre.
+  const carteiraAjustavel = carteira ?? ficha.carteiras[0];
+
   async function executar(acao: () => Promise<void>, mensagemSucesso: string) {
     try {
       await acao();
@@ -243,7 +249,7 @@ export function AlunaFichaPage() {
           <Button variante="secundaria" onClick={() => setModalAberto('bolsa')}>
             Bolsa
           </Button>
-          {carteira && (
+          {carteiraAjustavel && (
             <Button variante="secundaria" onClick={() => setModalAberto('ajustar')}>
               Ajustar créditos
             </Button>
@@ -630,12 +636,13 @@ export function AlunaFichaPage() {
         </Modal>
       )}
 
-      {modalAberto === 'ajustar' && carteira && (
+      {modalAberto === 'ajustar' && carteiraAjustavel && (
         <Modal titulo="Ajustar créditos" largura="larga" onFechar={() => setModalAberto(null)}>
           <ModalAjustarCreditos
-            carteira={carteira}
+            carteira={carteiraAjustavel}
+            encerrada={!carteira}
             onConfirmar={async ({ tipo, quantidade, motivo }) => {
-              await ajustarCarteira({ carteira, tipo, quantidade, motivo, autorId: usuario!.id });
+              await ajustarCarteira({ carteira: carteiraAjustavel, tipo, quantidade, motivo, autorId: usuario!.id });
               await recarregar();
               mostrarToast('Ajuste aplicado e registrado no extrato.', 'sucesso');
             }}

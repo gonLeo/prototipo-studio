@@ -234,14 +234,19 @@ export function ModalComprarPacote({
  */
 export function ModalAjustarCreditos({
   carteira,
+  encerrada = false,
   onConfirmar,
   onFechar,
 }: {
   carteira: Carteira;
+  /** A carteira alvo já encerrou: o ajuste a reabre (RF-CRE-09). */
+  encerrada?: boolean;
   onConfirmar: (params: { tipo: TipoAjuste; quantidade: number; motivo: string }) => Promise<void>;
   onFechar: () => void;
 }) {
-  const [tipo, setTipo] = useState<TipoAjuste>('conceder');
+  // Numa carteira encerrada, o caso típico é prorrogar a validade de quem
+  // precisou esperar a fatura — então o tipo já abre em "prorrogar".
+  const [tipo, setTipo] = useState<TipoAjuste>(encerrada ? 'prorrogar' : 'conceder');
   const [quantidade, setQuantidade] = useState('1');
   const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string>();
@@ -305,7 +310,10 @@ export function ModalAjustarCreditos({
         />
       </div>
 
-      {carteira.situacao !== 'ativa' && (
+      {/* `encerrada` cobre a carteira vencida que a rotina ainda não
+          consolidou: no banco ela segue "ativa", mas a leitura já a
+          encerrou e a ficha não a mostra como vigente. */}
+      {(carteira.situacao !== 'ativa' || encerrada) && (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-100">
           Esta carteira está encerrada. Conceder créditos ou prorrogar a validade reabre a carteira — é o caminho
           previsto para resolver casos concretos sem abrir precedente.

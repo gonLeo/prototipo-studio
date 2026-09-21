@@ -1,5 +1,6 @@
 import type { TermoAceite } from '../types/domain';
 import { PERGUNTAS_ANAMNESE } from '../data/anamnese';
+import { mesclarTermo } from '../hooks/useTermos';
 import { CheckboxField, TextField } from './ui/Field';
 
 /**
@@ -11,12 +12,15 @@ import { CheckboxField, TextField } from './ui/Field';
  */
 export function TermoEAnamnese({
   termo,
+  assinante,
   aceito,
   onAceitar,
   respostas,
   onResponder,
 }: {
   termo: TermoAceite;
+  /** Quem assina: o texto exibido já vem com nome e CPF (RF-ALU-05). */
+  assinante: { nome: string; cpf: string };
   aceito: boolean;
   onAceitar: (valor: boolean) => void;
   respostas: Record<string, string>;
@@ -30,7 +34,7 @@ export function TermoEAnamnese({
           <span className="text-xs text-neutral-500">Versão {termo.versao}</span>
         </div>
         <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-line rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm leading-relaxed text-neutral-700">
-          {termo.conteudo}
+          {mesclarTermo(termo.conteudo, assinante)}
         </div>
         <div className="mt-3">
           <CheckboxField

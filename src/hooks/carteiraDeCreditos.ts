@@ -491,10 +491,32 @@ export async function ajustarCarteira(params: {
   // é exatamente o caso previsto no RF-CRE-09 ("inclusive de carteira já
   // encerrada"), e sem isso o ajuste ficaria sem efeito prático.
   if (carteira.situacao !== 'ativa' && carteira.situacao !== 'aguardando_ativacao') {
+    // Os créditos que o vencimento tinha dado por perdidos voltam a valer:
+    // o encerramento só registra a expiração no extrato, sem tirá-los dos
+    // totais, então ao reabrir eles reaparecem no saldo. Sem a linha de
+    // estorno abaixo, o extrato somaria −N e o saldo diria +N — e o saldo
+    // deixaria de ser reconstituível pelo histórico (RNF-07).
+    const movimentos = await movimentoCreditoRepositorio.listar();
+    const expirados = movimentos
+      .filter((m) => m.carteiraId === carteira.id && m.tipo === 'expiracao')
+      .reduce((soma, m) => soma + m.quantidade, 0);
+    if (expirados > 0) {
+      await movimentoCreditoRepositorio.criar({
+        carteiraId: carteira.id,
+        tipo: 'estorno',
+        quantidade: expirados,
+        origem: 'Reabertura da carteira: créditos dados por perdidos no vencimento voltam ao saldo',
+        autorId,
+        dataHora: new Date().toISOString(),
+      });
+    }
+
+    // `null`, e não `undefined`: o JSON do PATCH omite chaves indefinidas,
+    // e a carteira reaberta seguiria com "encerrada em" e o motivo antigo.
     atualizada = await carteiraRepositorio.atualizar(carteira.id, {
       situacao: 'ativa',
-      motivoEncerramento: undefined,
-      dataEncerramento: undefined,
+      motivoEncerramento: null as unknown as undefined,
+      dataEncerramento: null as unknown as undefined,
     });
   }
 

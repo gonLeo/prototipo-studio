@@ -81,7 +81,15 @@ export function anamneseEstaCompleta(respostas: Record<string, string>): boolean
 }
 
 /** Texto de referência do termo, usado para publicar a primeira versão. */
+/**
+ * O texto do termo traz `{{nome}}` e `{{cpf}}`: são mesclados com os dados
+ * da usuária na exibição e no registro do aceite (`mesclarTermo`, em
+ * `useTermos.ts`). O termo é único por versão — não existe um termo por
+ * pacote —, e é a mesclagem que o torna nominal (RF-ALU-05, PA-05).
+ */
 export const TERMO_PADRAO = `TERMO DE PRESTAÇÃO DE SERVIÇOS
+
+CONTRATANTE: {{nome}}, CPF {{cpf}}.
 
 1. OBJETO
 O studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.
@@ -112,6 +120,8 @@ Ao aceitar este termo, a aluna declara ter lido e concordado integralmente com a
  * 12 do escopo).
  */
 export const TERMO_PADRAO_PROFESSORA = `TERMO DE PRESTAÇÃO DE SERVIÇOS — PROFESSORA
+
+PRESTADORA: {{nome}}, CPF {{cpf}}.
 
 1. OBJETO
 A professora presta serviços de condução de aulas nas modalidades para as quais está habilitada, na condição de prestadora de serviço, sem vínculo empregatício.

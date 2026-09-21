@@ -155,6 +155,12 @@ export function TermosPage() {
 
       {visualizando && (
         <Modal titulo="Conteúdo da versão" largura="larga" onFechar={() => setVisualizando(null)}>
+          {/* RF-ALU-05 / PA-05: o termo é único; o nome entra por mesclagem. */}
+          <p className="mb-3 text-xs text-neutral-500">
+            <code className="rounded bg-neutral-100 px-1">{'{{nome}}'}</code> e{' '}
+            <code className="rounded bg-neutral-100 px-1">{'{{cpf}}'}</code> são substituídos pelos dados de quem
+            assina, na tela e no registro do aceite. É um termo único por versão, não um por pacote.
+          </p>
           <div className="max-h-[60vh] overflow-y-auto whitespace-pre-line rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm leading-relaxed text-neutral-700">
             {visualizando}
           </div>

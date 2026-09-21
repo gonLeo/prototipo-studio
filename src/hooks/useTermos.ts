@@ -7,6 +7,18 @@ import {
   usuarioRepositorio,
 } from '../services/repositorios';
 import type { AceiteRegistrado, PublicoDoTermo, TermoAceite } from '../types/domain';
+
+/**
+ * Mescla os dados da usuária no texto do termo (RF-ALU-05, PA-05).
+ *
+ * O termo é um só por versão — a aluna não assina um contrato por pacote —
+ * e é esta mesclagem que o torna nominal: o texto exibido e o texto gravado
+ * no aceite trazem o nome e o CPF de quem assinou. Placeholders que o texto
+ * não tiver simplesmente não aparecem; um termo sem eles continua válido.
+ */
+export function mesclarTermo(conteudo: string, dados: { nome: string; cpf: string }): string {
+  return conteudo.replaceAll('{{nome}}', dados.nome).replaceAll('{{cpf}}', dados.cpf);
+}
 import { RegraNegocioError } from './useModalidades';
 import { ativarCarteirasPendentes } from './carteiraDeCreditos';
 
@@ -88,11 +100,13 @@ export function useTermos(publicoAlvo: PublicoDoTermo = 'aluna') {
  */
 export async function registrarAceiteEAnamnese(params: {
   usuarioId: string;
+  /** Nome e CPF de quem assina, mesclados no texto gravado. */
+  assinante: { nome: string; cpf: string };
   alunaId?: string;
   termo: TermoAceite;
   respostasAnamnese: Record<string, string>;
 }): Promise<void> {
-  const { usuarioId, alunaId, termo, respostasAnamnese } = params;
+  const { usuarioId, alunaId, termo, respostasAnamnese, assinante } = params;
 
   await aceiteRegistradoRepositorio.criar({
     usuarioId,
@@ -100,8 +114,9 @@ export async function registrarAceiteEAnamnese(params: {
     dataHora: new Date().toISOString(),
     enderecoIp: '203.0.113.10 (simulado no protótipo)',
     // Guarda o texto aceito, não só a referência: se o termo for
-    // reescrito depois, o registro do aceite continua íntegro.
-    conteudoAceito: termo.conteudo,
+    // reescrito depois, o registro do aceite continua íntegro. O texto vai
+    // já mesclado com nome e CPF — é o que a aluna leu e assinou.
+    conteudoAceito: mesclarTermo(termo.conteudo, assinante),
   });
 
   if (alunaId) {
@@ -141,16 +156,17 @@ export async function liberarAcessoDaAluna(params: { usuarioId: string; alunaId?
  */
 export async function registrarAceiteDaProfessora(params: {
   usuarioId: string;
+  assinante: { nome: string; cpf: string };
   termo: TermoAceite;
 }): Promise<void> {
-  const { usuarioId, termo } = params;
+  const { usuarioId, assinante, termo } = params;
 
   await aceiteRegistradoRepositorio.criar({
     usuarioId,
     termoVersaoId: termo.id,
     dataHora: new Date().toISOString(),
     enderecoIp: '203.0.113.10 (simulado no protótipo)',
-    conteudoAceito: termo.conteudo,
+    conteudoAceito: mesclarTermo(termo.conteudo, assinante),
   });
 
   await usuarioRepositorio.atualizar(usuarioId, { situacao: 'ativo' });

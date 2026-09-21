@@ -141,6 +141,7 @@ export function MatriculaPage() {
       });
       await registrarAceiteEAnamnese({
         usuarioId: usuario.id,
+        assinante: { nome: usuario.nome, cpf: usuario.cpf },
         alunaId: aluna.id,
         termo: termoVigente,
         respostasAnamnese: respostas,
@@ -323,6 +324,7 @@ export function MatriculaPage() {
             >
               <TermoEAnamnese
                 termo={termoVigente}
+                assinante={{ nome: dados.nome.trim(), cpf: dados.cpf.trim() }}
                 aceito={aceito}
                 onAceitar={setAceito}
                 respostas={respostas}

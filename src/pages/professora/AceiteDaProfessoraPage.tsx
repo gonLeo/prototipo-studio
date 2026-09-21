@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSessao } from '../../hooks/useSessao';
-import { useTermos, registrarAceiteDaProfessora } from '../../hooks/useTermos';
+import { useTermos, registrarAceiteDaProfessora, mesclarTermo } from '../../hooks/useTermos';
 import { useToast } from '../../hooks/useToast';
 import { Button } from '../../components/ui/Button';
 import { CheckboxField } from '../../components/ui/Field';
@@ -29,7 +29,11 @@ export function AceiteDaProfessoraPage() {
     if (!vigente || !usuario) return;
     setEnviando(true);
     try {
-      await registrarAceiteDaProfessora({ usuarioId: usuario.id, termo: vigente });
+      await registrarAceiteDaProfessora({
+        usuarioId: usuario.id,
+        assinante: { nome: usuario.nome, cpf: usuario.cpf },
+        termo: vigente,
+      });
       mostrarToast('Termo aceito. Seu acesso está liberado.', 'sucesso');
       await recarregarUsuario();
     } catch (erroCapturado) {
@@ -58,7 +62,7 @@ export function AceiteDaProfessoraPage() {
               <span className="text-xs text-neutral-500">Versão {vigente.versao}</span>
             </div>
             <div className="mt-2 max-h-72 overflow-y-auto whitespace-pre-line rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700 ring-1 ring-inset ring-neutral-200">
-              {vigente.conteudo}
+              {mesclarTermo(vigente.conteudo, { nome: usuario.nome, cpf: usuario.cpf })}
             </div>
           </div>
 
