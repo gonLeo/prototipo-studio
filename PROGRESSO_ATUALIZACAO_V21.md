@@ -223,6 +223,11 @@ Percorrido no navegador depois de um reset: a tela com a aula do seed, a relaç�
 
 **Ajustes feitos durante a verificação**: o detalhe dizia "1 crédito devolvido(s)", agora flexiona; a mensagem para a aluna de convênio terminava convidando a remarcar conosco logo depois de mandá-la ao aplicativo do parceiro; faltava um espaço entre duas frases da mensagem; e o motivo aparecia com o prefixo interno "Exceção de calendário:" repetido dentro do texto enviado.
 
+### Ajustes pós-entrega
+
+- **A mensagem manda a aluna agendar, não pedir encaixe.** O texto terminava com "me diga um horário que combina com você que eu te encaixo", o que criaria uma fila de encaixe manual que o studio não opera: quem agenda é a própria aluna, pelo sistema (RF-AGD-01). Agora o convite é "Para repor, entre no sistema, abra a «Grade disponível» e agende o melhor dia para você", e o caso de turma encerrada aponta as outras turmas da grade. A aluna de convênio continua sendo mandada ao aplicativo do parceiro, sem repetir a instrução duas vezes; a aula experimental, que não tem grade para agendar, segue por contato direto.
+- **A aula cancelada do seed colidia com a solicitação pendente da Beatriz**: as duas apontavam para a sessão de dança na próxima terça ou quinta, então aprovar a solicitação cancelava uma ocorrência já cancelada e sobrescrevia a relação do backfill. A aula cancelada passou para o **alongamento do próximo sábado** (ses-5, 09:00), que nenhum outro cenário usa, com a reserva de convênio da Renata registrada como cancelada. O cenário do guia foi atualizado.
+
 ---
 
 ## Lote 3 — Professora consulta a ficha; indicadores de professora

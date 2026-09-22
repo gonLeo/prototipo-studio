@@ -70,6 +70,10 @@ export function creditosDevolvidos(quantidade: number): string {
  * O convite final também muda com a compensação: quem reserva pelo
  * convênio não "remarca" conosco, e quem não tem crédito de volta não é
  * convidada a escolher outro horário como se tivesse.
+ *
+ * Em nenhum caso a mensagem pede um horário à aluna: quem agenda é ela
+ * própria, pelo sistema (RF-AGD-01). Pedir que ela respondesse com um dia
+ * criaria uma fila de encaixe manual que o studio não opera.
  */
 export function mensagemParaAluna(aula: AulaCancelada, afetada: AlunaAfetada): string {
   const quando = `${rotuloDoDia(diaSemanaDe(aula.data)).toLowerCase()}, ${formatarDataBR(aula.data)} às ${aula.horarioInicio}`;
@@ -84,20 +88,36 @@ export function mensagemParaAluna(aula: AulaCancelada, afetada: AlunaAfetada): s
   const compensacao = afetada.convenio
     ? 'Como sua reserva é pelo convênio, é só escolher outro horário no aplicativo do parceiro. '
     : afetada.experimental
-      ? 'Sua aula experimental pode ser remarcada sem custo nenhum. '
+      ? 'Sua aula experimental pode ser remarcada sem custo nenhum — me avisa por aqui qual horário você prefere. '
       : `${comoVoltou(afetada)} `;
 
+  // A compensação da aluna de convênio já diz onde ela reserva; o convite
+  // dela é só de contato, para não repetir a mesma instrução duas vezes.
   const convite = afetada.convenio
     ? 'Qualquer dúvida, é só me chamar por aqui.'
-    : 'Me diga um horário que combina com você que eu te encaixo.';
+    : 'Para repor, entre no sistema, abra a "Grade disponível" e agende o melhor dia para você.';
 
   const corpo: Record<OrigemCancelamentoDaOcorrencia, string> = {
-    excecao: `A aula de ${aula.nomeModalidade} de ${quando} não vai acontecer: ${motivo}. ${compensacao}${convite}`,
-    exclusao_sessao: `A turma de ${aula.nomeModalidade} de ${quando} foi encerrada, e a sua aula foi cancelada. ${compensacao}${
-      afetada.convenio ? convite : 'Posso te ajudar a escolher outra turma?'
+    excecao: `A aula de ${aula.nomeModalidade} de ${quando} não vai acontecer: ${motivo}. ${compensacao}${
+      afetada.experimental ? '' : convite
     }`,
-    solicitacao_professora: `A professora ${aula.nomeProfessora} precisou cancelar a aula de ${aula.nomeModalidade} de ${quando}. ${compensacao}${convite}`,
-    conflito_excepcional: `No dia ${formatarDataBR(aula.data)}, às ${aula.horarioInicio}, vai acontecer um evento no lugar da aula de ${aula.nomeModalidade}, que foi cancelada. ${compensacao}Se quiser participar do evento, me avisa que eu te aloco.`,
+    exclusao_sessao: `A turma de ${aula.nomeModalidade} de ${quando} foi encerrada, e a sua aula foi cancelada. ${compensacao}${
+      afetada.convenio
+        ? convite
+        : afetada.experimental
+          ? ''
+          : 'As outras turmas continuam na grade: entre no sistema, em "Grade disponível", e escolha a que couber na sua rotina.'
+    }`,
+    solicitacao_professora: `A professora ${aula.nomeProfessora} precisou cancelar a aula de ${aula.nomeModalidade} de ${quando}. ${compensacao}${
+      afetada.experimental ? '' : convite
+    }`,
+    conflito_excepcional: `No dia ${formatarDataBR(aula.data)}, às ${aula.horarioInicio}, vai acontecer um evento no lugar da aula de ${aula.nomeModalidade}, que foi cancelada. ${compensacao}${
+      afetada.convenio
+        ? convite
+        : afetada.experimental
+          ? 'Se preferir participar do evento, me avisa que eu te aloco.'
+          : 'Para repor, entre no sistema e agende outro horário em "Grade disponível". Se preferir participar do evento, me avisa que eu te aloco.'
+    }`,
   };
 
   return `${abertura} ${corpo[aula.origem]}`;

@@ -538,9 +538,9 @@ export const GUIA: GrupoDoGuia[] = [
         fluxo: '6.6.1 Cancelamento de aula pelo estúdio',
         regras: ['RN-16'],
         requisitos: ['RF-CPR-09', 'RF-CPR-07', 'RF-NOT-05'],
-        preparo: 'Depois do reset já existe uma aula de dança cancelada por manutenção, com Larissa e Renata na relação.',
+        preparo: 'Depois do reset já existe a aula de alongamento do próximo sábado cancelada por manutenção, com Larissa e Renata na relação.',
         passos: [
-          { perfil: A, texto: 'Em Operação → Aulas canceladas, a lista traz a aula de dança, o motivo e a origem "Exceção de calendário".' },
+          { perfil: A, texto: 'Em Operação → Aulas canceladas, a lista traz a aula de ALONGAMENTO do próximo sábado, o motivo e a origem "Exceção de calendário".' },
           { perfil: A, texto: 'Clique em "2 aluna(s)" para abrir a relação: nome, telefone e o que cada uma recebeu de volta.' },
           { perfil: A, texto: 'Clique em "Enviar mensagem" na Larissa: o WhatsApp abre em outra aba, com o texto já escrito.' },
           { perfil: A, texto: 'Faça o mesmo na Renata e compare as mensagens.' },

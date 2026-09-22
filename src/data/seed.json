@@ -788,7 +788,7 @@
       "carteiraId": "car-larissa",
       "tipo": "reserva",
       "quantidade": 1,
-      "origem": "Agendamento de {{@proxima(terca,quinta)}} às 15:00",
+      "origem": "Agendamento de {{@proxima(sabado)}} às 09:00",
       "referenciaId": "agd-larissa-cancelada",
       "autorId": "usr-aluna-1",
       "dataHora": "@hoje-2T19:10"
@@ -798,7 +798,7 @@
       "carteiraId": "car-larissa",
       "tipo": "liberacao",
       "quantidade": 1,
-      "origem": "Aula de {{@proxima(terca,quinta)}} cancelada pelo studio: Exceção de calendário: Manutenção no ar-condicionado da sala principal",
+      "origem": "Aula de {{@proxima(sabado)}} cancelada pelo studio: Exceção de calendário: Manutenção no ar-condicionado da sala principal",
       "referenciaId": "agd-larissa-cancelada",
       "autorId": "usr-admin",
       "dataHora": "@hoje-1T08:30"
@@ -809,7 +809,7 @@
       "tipo": "ajuste",
       "quantidade": 7,
       "unidade": "dias",
-      "origem": "Prorrogação por cancelamento da aula de {{@proxima(terca,quinta)}}",
+      "origem": "Prorrogação por cancelamento da aula de {{@proxima(sabado)}}",
       "referenciaId": "agd-larissa-cancelada",
       "autorId": "usr-admin",
       "dataHora": "@hoje-1T08:30"
@@ -1041,9 +1041,9 @@
       "situacao": "ativa"
     },
     {
-      "id": "oco-danca-cancelada",
-      "sessaoId": "ses-3",
-      "data": "@proxima(terca,quinta)",
+      "id": "oco-alongamento-cancelada",
+      "sessaoId": "ses-5",
+      "data": "@proxima(sabado)",
       "professoraEfetivaId": "prof-2",
       "situacao": "cancelada",
       "motivoCancelamento": "Exceção de calendário: Manutenção no ar-condicionado da sala principal",
@@ -1140,7 +1140,7 @@
     {
       "id": "agd-larissa-cancelada",
       "alunaId": "alu-larissa",
-      "ocorrenciaSessaoId": "oco-danca-cancelada",
+      "ocorrenciaSessaoId": "oco-alongamento-cancelada",
       "origem": "portal",
       "dataHora": "@hoje-2T19:10",
       "situacao": "cancelado",
@@ -1152,7 +1152,7 @@
     {
       "id": "agd-renata-cancelada",
       "alunaId": "alu-renata",
-      "ocorrenciaSessaoId": "oco-danca-cancelada",
+      "ocorrenciaSessaoId": "oco-alongamento-cancelada",
       "origem": "convenio",
       "dataHora": "@hoje-2T20:05",
       "situacao": "cancelado",
@@ -1173,7 +1173,7 @@
     },
     {
       "id": "exc-2",
-      "data": "@proxima(terca,quinta)",
+      "data": "@proxima(sabado)",
       "tipo": "manutencao",
       "descricao": "Manutenção no ar-condicionado da sala principal",
       "autorId": "usr-admin",
@@ -1243,6 +1243,17 @@
       "checkinValidado": false,
       "data": "@proxima(segunda,quarta)",
       "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-renata-cancelada",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000148",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-alongamento-cancelada",
+      "situacao": "cancelada",
+      "checkinValidado": false,
+      "data": "@proxima(sabado)",
+      "origemRegistro": "integracao"
     }
   ],
   "notificacoes": [
@@ -1305,7 +1316,7 @@
       "destinatarioId": "usr-aluna-1",
       "evento": "aula_cancelada_pelo_studio",
       "canal": "email",
-      "conteudo": "Sua aula de {{@proxima(terca,quinta)}} foi cancelada. Motivo: Exceção de calendário: Manutenção no ar-condicionado da sala principal. Os créditos reservados voltaram ao seu saldo e a validade dos seus créditos foi estendida em 7 dias.",
+      "conteudo": "Sua aula de {{@proxima(sabado)}} foi cancelada. Motivo: Exceção de calendário: Manutenção no ar-condicionado da sala principal. Os créditos reservados voltaram ao seu saldo e a validade dos seus créditos foi estendida em 7 dias.",
       "dataEnvio": "@hoje-1T08:30",
       "situacaoEnvio": "enviada"
     }
