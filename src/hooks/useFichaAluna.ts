@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   agendamentoRepositorio,
   alunaRepositorio,
+  aceiteRegistradoRepositorio,
   anamneseRepositorio,
   chamadaRepositorio,
   modalidadeRepositorio,
@@ -22,6 +23,7 @@ import type {
   Trancamento,
   Usuario,
 } from '../types/domain';
+import { pendenciasDaAluna, type PendenciaDeAceite } from './pendenciasDeAceite';
 import { hojeISO } from '../utils/data';
 import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
 import { carteirasDaAluna, extratoDaAluna, limiaresFinalizando } from './carteiraDeCreditos';
@@ -56,6 +58,9 @@ export interface FichaAluna {
   leitura: LeituraDaCarteira | undefined;
   pacote: Pacote | undefined;
   anamnese: Anamnese | undefined;
+  /** Termo e anamnese em aberto (RF-ALU-08), e quando o termo foi aceito. */
+  pendencia: PendenciaDeAceite;
+  dataDoAceite: string | undefined;
   /** Histórico permanente de carteiras, inclusive as encerradas (RF-HIS-01). */
   carteiras: Carteira[];
   /** Extrato de movimentos de crédito de todas as carteiras (RF-CRE-08). */
@@ -207,6 +212,10 @@ export function useFichaAluna(alunaId: string | undefined) {
       leitura: carteira ? lerCarteira(carteira, hoje, limiares) : undefined,
       pacote: pacotes.find((p) => p.id === carteira?.pacoteId),
       anamnese: anamneses.find((a) => a.alunaId === aluna.id),
+      pendencia: await pendenciasDaAluna(aluna),
+      dataDoAceite: (await aceiteRegistradoRepositorio.listar())
+        .filter((a) => a.usuarioId === aluna.usuarioId)
+        .sort((a, b) => b.dataHora.localeCompare(a.dataHora))[0]?.dataHora,
       carteiras,
       movimentos,
       compras,

@@ -9,6 +9,7 @@ import type { Aluna, Carteira, Pacote, SituacaoAluna, Usuario } from '../types/d
 import { hojeISO } from '../utils/data';
 import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
 import { limiaresFinalizando } from './carteiraDeCreditos';
+import { pendenciasDasAlunas, SEM_PENDENCIA, type PendenciaDeAceite } from './pendenciasDeAceite';
 
 export interface AlunaComDetalhes extends Aluna {
   usuario: Usuario;
@@ -16,6 +17,8 @@ export interface AlunaComDetalhes extends Aluna {
   carteira: Carteira | undefined;
   leitura: LeituraDaCarteira | undefined;
   pacote: Pacote | undefined;
+  /** Termo e anamnese em aberto (RF-ALU-08). */
+  pendencia: PendenciaDeAceite;
 }
 
 export const ROTULO_SITUACAO_ALUNA: Record<SituacaoAluna, string> = {
@@ -23,6 +26,18 @@ export const ROTULO_SITUACAO_ALUNA: Record<SituacaoAluna, string> = {
   trancada: 'Trancada',
   aguardando_aceite: 'Aguardando aceite',
 };
+
+/**
+ * Rótulo do acesso na lista: diz **qual** pendência está em aberto, em vez
+ * de repetir "aguardando aceite" para os três casos (RF-ALU-08).
+ */
+export function rotuloDeAcesso(aluna: AlunaComDetalhes): string {
+  if (aluna.situacao === 'trancada') return 'Trancada';
+  if (aluna.pendencia.termo && aluna.pendencia.anamnese) return 'Aguardando aceite';
+  if (aluna.pendencia.termo) return 'Termo pendente';
+  if (aluna.pendencia.anamnese) return 'Anamnese pendente';
+  return 'Ativa';
+}
 
 /**
  * Filtros da lista de alunas (RF-ALU-10, RF-BOL-07).
@@ -64,6 +79,10 @@ export function aplicarFiltroDeAluna(aluna: AlunaComDetalhes, filtro: FiltroAlun
       // Reaproveita o limiar do status Finalizando: é o mesmo conceito de
       // "está acabando" que dispara o aviso à aluna.
       return aluna.leitura?.motivoFinalizando !== undefined;
+    case 'aguardando_aceite':
+      // Vale o cálculo, não o campo: o filtro precisa pegar também a aluna
+      // trancada que deixou termo ou anamnese em aberto (RF-ALU-08).
+      return aluna.pendencia.alguma;
     default:
       return aluna.situacao === filtro;
   }
@@ -85,6 +104,7 @@ export function useAlunas() {
       pacoteRepositorio.listar(),
       limiaresFinalizando(),
     ]);
+    const pendencias = await pendenciasDasAlunas(lista);
 
     const combinadas: AlunaComDetalhes[] = [];
 
@@ -103,6 +123,7 @@ export function useAlunas() {
         carteira,
         leitura: carteira ? lerCarteira(carteira, hoje, limiaresAtuais) : undefined,
         pacote: pacotes.find((p) => p.id === carteira?.pacoteId),
+        pendencia: pendencias[aluna.id] ?? SEM_PENDENCIA,
       });
     }
 

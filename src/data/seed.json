@@ -103,7 +103,7 @@
       "nome": "Fernanda Alves",
       "email": "fernanda@example.com",
       "cpf": "444.444.444-44",
-      "situacao": "aguardando_aceite",
+      "situacao": "ativo",
       "perfis": [
         "aluna"
       ]
@@ -143,6 +143,16 @@
       "nome": "Aline Martins",
       "email": "aline@example.com",
       "cpf": "888.888.888-88",
+      "situacao": "ativo",
+      "perfis": [
+        "aluna"
+      ]
+    },
+    {
+      "id": "usr-aluna-7",
+      "nome": "Helena Castro",
+      "email": "helena@example.com",
+      "cpf": "999.999.999-99",
       "situacao": "ativo",
       "perfis": [
         "aluna"
@@ -408,7 +418,7 @@
       "dataNascimento": "@fixa(1997-09-05)",
       "contatoEmergencia": "Marina Rocha — (11) 90000-9090",
       "origem": "direta",
-      "situacao": "ativa",
+      "situacao": "aguardando_aceite",
       "bolsista": false
     },
     {
@@ -419,6 +429,16 @@
       "contatoEmergencia": "Carla Martins — (11) 97676-1313",
       "origem": "direta",
       "situacao": "ativa",
+      "bolsista": false
+    },
+    {
+      "id": "alu-helena",
+      "usuarioId": "usr-aluna-7",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1996-07-11)",
+      "contatoEmergencia": "Marcos Castro — (65) 9680-6348",
+      "origem": "direta",
+      "situacao": "aguardando_aceite",
       "bolsista": false
     }
   ],
@@ -450,6 +470,36 @@
         "medicacao_continua": "Não",
         "gestante": "Não",
         "pratica_anterior": "Nunca pratiquei antes.",
+        "observacoes": ""
+      }
+    },
+    {
+      "id": "ana-aline",
+      "alunaId": "alu-aline",
+      "dataPreenchimento": "@hoje-93T14:58",
+      "versaoQuestionario": 1,
+      "respostas": {
+        "lesao_ou_cirurgia": "Não",
+        "dor_articular": "Sim — dor no punho esquerdo em apoios longos",
+        "condicao_cardiaca": "Não",
+        "medicacao_continua": "Não",
+        "gestante": "Não",
+        "pratica_anterior": "Dois anos de dança contemporânea.",
+        "observacoes": "Prefiro aulas no fim da tarde."
+      }
+    },
+    {
+      "id": "ana-renata",
+      "alunaId": "alu-renata",
+      "dataPreenchimento": "@hoje-60T19:25",
+      "versaoQuestionario": 1,
+      "respostas": {
+        "lesao_ou_cirurgia": "Não",
+        "dor_articular": "Não",
+        "condicao_cardiaca": "Não",
+        "medicacao_continua": "Não",
+        "gestante": "Não",
+        "pratica_anterior": "Faço musculação três vezes por semana.",
         "observacoes": ""
       }
     }
@@ -488,6 +538,30 @@
       "dataHora": "@hoje-40T14:02",
       "enderecoIp": "203.0.113.44 (simulado no protótipo)",
       "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: Patrícia Lima, CPF 555.555.555-55.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
+    },
+    {
+      "id": "ace-aline",
+      "usuarioId": "usr-aluna-6",
+      "termoVersaoId": "termo-v1",
+      "dataHora": "@hoje-93T14:55",
+      "enderecoIp": "203.0.113.10 (simulado no protótipo)",
+      "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: Aline Martins, CPF 888.888.888-88.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
+    },
+    {
+      "id": "ace-renata",
+      "usuarioId": "usr-aluna-4",
+      "termoVersaoId": "termo-v1",
+      "dataHora": "@hoje-60T19:20",
+      "enderecoIp": "203.0.113.10 (simulado no protótipo)",
+      "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: Renata Souza, CPF 666.666.666-66.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
+    },
+    {
+      "id": "ace-juliana",
+      "usuarioId": "usr-aluna-5",
+      "termoVersaoId": "termo-v1",
+      "dataHora": "@ultima(terca,quinta)-2T21:10",
+      "enderecoIp": "203.0.113.10 (simulado no protótipo)",
+      "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: Juliana Rocha, CPF 777.777.777-77.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
     }
   ],
   "pacotes": [
@@ -551,8 +625,9 @@
       "creditosUtilizados": 0,
       "creditosReservados": 0,
       "dataValidade": "@hoje+42",
-      "situacao": "aguardando_ativacao",
-      "bolsa": true
+      "situacao": "ativa",
+      "bolsa": true,
+      "dataAtivacao": "@hoje-3"
     },
     {
       "id": "car-patricia",
@@ -813,6 +888,19 @@
       "situacao": "pendente",
       "bolsa": false,
       "simularFalhaGateway": true
+    },
+    {
+      "id": "vnd-helena-starter",
+      "alunaId": "alu-helena",
+      "tipo": "pacote",
+      "pacoteId": "pac-4",
+      "creditos": 4,
+      "validadeDias": 45,
+      "valor": 220,
+      "formaPagamento": "pix",
+      "data": "@hoje-2",
+      "situacao": "pendente",
+      "bolsa": false
     }
   ],
   "trancamentos": [],
@@ -1070,7 +1158,7 @@
       "destinatarioId": "usr-aluna-1",
       "evento": "acesso_de_primeiro_login",
       "canal": "email",
-      "conteudo": "Bem-vinda ao studio! O pacote \"Starter\" está reservado para você, com 4 créditos e validade de 45 dias. Valor do pacote: R$ 220,00, em pagamento único. Acesse o sistema com o link enviado para assinar o termo de aceite e preencher a ficha de anamnese — seus créditos são liberados logo depois.",
+      "conteudo": "Bem-vinda ao studio! O pacote \"Starter\" está reservado para você, com 4 créditos e validade de 45 dias. Valor do pacote: R$ 220,00, em pagamento único. Seus créditos já estão disponíveis para agendamento. Ficou pendente: o aceite do termo e a ficha de anamnese. Conclua pelo seu painel quando puder — isso não impede o agendamento.",
       "dataEnvio": "@hoje-112T13:00",
       "situacaoEnvio": "enviada"
     },
@@ -1109,6 +1197,15 @@
       "conteudo": "Beatriz Nogueira solicitou o cancelamento da aula de {{@proxima(terca,quinta)}} às 15:00. Motivo: Consulta médica marcada para esse horário. A aula segue na grade até a decisão.",
       "dataEnvio": "@hoje-1T09:30",
       "situacaoEnvio": "enviada"
+    },
+    {
+      "id": "not-helena-acesso",
+      "destinatarioId": "usr-aluna-7",
+      "evento": "acesso_de_primeiro_login",
+      "canal": "email",
+      "conteudo": "Bem-vinda ao studio! O pacote \"Starter\" está reservado para você, com 4 créditos e validade de 45 dias. Valor do pacote: R$ 220,00, em pagamento único. Acesse o sistema com o link enviado e confirme o pagamento: seus créditos são liberados na confirmação. Ficou pendente: o aceite do termo e a ficha de anamnese. Conclua pelo seu painel quando puder — isso não impede o agendamento.",
+      "dataEnvio": "@hoje-2T11:00",
+      "situacaoEnvio": "enviada"
     }
   ],
   "registrosAuditoria": [
@@ -1135,6 +1232,18 @@
       },
       "valorNovo": {
         "espelhadaConvenio": true
+      }
+    },
+    {
+      "id": "aud-cadastro-helena",
+      "entidadeAfetada": "Aluna",
+      "operacao": "cadastro_administrativo",
+      "autorId": "usr-admin",
+      "dataHora": "@hoje-2T11:00",
+      "valorNovo": {
+        "alunaId": "alu-helena",
+        "pacote": "Starter",
+        "bolsista": false
       }
     }
   ]

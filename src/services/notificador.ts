@@ -36,6 +36,7 @@ export type DestinatarioNotificacao =
  */
 export const EVENTOS_NOTIFICACAO: Record<string, { rotulo: string; requisito: string }> = {
   acesso_de_primeiro_login: { rotulo: 'Primeiro acesso', requisito: 'RF-NOT-01' },
+  pendencia_de_aceite_lembrada: { rotulo: 'Lembrete de termo ou anamnese', requisito: 'RF-ALU-08' },
   matricula_concluida_pelo_site: { rotulo: 'Matrícula concluída pelo site', requisito: 'RF-NOT-01' },
   compra_confirmada: { rotulo: 'Confirmação de compra', requisito: 'RF-NOT-02' },
   agendamento_confirmado: { rotulo: 'Confirmação de agendamento', requisito: 'RF-NOT-03' },

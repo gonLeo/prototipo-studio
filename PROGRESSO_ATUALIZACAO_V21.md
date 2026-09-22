@@ -8,7 +8,7 @@ Dinâmica: **um lote por ciclo.** O lote só começa com autorização explícit
 
 - [x] Preparação — cenários prometidos à cliente (termo nominal, renovação antecipada, prorrogação em carteira vencida) — entregue em 21/09/2026, registrado em `PROGRESSO_ATUALIZACAO.md`
 - [x] Lote 0 — Seed com datas relativas e telefone único das alunas
-- [ ] Lote 1 — Pendência de aceite e pagamento antes do termo (item 1)
+- [x] Lote 1 — Pendência de aceite e pagamento antes do termo (item 1)
 - [ ] Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp (item 2)
 - [ ] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
 - [ ] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
@@ -93,23 +93,75 @@ Entregue em 21/09/2026, antes deste plano, porque a cliente já esperava esses t
 
 ## Lote 1 — Pendência de aceite e pagamento antes do termo
 
-_Não iniciado. Escopo nas seções 4.1, 4.2, 5, 6.1, 6.2 e no Lote 1 da seção 10 do plano._
+**O termo deixou de ser porteiro.** Na v2.0 a aluna cadastrada não tinha menu, não tinha painel e não agendava até assinar o termo e preencher a anamnese. Na v2.1 ela paga, recebe os créditos e agenda; o que falta vira um alerta no painel dela e um cartão de pendência na administração. Bloquear o agendamento até o aceite virou a evolução EV-16, fora da Fase 1.
 
 ### O que foi entregue
 
-_— a preencher —_
+**Domínio**
+
+- **`src/hooks/pendenciasDeAceite.ts`** (novo) — a pendência é **derivada**, não um campo: falta termo quando não há aceite da versão vigente do termo de aluna; falta anamnese quando não há ficha. Expõe `pendenciasDaAluna`, `pendenciasDasAlunas` (uma leitura por coleção, não uma por aluna), `contarAlunasComPendencia`, `registrarAceiteDoTermo`, `registrarAnamnese`, `lembrarPendenciaDeAceite` e `sincronizarSituacaoDeAceite`, que regrava `Aluna.situacao` a cada conclusão. `registrarAceiteEAnamnese` e `liberarAcessoDaAluna` saíram de `useTermos.ts`, que voltou a tratar só do termo em si (versões, mesclagem, aceite da professora).
+- **`Aluna.situacao = 'aguardando_aceite'` mudou de significado**: era bloqueio, virou rótulo de pendência. Continua gravada porque é o filtro da lista (RF-ALU-10) e o contador do painel (RF-PNL-03), mas quem manda é o cálculo. A aluna trancada não é sincronizada — trancamento é outro eixo.
+- **`Usuario.situacao = 'aguardando_aceite'` passou a valer só para a professora** (RF-PRO-04). Toda aluna nasce `ativo`, nos três caminhos de entrada.
+- **A carteira é ativada na confirmação do pagamento** (RF-CRE-01): `aplicarCompra` cria sempre `ativa`, com `dataAtivacao` de hoje. Quem cai aqui já teve o pagamento aprovado — a bolsista, pela concessão; as demais, pelo gateway.
+- **A situação `aguardando_ativacao` da carteira foi removida** do tipo, do status derivado, do rótulo e das duas guardas que a citavam, junto com `carteiraAguardandoAtivacao` e `ativarCarteirasPendentes`. Ela existia só para representar "comprou mas ainda não pode usar", que a v2.1 eliminou; a lista de situações voltou a ser exatamente a da seção 7 do escopo (ativa, consumida, expirada). Antes do pagamento não há carteira nenhuma — o que existe é a venda pendente.
+- **`bloqueioParaAgendar` perdeu o caso do aceite.** Os bloqueios que restam são os do escopo: trancamento, sem pacote, saldo insuficiente, data além da validade, turma lotada.
+- **`pendenciasDeAcao` ganhou `alunasComPendenciaDeAceite`** e a soma do bloco passou a incluí-la (RF-PNL-03).
+- **Evento de notificação novo** `pendencia_de_aceite_lembrada` (RF-ALU-08), disparado só pelo botão "Lembrar aceite" da ficha — nada sai sozinho.
+
+**Telas**
+
+- **`MatriculaPage`** — passos reordenados para Seus dados → Pacote → **Pagamento** → Termo → Anamnese → Primeira aula (fluxo 6.1). Termo e anamnese viraram passos separados, cada um com **"Pular e concluir depois"**, e a primeira aula com "Pular e agendar depois". A tela de conclusão diz o que ficou pendente. Sem termo publicado, o passo explica a situação e segue em vez de travar.
+- **`ExperimentalPage`** — depois da vaga confirmada entram os passos Termo e Anamnese, também puláveis (fluxo 6.2). Antes a experimental não pedia nem um nem outro.
+- **`PainelAlunaPage`** — saiu o fluxo bloqueante de primeiro acesso; entrou o **alerta amarelo persistente** com "Concluir agora", e o **alerta laranja de pagamento pendente** com "Pagar agora", para a aluna cadastrada pela administração sem bolsa (D2). O painel normal aparece por baixo dos dois.
+- **`ModalPendencias`** (novo, `src/pages/aluna/`) — destino do atalho. Resolve uma pendência por vez: quem pulou só a anamnese não relê o termo.
+- **`AceiteEAnamnese.tsx`** — o antigo `TermoEAnamnese` virou dois componentes, `AceiteDoTermo` e `FichaDeAnamnese`, porque agora são dois passos que se pulam separadamente. Usados pela matrícula, pela experimental e pelo modal.
+- **`AppShell`** — o menu reduzido ficou só para a professora aguardando aceite. A aluna com pendência tem o menu inteiro.
+- **`LoginPage`** — a aluna com pendência aparece como "Termo ou anamnese pendente"; "Aguardando aceite do termo" continua para a professora bloqueada.
+- **`AdministracaoHome`** — quinto cartão de pendência, "Termo ou anamnese pendente", que leva à lista já filtrada.
+- **`AlunasPage`** — o filtro passou a vir da URL (`?filtro=aguardando_aceite`), para o cartão do painel poder apontar para ele; a coluna "Acesso" diz **qual** pendência está aberta ("Termo pendente", "Anamnese pendente", "Aguardando aceite" quando são as duas), no CSV também; o filtro "Aguardando aceite" usa o cálculo, não o campo.
+- **`AlunaFichaPage`** — "Situação do acesso" deu lugar a **dois dados separados**, "Termo de aceite" e "Ficha de anamnese", cada um com a data de conclusão; faixa de aviso com o botão **"Lembrar aceite"**; o texto da anamnese não preenchida deixou de dizer que ela é condição para agendar.
+
+**Seed**
+
+- **Fernanda Alves**: bolsista com **carteira ativa** (4 créditos, validade em 42 dias) e termo e anamnese pendentes — a persona do alerta.
+- **Helena Castro** (nova): cadastrada pela administração sem bolsa, venda do Starter pendente de R$ 220,00, sem carteira, com as duas pendências — a persona do D2.
+- **Juliana Rocha**: assinou o termo e pulou a anamnese, como acontece agora na experimental.
+- **Aline e Renata** ganharam aceite e anamnese, para não aparecerem como pendentes sem motivo. Larissa e Patrícia já tinham.
+- O e-mail de primeiro acesso da Larissa e o da Helena passaram a falar em confirmar o pagamento e concluir as pendências, no lugar de "os créditos são liberados após o aceite".
+
+**Guia**
+
+- Cenários novos: **"Matrícula pulando o termo e a anamnese"** e **"Aluna com pagamento pendente"**.
+- Reescritos: "Matrícula pelo site" (nova ordem, pular), "Aula experimental" (termo e anamnese ao final), "Cadastro pela administração" (bolsista com carteira ativa; Helena como caso sem bolsa), "Quando a grade bloqueia" (passo da Helena e a nota de que pendência nunca bloqueia), "Termo único, com o nome da aluna" (atalho do alerta) e "Termo de aceite da professora" (o bloqueio que continua).
+- Personas: Fernanda com o estado novo, Helena acrescentada, Juliana com a anamnese pendente. "O que é simulado" ganhou o item **Pendência de aceite**, citando a EV-16.
 
 ### Decisões deste lote
 
-_— a preencher —_
+- **Remover `aguardando_ativacao` em vez de deixar o estado órfão.** Com a ativação no pagamento, nenhum caminho o produziria; mantê-lo seria código morto de um modelo que saiu, e o escopo nunca o teve na lista de situações.
+- **A pendência é derivada, e a situação da aluna é cache.** Calcular na leitura evita um campo que mente quando alguém apaga um aceite pela API; regravar `Aluna.situacao` mantém baratos o filtro e o contador. `sincronizarSituacaoDeAceite` é o único ponto que grava.
+- **Sem termo publicado não há pendência de termo.** Seria pendência de configuração do studio, não da aluna, e apareceria em todas as fichas de uma vez.
+- **O alerta de pendência não promete o que o pagamento impede.** Para quem tem venda pendente, o texto é "conclua quando puder — isso é independente do pagamento abaixo", em vez de "você já pode agendar normalmente": a Helena não pode, por falta de crédito.
+- **"Lembrar aceite" é a forma de a administração "solicitar o aceite"** que o RF-ALU-08 menciona. É a menor interpretação possível: um e-mail registrado em Notificações, disparado por botão.
+- **O modal de pendência se chama "Concluir pendência"**, não "Termo de prestação de serviço": o bloco de dentro já tem esse título, e repetir era ruído.
+- **A professora continua bloqueada** (D1). Nada do RF-PRO-04 mudou.
 
 ### Como testar
 
-_— a preencher —_
+1. **Resetar protótipo.** No painel administrativo, o bloco de pendências tem cinco cartões, e "Termo ou anamnese pendente" conta **3** (Fernanda, Helena, Juliana). Clique nele: a lista abre filtrada, com a URL `?filtro=aguardando_aceite`, e a coluna "Acesso" mostra "Aguardando aceite" para Fernanda e Helena e "Anamnese pendente" para Juliana.
+2. **Ficha da Fernanda**: "Termo de aceite — Pendente", "Ficha de anamnese — Pendente", a faixa de aviso e o botão "Lembrar aceite". Clique nele e confira o registro em Configuração → Notificações ("Lembrete de termo ou anamnese").
+3. **Entre como Fernanda**: o menu está completo, a carteira tem 4 créditos e a grade permite agendar. O alerta amarelo está no topo; "Concluir agora" abre o termo com o nome dela mesclado. Aceite: o alerta passa a falar só da anamnese. Conclua a anamnese: o alerta some e o cartão do painel administrativo cai para 2.
+4. **Entre como Helena**: dois alertas, o de pendência e o de pagamento. A grade diz "Nenhum pacote ativo" — não "aceite pendente". Clique em "Pagar agora": a carteira nasce ativa com a data de hoje, a grade libera e o alerta de termo continua.
+5. **Matrícula pelo site** (`/matricula`): a trilha agora é Seus dados → Pacote → Pagamento → Termo → Anamnese → Primeira aula. Pague, pule o termo e a anamnese, agende a primeira aula: a tela final diz o que ficou pendente. Entre como a nova aluna e veja o alerta.
+6. **Aula experimental** (`/experimental`): depois de "Vaga confirmada" vêm o termo e a anamnese, com "Pular e concluir depois" em cada um.
+7. **Regressão da professora**: em Configuração → Professoras, cadastre uma. No login ela aparece como "Aguardando aceite do termo", o menu dela tem só "Painel" e o termo toma a tela — inalterado.
 
 ### Verificação executada
 
-_— a preencher —_
+Percorrido no navegador, depois de um reset: contagem de pendências (3) e filtro pela URL; ficha da Fernanda com as duas pendências separadas e o lembrete gravado em Notificações; painel da Fernanda com menu completo, alerta e a conclusão das duas pendências pelo modal (alerta sumiu, situação virou `ativa`); painel da Helena com os dois alertas, grade bloqueada por falta de pacote, pagamento pelo botão e carteira ativa em 22/09/2026 com validade em 06/11/2026; matrícula completa de uma aluna nova pulando termo e anamnese, com carteira ativa, 1 crédito reservado na primeira aula e `Aluna.situacao = 'aguardando_aceite'` com `Usuario.situacao = 'ativo'`; experimental completa com aceite do termo e anamnese pulada; e uma professora nova criada para confirmar que o bloqueio dela continua. Os dados de teste foram apagados com um novo reset ao final.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes de fast-refresh.
+
+**Ajustes feitos durante a verificação**, todos já no código: o e-mail do lembrete terminava com uma piada ("leva menos tempo do que aquecer"), trocada por "leva menos de dois minutos"; o modal repetia o título do bloco que continha; a tela da primeira aula exibia o código "RF-AGD-10" para a aluna; o alerta de pendência dizia à Helena que ela já podia agendar; e o usuário da Fernanda continuava `aguardando_aceite` no seed, o que a fazia aparecer no login como bloqueada.
 
 ---
 

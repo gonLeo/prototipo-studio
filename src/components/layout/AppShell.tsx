@@ -89,14 +89,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Enquanto o termo não é aceito, a usuária só tem o painel — é lá que
-  // ela conclui o aceite, e o pagamento no caso da aluna (RF-ALU-08 para a
-  // aluna, RF-PRO-04 para a professora).
-  const aguardandoAceite = usuario?.situacao === 'aguardando_aceite';
+  // A professora só tem o painel até assinar o termo — é lá que ela
+  // assina, e o acesso permanece bloqueado antes disso (RF-PRO-04). A
+  // aluna nunca cai neste caso: termo e anamnese pendentes geram alerta,
+  // não bloqueio (RF-ALU-08), e o menu dela vem inteiro.
+  const professoraAguardandoAceite = usuario?.situacao === 'aguardando_aceite' && perfilAtivo === 'professora';
   const gruposNav = !perfilAtivo
     ? []
-    : aguardandoAceite && (perfilAtivo === 'aluna' || perfilAtivo === 'professora')
-      ? [{ itens: [{ to: perfilAtivo === 'aluna' ? '/aluna' : '/professora', label: 'Painel', fim: true }] }]
+    : professoraAguardandoAceite
+      ? [{ itens: [{ to: '/professora', label: 'Painel', fim: true }] }]
       : NAV_POR_PERFIL[perfilAtivo];
   const outrosPerfis = usuario?.perfis.filter((p) => p !== perfilAtivo) ?? [];
 

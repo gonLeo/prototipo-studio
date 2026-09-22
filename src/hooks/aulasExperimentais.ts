@@ -276,8 +276,10 @@ async function carregarAlunaExistente(alunaId: string): Promise<{ aluna: Aluna; 
 
 /**
  * Cadastro da interessada (RF-EXP-02): usuária e aluna **sem pacote**.
- * Ela entra no sistema já com acesso liberado — não há termo de pacote a
- * assinar, porque não há pacote contratado; o termo entra na conversão.
+ *
+ * Ela entra com o acesso liberado. Termo e anamnese são pedidos depois da
+ * confirmação do pagamento, no próprio fluxo (6.2), e podem ser pulados —
+ * a aluna nasce com a pendência do RF-ALU-08.
  */
 async function cadastrarInteressada(dados: DadosInteressada): Promise<{ aluna: Aluna; usuario: Usuario }> {
   await validarIdentificacaoUnica(dados.email, dados.cpf);
@@ -296,8 +298,9 @@ async function cadastrarInteressada(dados: DadosInteressada): Promise<{ aluna: A
     dataNascimento: dados.dataNascimento,
     contatoEmergencia: dados.contatoEmergencia.trim(),
     origem: 'direta',
-    // Sem pacote contratado, a aluna existe só para a experimental.
-    situacao: 'ativa',
+    // Sem pacote contratado, a aluna existe só para a experimental. Termo e
+    // anamnese ficam pendentes até ela concluí-los (RF-ALU-08).
+    situacao: 'aguardando_aceite',
     bolsista: false,
   });
 

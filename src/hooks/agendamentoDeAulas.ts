@@ -101,14 +101,6 @@ export function bloqueioParaAgendar(params: {
 }): BloqueioDaAluna | undefined {
   const { aluna, carteira, custoDaAula } = params;
 
-  // RF-ALU-08: sem termo aceito e anamnese preenchida, não há agendamento.
-  if (aluna.situacao === 'aguardando_aceite') {
-    return {
-      motivo: 'O aceite do termo ainda está pendente.',
-      detalhe: 'Assine o termo e preencha a ficha de anamnese no painel para liberar o agendamento.',
-    };
-  }
-
   // RF-AGD-07: durante o trancamento a aluna não visualiza a grade.
   if (aluna.situacao === 'trancada') {
     return {

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { usePacotes } from '../hooks/usePacotes';
-import { useTermos, registrarAceiteEAnamnese, liberarAcessoDaAluna } from '../hooks/useTermos';
+import { useTermos } from '../hooks/useTermos';
+import { registrarAceiteDoTermo, registrarAnamnese } from '../hooks/pendenciasDeAceite';
 import { matricularAlunaPeloSite } from '../hooks/cadastroDeAlunas';
 import type { DadosCadastraisAluna } from '../hooks/cadastroDeAlunas';
 import { FORMAS_PAGAMENTO, PARCELAS_DISPONIVEIS } from '../hooks/vendas';
@@ -12,18 +13,25 @@ import type { AulaDisponivel } from '../hooks/agendamentoDeAulas';
 import type { Aluna, Carteira, FormaPagamento } from '../types/domain';
 import { Button } from '../components/ui/Button';
 import { TextField, SelectField } from '../components/ui/Field';
-import { TermoEAnamnese } from '../components/TermoEAnamnese';
+import { AceiteDoTermo, FichaDeAnamnese } from '../components/AceiteEAnamnese';
 import { perguntasNaoRespondidas } from '../data/anamnese';
 import { formatarCreditos, formatarMoeda } from '../utils/creditos';
 import { formatarDataBR, somarDias, hojeISO } from '../utils/data';
 
-type Passo = 'dados' | 'pacote' | 'termo' | 'pagamento' | 'primeira_aula' | 'concluido';
+type Passo = 'dados' | 'pacote' | 'pagamento' | 'termo' | 'anamnese' | 'primeira_aula' | 'concluido';
 
+/**
+ * A ordem dos passos é a do fluxo 6.1 da v2.1: o pagamento vem antes do
+ * termo e da anamnese, para que a interessada não abandone o fluxo no meio
+ * do preenchimento sem ter concluído a compra. Os três passos posteriores
+ * ao pagamento podem ser pulados (RF-ALU-08, RF-AGD-10).
+ */
 const PASSOS: Array<{ id: Passo; rotulo: string }> = [
   { id: 'dados', rotulo: 'Seus dados' },
   { id: 'pacote', rotulo: 'Pacote' },
-  { id: 'termo', rotulo: 'Termo e anamnese' },
   { id: 'pagamento', rotulo: 'Pagamento' },
+  { id: 'termo', rotulo: 'Termo' },
+  { id: 'anamnese', rotulo: 'Anamnese' },
   { id: 'primeira_aula', rotulo: 'Primeira aula' },
 ];
 
@@ -57,15 +65,16 @@ function Trilha({ atual }: { atual: Passo }) {
 }
 
 /**
- * Auto-matrícula pelo site (RF-ALU-04): dados, pacote, termo com anamnese
- * e pagamento em fluxo único. O acesso é liberado automaticamente ao fim,
- * sem aprovação manual.
+ * Auto-matrícula pelo site (RF-ALU-04, fluxo 6.1): dados, pacote e
+ * pagamento; depois termo, anamnese e primeira aula, cada um pulável.
  *
  * O pagamento é único, no ato da compra, e passa pelo gateway simulado do
- * M12; o fluxo termina com o agendamento da primeira aula (RF-AGD-10).
- * Quem prefere conhecer o studio antes de comprar tem o caminho da aula
- * experimental, em `/experimental` (M13), que inverte a ordem: horário
- * primeiro, pagamento depois (RN-36).
+ * M12. Confirmado o pagamento, a carteira é ativada e o acesso liberado
+ * (RF-CRE-01) — o que ficar pendente vira alerta no painel da aluna e
+ * linha no bloco de pendências da administração (RF-ALU-08), nunca
+ * bloqueio. Quem prefere conhecer o studio antes de comprar tem o caminho
+ * da aula experimental, em `/experimental` (M13), que inverte a ordem:
+ * horário primeiro, pagamento depois (RN-36).
  */
 export function MatriculaPage() {
   const { pacotes, carregando: carregandoPacotes } = usePacotes();
@@ -88,6 +97,8 @@ export function MatriculaPage() {
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('pix');
   const [parcelas, setParcelas] = useState(String(PARCELAS_DISPONIVEIS[0]));
   const [matriculada, setMatriculada] = useState<{ aluna: Aluna; carteira: Carteira | undefined } | undefined>();
+  const [termoPendente, setTermoPendente] = useState(true);
+  const [anamnesePendente, setAnamnesePendente] = useState(true);
   const [custoDaAula, setCustoDaAula] = useState(1);
   const [aulasDisponiveis, setAulasDisponiveis] = useState<AulaDisponivel[]>([]);
   const [agendandoChave, setAgendandoChave] = useState<string>();
@@ -116,10 +127,9 @@ export function MatriculaPage() {
   const pacotesAtivos = pacotes.filter((p) => p.situacao === 'ativo');
   const pacoteEscolhido = pacotesAtivos.find((p) => p.id === pacoteId);
 
-  // Só avança do termo com o aceite marcado E as perguntas de saúde
-  // respondidas (RF-ALU-08).
+  // Quem decide concluir o passo responde tudo; quem não quer agora pula.
+  // O que fica pendente é acompanhado depois (RF-ALU-08).
   const faltamRespostas = perguntasNaoRespondidas(respostas);
-  const podeAvancarDoTermo = aceito && faltamRespostas.length === 0;
 
   function mudarDado(campo: keyof DadosCadastraisAluna, valor: string) {
     setDados((atual) => ({ ...atual, [campo]: valor }));
@@ -131,7 +141,7 @@ export function MatriculaPage() {
     setErro(undefined);
     setProcessando(true);
     try {
-      const { aluna, usuario, venda } = await matricularAlunaPeloSite({
+      const { aluna, venda } = await matricularAlunaPeloSite({
         dados,
         compra: {
           pacoteId,
@@ -139,19 +149,11 @@ export function MatriculaPage() {
           parcelas: formaPagamento === 'cartao_parcelado' ? Number(parcelas) : undefined,
         },
       });
-      await registrarAceiteEAnamnese({
-        usuarioId: usuario.id,
-        assinante: { nome: usuario.nome, cpf: usuario.cpf },
-        alunaId: aluna.id,
-        termo: termoVigente,
-        respostasAnamnese: respostas,
-      });
-      await liberarAcessoDaAluna({ usuarioId: usuario.id, alunaId: aluna.id });
-      // RF-AGD-10: com o acesso liberado, a aluna já agenda a primeira
-      // aula sem sair do fluxo. A carteira nasceu ativa na confirmação do
-      // pagamento, então a grade já pode reservar créditos.
+      // RF-CRE-01: a carteira nasceu ativa na confirmação do pagamento, e o
+      // acesso está liberado antes do termo. A aluna segue para o termo, a
+      // anamnese e a primeira aula podendo pular cada um deles.
       setMatriculada({
-        aluna: { ...aluna, situacao: 'ativa' },
+        aluna,
         carteira: {
           id: venda.carteiraId ?? '',
           alunaId: aluna.id,
@@ -165,6 +167,43 @@ export function MatriculaPage() {
           bolsa: false,
         },
       });
+      setPasso('termo');
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  /** Assina o termo e segue para a anamnese (RF-ALU-05). */
+  async function aceitarTermo() {
+    if (!termoVigente || !matriculada) return;
+    setErro(undefined);
+    setProcessando(true);
+    try {
+      await registrarAceiteDoTermo({
+        usuarioId: matriculada.aluna.usuarioId,
+        assinante: { nome: dados.nome.trim(), cpf: dados.cpf.trim() },
+        termo: termoVigente,
+        aluna: matriculada.aluna,
+      });
+      setTermoPendente(false);
+      setPasso('anamnese');
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  /** Preenche a anamnese e segue para a primeira aula (RF-ALU-07). */
+  async function responderAnamnese() {
+    if (!matriculada) return;
+    setErro(undefined);
+    setProcessando(true);
+    try {
+      await registrarAnamnese({ aluna: matriculada.aluna, respostas });
+      setAnamnesePendente(false);
       setPasso('primeira_aula');
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
@@ -172,6 +211,10 @@ export function MatriculaPage() {
       setProcessando(false);
     }
   }
+
+  const pendencias = [termoPendente && 'o aceite do termo', anamnesePendente && 'a ficha de anamnese'].filter(
+    Boolean,
+  ) as string[];
 
   if (carregandoPacotes || carregandoTermo) {
     return <p className="p-8 text-sm text-neutral-500">Carregando…</p>;
@@ -260,7 +303,7 @@ export function MatriculaPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                setPasso('termo');
+                setPasso('pagamento');
               }}
               className="flex flex-col gap-4"
             >
@@ -318,44 +361,81 @@ export function MatriculaPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                setPasso('pagamento');
+                aceitarTermo();
               }}
               className="flex flex-col gap-5"
             >
-              <TermoEAnamnese
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-sm font-semibold text-emerald-900">Pagamento confirmado e acesso liberado.</p>
+                <p className="mt-1 text-sm text-emerald-800">
+                  Seus créditos já estão disponíveis. Falta assinar o termo e preencher a anamnese — dá para deixar
+                  para depois, pelo seu painel.
+                </p>
+              </div>
+
+              <AceiteDoTermo
                 termo={termoVigente}
                 assinante={{ nome: dados.nome.trim(), cpf: dados.cpf.trim() }}
                 aceito={aceito}
                 onAceitar={setAceito}
-                respostas={respostas}
-                onResponder={(chave, valor) => setRespostas((atual) => ({ ...atual, [chave]: valor }))}
               />
+
+              {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
+
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Button type="button" variante="secundaria" onClick={() => setPasso('pacote')}>
-                  Voltar
+                <Button type="button" variante="secundaria" onClick={() => setPasso('anamnese')}>
+                  Pular e concluir depois
                 </Button>
-                <div className="flex flex-wrap items-center gap-3">
-                  {!podeAvancarDoTermo && (
-                    <p className="text-xs text-neutral-500">
-                      {!aceito && 'Aceite o termo'}
-                      {!aceito && faltamRespostas.length > 0 && ' e '}
-                      {faltamRespostas.length > 0 && `responda ${faltamRespostas.length} pergunta(s) de saúde`} para
-                      continuar.
-                    </p>
-                  )}
-                  <Button type="submit" disabled={!podeAvancarDoTermo}>
-                    Continuar
-                  </Button>
-                </div>
+                <Button type="submit" disabled={!aceito || processando}>
+                  {processando ? 'Registrando…' : 'Aceitar e continuar'}
+                </Button>
               </div>
             </form>
           )}
 
           {passo === 'termo' && !termoVigente && (
-            <p className="text-sm text-rose-600">
-              Nenhuma versão do termo está publicada. A administração precisa publicar o termo antes de abrir a
-              matrícula pelo site.
-            </p>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-amber-800">
+                O studio ainda não publicou o termo de aceite. Sua matrícula está concluída e seus créditos já estão
+                disponíveis — o termo fica pendente até a administração publicá-lo.
+              </p>
+              <div className="flex justify-end">
+                <Button onClick={() => setPasso('anamnese')}>Continuar</Button>
+              </div>
+            </div>
+          )}
+
+          {passo === 'anamnese' && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                responderAnamnese();
+              }}
+              className="flex flex-col gap-5"
+            >
+              <FichaDeAnamnese
+                respostas={respostas}
+                onResponder={(chave, valor) => setRespostas((atual) => ({ ...atual, [chave]: valor }))}
+              />
+
+              {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Button type="button" variante="secundaria" onClick={() => setPasso('primeira_aula')}>
+                  Pular e concluir depois
+                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  {faltamRespostas.length > 0 && (
+                    <p className="text-xs text-neutral-500">
+                      Responda {faltamRespostas.length} pergunta(s) de saúde para concluir.
+                    </p>
+                  )}
+                  <Button type="submit" disabled={faltamRespostas.length > 0 || processando}>
+                    {processando ? 'Registrando…' : 'Concluir e continuar'}
+                  </Button>
+                </div>
+              </div>
+            </form>
           )}
 
           {passo === 'pagamento' && pacoteEscolhido && (
@@ -416,17 +496,17 @@ export function MatriculaPage() {
 
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
                 Pagamento simulado neste protótipo. É um pagamento único: não há mensalidade nem cobrança recorrente.
-                Ao concluir, seu acesso é liberado automaticamente.
+                Confirmado o pagamento, seus créditos são liberados na hora; o termo e a anamnese vêm em seguida.
               </p>
 
               {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
 
               <div className="flex justify-between">
-                <Button type="button" variante="secundaria" onClick={() => setPasso('termo')}>
+                <Button type="button" variante="secundaria" onClick={() => setPasso('pacote')}>
                   Voltar
                 </Button>
                 <Button type="submit" disabled={processando}>
-                  {processando ? 'Processando…' : 'Pagar e concluir matrícula'}
+                  {processando ? 'Processando…' : 'Pagar e liberar meus créditos'}
                 </Button>
               </div>
             </form>
@@ -434,12 +514,12 @@ export function MatriculaPage() {
 
           {passo === 'primeira_aula' && matriculada && (
             <div className="flex flex-col gap-4">
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <p className="text-sm font-semibold text-emerald-900">Pagamento confirmado e acesso liberado.</p>
-                <p className="mt-1 text-sm text-emerald-800">
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                <p className="text-sm font-semibold text-ink">Escolha sua primeira aula</p>
+                <p className="mt-1 text-sm text-neutral-600">
                   Seus {matriculada.carteira ? formatarCreditos(matriculada.carteira.creditosTotais) : 'créditos'} já
-                  estão disponíveis. Cada aula regular custa {formatarCreditos(custoDaAula)}. Escolha sua primeira aula
-                  — ou deixe para depois, pelo painel.
+                  estão disponíveis. Cada aula regular custa {formatarCreditos(custoDaAula)}. Dá para agendar depois,
+                  pelo seu painel.
                 </p>
               </div>
 
@@ -497,7 +577,7 @@ export function MatriculaPage() {
 
               <div className="flex justify-end">
                 <Button variante="secundaria" onClick={() => setPasso('concluido')}>
-                  Agendar depois
+                  Pular e agendar depois
                 </Button>
               </div>
             </div>
@@ -514,6 +594,12 @@ export function MatriculaPage() {
                 {pacoteEscolhido ? formatarCreditos(pacoteEscolhido.creditos) : 'créditos'} já estão disponíveis e o
                 agendamento está liberado.
               </p>
+              {pendencias.length > 0 && (
+                <p className="mx-auto mt-3 max-w-sm rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+                  Ficou pendente: {pendencias.join(' e ')}. O seu painel vai lembrar — conclua quando puder, sem
+                  pressa: isso não impede você de agendar.
+                </p>
+              )}
               {primeiraAula && (
                 <p className="mt-2 text-sm font-medium text-ink">
                   Sua primeira aula: {primeiraAula.modalidade?.nome} em {formatarDataBR(primeiraAula.data)} às{' '}

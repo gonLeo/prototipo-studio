@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { useAlunas, aplicarFiltroDeAluna, FILTROS_ALUNA, ROTULO_SITUACAO_ALUNA } from '../../hooks/useAlunas';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useAlunas, aplicarFiltroDeAluna, FILTROS_ALUNA, rotuloDeAcesso } from '../../hooks/useAlunas';
 import type { FiltroAluna } from '../../hooks/useAlunas';
 import { usePacotes } from '../../hooks/usePacotes';
 import { useSessao } from '../../hooks/useSessao';
@@ -171,8 +171,16 @@ export function AlunasPage() {
   const { usuario } = useSessao();
   const mostrarToast = useToast();
 
-  const [filtro, setFiltro] = useState<FiltroAluna>('todas');
+  // O cartão de pendências do painel administrativo chega com o filtro na
+  // URL — por isso ele mora aqui, e não só no estado local.
+  const [parametros, setParametros] = useSearchParams();
+  const filtro = (parametros.get('filtro') as FiltroAluna | null) ?? 'todas';
   const [modalAberto, setModalAberto] = useState(false);
+
+  function trocarFiltro(novo: FiltroAluna) {
+    if (novo === 'todas') setParametros({});
+    else setParametros({ filtro: novo });
+  }
 
   const filtradas = alunas.filter((aluna) => aplicarFiltroDeAluna(aluna, filtro));
 
@@ -183,7 +191,8 @@ export function AlunasPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Operação</p>
           <h1 className="mt-1 text-2xl font-semibold text-ink">Alunas</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            {alunas.length} cadastrada(s). O acesso ao agendamento só abre depois do aceite do termo e da anamnese.
+            {alunas.length} cadastrada(s). Termo e anamnese pendentes não bloqueiam o agendamento — aparecem aqui
+            para acompanhamento.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -199,7 +208,7 @@ export function AlunasPage() {
                   { cabecalho: 'E-mail', valor: (item) => item.usuario.email },
                   { cabecalho: 'CPF', valor: (item) => item.usuario.cpf },
                   { cabecalho: 'Telefone', valor: (item) => item.telefone },
-                  { cabecalho: 'Situação', valor: (item) => ROTULO_SITUACAO_ALUNA[item.situacao] },
+                  { cabecalho: 'Situação', valor: (item) => rotuloDeAcesso(item) },
                   { cabecalho: 'Origem', valor: (item) => (item.origem === 'convenio' ? 'Convênio' : 'Direta') },
                   { cabecalho: 'Pacote', valor: (item) => item.pacote?.nome ?? '' },
                   { cabecalho: 'Créditos disponíveis', valor: (item) => item.leitura?.disponiveis ?? '' },
@@ -228,7 +237,7 @@ export function AlunasPage() {
           <button
             key={opcao.valor}
             type="button"
-            onClick={() => setFiltro(opcao.valor)}
+            onClick={() => trocarFiltro(opcao.valor)}
             aria-pressed={filtro === opcao.valor}
             className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
               filtro === opcao.valor
@@ -304,7 +313,7 @@ export function AlunasPage() {
                 )}
               </CelulaTabela>
               <CelulaTabela>
-                <Badge tom={TOM_POR_SITUACAO[aluna.situacao]}>{ROTULO_SITUACAO_ALUNA[aluna.situacao]}</Badge>
+                <Badge tom={TOM_POR_SITUACAO[aluna.situacao]}>{rotuloDeAcesso(aluna)}</Badge>
               </CelulaTabela>
               <CelulaTabela alinhamento="direita">
                 <Link
@@ -328,8 +337,8 @@ export function AlunasPage() {
               await recarregar();
               mostrarToast(
                 bolsista
-                  ? 'Aluna bolsista cadastrada. Os créditos são liberados assim que ela assinar o termo.'
-                  : 'Aluna cadastrada. E-mail de acesso enviado; os créditos são liberados após o aceite e o pagamento.',
+                  ? 'Aluna bolsista cadastrada, com os créditos já disponíveis. Termo e anamnese ficam pendentes.'
+                  : 'Aluna cadastrada. E-mail de acesso enviado; os créditos são liberados quando ela confirmar o pagamento.',
                 'sucesso',
               );
             }}

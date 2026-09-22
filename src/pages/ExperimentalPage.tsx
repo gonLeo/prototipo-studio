@@ -7,6 +7,11 @@ import {
   parametrosExperimentais,
 } from '../hooks/aulasExperimentais';
 import type { AulaParaExperimental, DadosInteressada, ParametrosExperimentais } from '../hooks/aulasExperimentais';
+import { useTermos } from '../hooks/useTermos';
+import { registrarAceiteDoTermo, registrarAnamnese } from '../hooks/pendenciasDeAceite';
+import { AceiteDoTermo, FichaDeAnamnese } from '../components/AceiteEAnamnese';
+import { perguntasNaoRespondidas } from '../data/anamnese';
+import type { Aluna } from '../types/domain';
 import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/Field';
 import { NavegadorDeDatas } from '../components/ui/NavegadorDeDatas';
@@ -14,12 +19,19 @@ import { CartaoDeAula } from '../components/ui/CartaoDeAula';
 import { formatarMoeda } from '../utils/creditos';
 import { formatarDataBR, hojeISO, somarDias } from '../utils/data';
 
-type Passo = 'aula' | 'cadastro' | 'pagamento' | 'concluido';
+type Passo = 'aula' | 'cadastro' | 'pagamento' | 'termo' | 'anamnese' | 'concluido';
 
+/**
+ * Termo e anamnese vêm **depois** da vaga confirmada (fluxo 6.2 da v2.1) e
+ * podem ser pulados: o que ficar em aberto vira pendência acompanhada pela
+ * administração (RF-ALU-08).
+ */
 const PASSOS: Array<{ id: Passo; rotulo: string }> = [
   { id: 'aula', rotulo: 'Escolha a aula' },
   { id: 'cadastro', rotulo: 'Seus dados' },
   { id: 'pagamento', rotulo: 'Pagamento' },
+  { id: 'termo', rotulo: 'Termo' },
+  { id: 'anamnese', rotulo: 'Anamnese' },
 ];
 
 function Trilha({ atual }: { atual: Passo }) {
@@ -60,6 +72,7 @@ function Trilha({ atual }: { atual: Passo }) {
  * (RF-EXP-01/02/05).
  */
 export function ExperimentalPage() {
+  const { vigente: termoVigente } = useTermos();
   const [passo, setPasso] = useState<Passo>('aula');
   const [parametros, setParametros] = useState<ParametrosExperimentais>();
   const [aulas, setAulas] = useState<AulaParaExperimental[]>([]);
@@ -76,6 +89,11 @@ export function ExperimentalPage() {
   });
   const [erro, setErro] = useState<string>();
   const [processando, setProcessando] = useState(false);
+  const [interessada, setInteressada] = useState<Aluna>();
+  const [aceito, setAceito] = useState(false);
+  const [respostas, setRespostas] = useState<Record<string, string>>({});
+  const [termoPendente, setTermoPendente] = useState(true);
+  const [anamnesePendente, setAnamnesePendente] = useState(true);
 
   const hoje = useMemo(() => hojeISO(), []);
 
@@ -104,7 +122,45 @@ export function ExperimentalPage() {
     setErro(undefined);
     setProcessando(true);
     try {
-      await agendarAulaExperimental({ dados, sessao: escolhida.sessao, data: escolhida.data });
+      const resultado = await agendarAulaExperimental({ dados, sessao: escolhida.sessao, data: escolhida.data });
+      setInteressada(resultado.aluna);
+      setPasso('termo');
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  /** Assina o termo e segue para a anamnese (RF-ALU-05). */
+  async function aceitarTermo() {
+    if (!termoVigente || !interessada) return;
+    setErro(undefined);
+    setProcessando(true);
+    try {
+      await registrarAceiteDoTermo({
+        usuarioId: interessada.usuarioId,
+        assinante: { nome: dados.nome.trim(), cpf: dados.cpf.trim() },
+        termo: termoVigente,
+        aluna: interessada,
+      });
+      setTermoPendente(false);
+      setPasso('anamnese');
+    } catch (erroCapturado) {
+      setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  /** Preenche a anamnese e encerra o fluxo (RF-ALU-07). */
+  async function responderAnamnese() {
+    if (!interessada) return;
+    setErro(undefined);
+    setProcessando(true);
+    try {
+      await registrarAnamnese({ aluna: interessada, respostas });
+      setAnamnesePendente(false);
       setPasso('concluido');
     } catch (erroCapturado) {
       setErro(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.');
@@ -112,6 +168,11 @@ export function ExperimentalPage() {
       setProcessando(false);
     }
   }
+
+  const pendencias = [termoPendente && 'o aceite do termo', anamnesePendente && 'a ficha de anamnese'].filter(
+    Boolean,
+  ) as string[];
+  const faltamRespostas = perguntasNaoRespondidas(respostas);
 
   return (
     <div className="min-h-full bg-neutral-100 px-4 py-10">
@@ -303,6 +364,81 @@ export function ExperimentalPage() {
             </form>
           )}
 
+          {passo === 'termo' && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                aceitarTermo();
+              }}
+              className="flex flex-col gap-5"
+            >
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-sm font-semibold text-emerald-900">Vaga confirmada.</p>
+                <p className="mt-1 text-sm text-emerald-800">
+                  Falta assinar o termo e responder a anamnese. Dá para deixar para depois — a sua vaga está garantida
+                  de qualquer forma.
+                </p>
+              </div>
+
+              {termoVigente ? (
+                <AceiteDoTermo
+                  termo={termoVigente}
+                  assinante={{ nome: dados.nome.trim(), cpf: dados.cpf.trim() }}
+                  aceito={aceito}
+                  onAceitar={setAceito}
+                />
+              ) : (
+                <p className="text-sm text-amber-800">
+                  O studio ainda não publicou o termo de aceite. Ele fica pendente até a administração publicá-lo.
+                </p>
+              )}
+
+              {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Button type="button" variante="secundaria" onClick={() => setPasso('anamnese')}>
+                  Pular e concluir depois
+                </Button>
+                <Button type="submit" disabled={!aceito || !termoVigente || processando}>
+                  {processando ? 'Registrando…' : 'Aceitar e continuar'}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {passo === 'anamnese' && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                responderAnamnese();
+              }}
+              className="flex flex-col gap-5"
+            >
+              <FichaDeAnamnese
+                respostas={respostas}
+                onResponder={(chave, valor) => setRespostas((atual) => ({ ...atual, [chave]: valor }))}
+              />
+
+              {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Button type="button" variante="secundaria" onClick={() => setPasso('concluido')}>
+                  Pular e concluir depois
+                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  {faltamRespostas.length > 0 && (
+                    <p className="text-xs text-neutral-500">
+                      Responda {faltamRespostas.length} pergunta(s) de saúde para concluir.
+                    </p>
+                  )}
+                  <Button type="submit" disabled={faltamRespostas.length > 0 || processando}>
+                    {processando ? 'Registrando…' : 'Concluir'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          )}
+
           {passo === 'concluido' && escolhida && (
             <div className="text-center">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-lg text-emerald-700">
@@ -317,6 +453,11 @@ export function ExperimentalPage() {
               <p className="mt-2 text-sm text-neutral-600">
                 Depois da aula, você pode contratar um pacote pelo seu próprio painel — seu cadastro já fica pronto.
               </p>
+              {pendencias.length > 0 && (
+                <p className="mx-auto mt-3 max-w-sm rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+                  Ficou pendente: {pendencias.join(' e ')}. O seu painel vai lembrar; conclua quando puder.
+                </p>
+              )}
               <Link
                 to="/login"
                 className="mt-4 inline-block rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"

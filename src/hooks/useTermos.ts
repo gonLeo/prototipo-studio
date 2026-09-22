@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   aceiteRegistradoRepositorio,
-  anamneseRepositorio,
-  alunaRepositorio,
   termoAceiteRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
@@ -20,7 +18,6 @@ export function mesclarTermo(conteudo: string, dados: { nome: string; cpf: strin
   return conteudo.replaceAll('{{nome}}', dados.nome).replaceAll('{{cpf}}', dados.cpf);
 }
 import { RegraNegocioError } from './useModalidades';
-import { ativarCarteirasPendentes } from './carteiraDeCreditos';
 
 /**
  * Termo de prestação de serviço versionado (RF-ALU-05/06, RF-PRO-04).
@@ -84,67 +81,6 @@ export function useTermos(publicoAlvo: PublicoDoTermo = 'aluna') {
   }
 
   return { termos, aceites, vigente, carregando, publicarNovaVersao, quantidadeDeAceites, recarregar };
-}
-
-/**
- * Registra o aceite do termo e a anamnese de uma usuária (RF-ALU-05/07).
- *
- * Registrar **não** libera o acesso: no cadastro administrativo ainda
- * falta a primeira cobrança ser paga. Quem libera é
- * `liberarAcessoDaAluna`, chamada quando todas as pendências do primeiro
- * acesso terminam.
- *
- * O endereço de IP é exigido pelo escopo como parte do registro. No
- * protótipo não há servidor que o informe, então gravamos um valor
- * simulado e sinalizado — na API real ele virá da requisição.
- */
-export async function registrarAceiteEAnamnese(params: {
-  usuarioId: string;
-  /** Nome e CPF de quem assina, mesclados no texto gravado. */
-  assinante: { nome: string; cpf: string };
-  alunaId?: string;
-  termo: TermoAceite;
-  respostasAnamnese: Record<string, string>;
-}): Promise<void> {
-  const { usuarioId, alunaId, termo, respostasAnamnese, assinante } = params;
-
-  await aceiteRegistradoRepositorio.criar({
-    usuarioId,
-    termoVersaoId: termo.id,
-    dataHora: new Date().toISOString(),
-    enderecoIp: '203.0.113.10 (simulado no protótipo)',
-    // Guarda o texto aceito, não só a referência: se o termo for
-    // reescrito depois, o registro do aceite continua íntegro. O texto vai
-    // já mesclado com nome e CPF — é o que a aluna leu e assinou.
-    conteudoAceito: mesclarTermo(termo.conteudo, assinante),
-  });
-
-  if (alunaId) {
-    await anamneseRepositorio.criar({
-      alunaId,
-      respostas: respostasAnamnese,
-      dataPreenchimento: new Date().toISOString(),
-      versaoQuestionario: 1,
-    });
-  }
-}
-
-/**
- * Libera o agendamento depois de cumpridas as pendências do primeiro
- * acesso (RF-ALU-08) e ativa a carteira que estava esperando (RF-CRE-01).
- *
- * A ativação acontece aqui, e não na confirmação do pagamento, porque a
- * carteira só passa a permitir agendamento quando as três condições estão
- * cumpridas: pagamento confirmado, termo aceito e anamnese preenchida. É
- * também daqui que a validade passa a correr.
- */
-export async function liberarAcessoDaAluna(params: { usuarioId: string; alunaId?: string }): Promise<void> {
-  const { usuarioId, alunaId } = params;
-  if (alunaId) {
-    await alunaRepositorio.atualizar(alunaId, { situacao: 'ativa' });
-    await ativarCarteirasPendentes({ alunaId, autorId: usuarioId });
-  }
-  await usuarioRepositorio.atualizar(usuarioId, { situacao: 'ativo' });
 }
 
 /**

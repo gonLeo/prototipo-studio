@@ -6,6 +6,7 @@ import type { FrequenciaDaAluna } from '../../hooks/useFichaAluna';
 import { useSessao } from '../../hooks/useSessao';
 import { useToast } from '../../hooks/useToast';
 import { ROTULO_SITUACAO_ALUNA } from '../../hooks/useAlunas';
+import { lembrarPendenciaDeAceite } from '../../hooks/pendenciasDeAceite';
 import { ajustarCarteira, custoDaAulaRegular } from '../../hooks/carteiraDeCreditos';
 import { alterarBolsa, comprarPacoteParaAluna } from '../../hooks/cadastroDeAlunas';
 import { registrarVendaManual } from '../../hooks/vendas';
@@ -156,6 +157,7 @@ export function AlunaFichaPage() {
 
   const [modalAberto, setModalAberto] = useState<ModalAberto>(null);
   const [custoDaAula, setCustoDaAula] = useState(1);
+  const [lembrando, setLembrando] = useState(false);
 
   useEffect(() => {
     custoDaAulaRegular().then(setCustoDaAula);
@@ -289,18 +291,66 @@ export function AlunaFichaPage() {
       )}
 
       <div className="mt-6 flex flex-col gap-4">
+        {ficha.pendencia.alguma && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">
+                {ficha.pendencia.termo && ficha.pendencia.anamnese
+                  ? 'Termo e anamnese pendentes.'
+                  : ficha.pendencia.termo
+                    ? 'Termo pendente.'
+                    : 'Anamnese pendente.'}
+              </span>{' '}
+              A aluna agenda normalmente; cabe à administração acompanhar e solicitar o aceite (RF-ALU-08).
+            </p>
+            <Button
+              variante="secundaria"
+              disabled={lembrando}
+              onClick={async () => {
+                setLembrando(true);
+                try {
+                  await lembrarPendenciaDeAceite({
+                    aluna,
+                    nomeAluna: dadosUsuario.nome,
+                    pendencia: ficha.pendencia,
+                  });
+                  mostrarToast('Lembrete enviado. Ele fica registrado em Notificações.', 'sucesso');
+                } catch (erro) {
+                  mostrarToast(erro instanceof Error ? erro.message : 'Erro inesperado.', 'erro');
+                } finally {
+                  setLembrando(false);
+                }
+              }}
+            >
+              {lembrando ? 'Enviando…' : 'Lembrar aceite'}
+            </Button>
+          </div>
+        )}
+
         <Secao titulo="Dados cadastrais">
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Dado rotulo="Telefone" valor={aluna.telefone} />
             <Dado rotulo="Data de nascimento" valor={aluna.dataNascimento ? formatarDataBR(aluna.dataNascimento) : '—'} />
             <Dado rotulo="Contato de emergência" valor={aluna.contatoEmergencia || '—'} />
             <Dado rotulo="Origem" valor={aluna.origem === 'convenio' ? 'Convênio' : 'Matrícula direta'} />
+            {/* RF-ALU-08: as duas pendências aparecem separadas, com a data
+                de quem já concluiu — é o que a administração usa para cobrar. */}
             <Dado
-              rotulo="Situação do acesso"
+              rotulo="Termo de aceite"
               valor={
-                dadosUsuario.situacao === 'aguardando_aceite'
-                  ? 'Aguardando aceite do termo e anamnese'
-                  : 'Liberado'
+                ficha.pendencia.termo
+                  ? 'Pendente'
+                  : ficha.dataDoAceite
+                    ? `Aceito em ${formatarDataBR(ficha.dataDoAceite.slice(0, 10))}`
+                    : 'Aceito'
+              }
+            />
+            <Dado
+              rotulo="Ficha de anamnese"
+              valor={
+                ficha.anamnese
+                  ? `Preenchida em ${formatarDataBR(ficha.anamnese.dataPreenchimento.slice(0, 10))}`
+                  : 'Pendente'
               }
             />
           </dl>
@@ -342,7 +392,7 @@ export function AlunaFichaPage() {
                 />
                 <Dado
                   rotulo="Ativada em"
-                  valor={carteira.dataAtivacao ? formatarDataBR(carteira.dataAtivacao) : 'Aguardando aceite'}
+                  valor={carteira.dataAtivacao ? formatarDataBR(carteira.dataAtivacao) : '—'}
                 />
                 <Dado rotulo="Custo da aula regular" valor={formatarCreditos(custoDaAula)} />
               </dl>
@@ -373,7 +423,8 @@ export function AlunaFichaPage() {
         <Secao titulo="Ficha de anamnese">
           {!ficha.anamnese ? (
             <p className="text-sm text-neutral-500">
-              Ainda não preenchida — a aluna responde no momento do aceite do termo.
+              Ainda não preenchida. A aluna pode responder a qualquer momento pelo painel dela; o preenchimento
+              não é condição para agendar (RF-ALU-08).
             </p>
           ) : (
             <>

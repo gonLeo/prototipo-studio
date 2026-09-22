@@ -177,7 +177,7 @@ export async function calcularPreviaDeReembolso(params: {
   }
 
   // RF-REE-06: não há reembolso de carteira consumida ou expirada.
-  if (carteira && carteira.situacao !== 'ativa' && carteira.situacao !== 'aguardando_ativacao') {
+  if (carteira && carteira.situacao !== 'ativa') {
     return recusar('A carteira desta compra já foi encerrada — não há reembolso de pacote consumido ou expirado.');
   }
 

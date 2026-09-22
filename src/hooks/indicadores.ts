@@ -18,6 +18,7 @@ import { lerCarteira } from '../utils/creditos';
 import { sessaoOcorreEm } from '../utils/grade';
 import { chamadasPendentes } from './chamadaDeAulas';
 import { limiaresFinalizando } from './carteiraDeCreditos';
+import { contarAlunasComPendencia } from './pendenciasDeAceite';
 import type { PeriodoDeApuracao } from './comissoes';
 
 /**
@@ -35,6 +36,8 @@ export interface PendenciasDeAcao {
   justificativas: number;
   chamadasNaoFinalizadas: number;
   vendasPendentes: number;
+  /** Alunas com termo ou anamnese pendente (RF-ALU-08). */
+  alunasComPendenciaDeAceite: number;
   /** Soma de tudo — se for zero, não há nada exigindo ação agora. */
   total: number;
 }
@@ -45,11 +48,12 @@ export interface PendenciasDeAcao {
  * dos indicadores, para que solicitação e justificativa não fiquem paradas.
  */
 export async function pendenciasDeAcao(): Promise<PendenciasDeAcao> {
-  const [solicitacoes, justificativas, vendas, pendentesDeChamada] = await Promise.all([
+  const [solicitacoes, justificativas, vendas, pendentesDeChamada, alunasComPendenciaDeAceite] = await Promise.all([
     solicitacaoCancelamentoRepositorio.listar(),
     justificativaRepositorio.listar(),
     vendaRepositorio.listar(),
     chamadasPendentes(),
+    contarAlunasComPendencia(),
   ]);
 
   const pendencias = {
@@ -57,6 +61,7 @@ export async function pendenciasDeAcao(): Promise<PendenciasDeAcao> {
     justificativas: justificativas.filter((j) => j.situacao === 'pendente').length,
     chamadasNaoFinalizadas: pendentesDeChamada.length,
     vendasPendentes: vendas.filter((v) => v.situacao === 'pendente').length,
+    alunasComPendenciaDeAceite,
   };
 
   return {
@@ -65,7 +70,8 @@ export async function pendenciasDeAcao(): Promise<PendenciasDeAcao> {
       pendencias.solicitacoesDeCancelamento +
       pendencias.justificativas +
       pendencias.chamadasNaoFinalizadas +
-      pendencias.vendasPendentes,
+      pendencias.vendasPendentes +
+      pendencias.alunasComPendenciaDeAceite,
   };
 }
 

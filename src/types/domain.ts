@@ -2,6 +2,11 @@ export type ID = string;
 
 export type PerfilAcesso = 'administracao' | 'professora' | 'aluna';
 
+/**
+ * `aguardando_aceite` vale só para a professora, cujo acesso permanece
+ * bloqueado até assinar o termo (RF-PRO-04). A aluna entra sempre ativa: a
+ * pendência dela é registrada em `Aluna.situacao` e não bloqueia (RF-ALU-08).
+ */
 export type SituacaoUsuario = 'ativo' | 'inativo' | 'aguardando_aceite';
 
 export type DiaSemana =
@@ -77,9 +82,14 @@ export interface Usuario {
 export type OrigemAluna = 'direta' | 'convenio';
 
 /**
- * A situação da aluna diz respeito ao **acesso**, não ao pacote. Ter ou não
- * pacote ativo é uma leitura da carteira (RF-CRE-11), não um estado do
+ * A situação da aluna diz respeito ao **cadastro**, não ao pacote. Ter ou
+ * não pacote ativo é uma leitura da carteira (RF-CRE-11), não um estado do
  * cadastro — por isso não existe "sem pacote" aqui.
+ *
+ * `aguardando_aceite` significa **termo ou anamnese pendente** (RF-ALU-08)
+ * e não bloqueia nada: é o rótulo que a lista filtra e que o painel conta.
+ * O valor é derivado das pendências e regravado por
+ * `sincronizarSituacaoDeAceite` a cada aceite ou anamnese registrada.
  */
 export type SituacaoAluna = 'ativa' | 'trancada' | 'aguardando_aceite';
 
@@ -168,18 +178,17 @@ export interface Pacote {
 }
 
 /**
- * Situação da carteira (RF-CRE-10).
+ * Situação da carteira (RF-CRE-10) — a mesma lista da seção 7 do escopo.
  *
- * `aguardando_ativacao` não está na lista da seção 7 do escopo, mas o
- * RF-CRE-01 descreve exatamente esse estado: comprados os créditos, eles
- * "existem mas não permitem agendamento" enquanto o pagamento não é
- * confirmado, o termo não é aceito e a anamnese não é preenchida. Sem um
- * estado próprio, essa carteira seria indistinguível de uma ativa.
+ * Não existe estado "aguardando ativação": a carteira é ativada na
+ * confirmação do pagamento (RF-CRE-01) e, antes disso, simplesmente não
+ * existe — o que existe é a venda pendente. Termo e anamnese não atrasam a
+ * ativação; geram a pendência do RF-ALU-08.
  *
  * "Finalizando" **não** entra aqui: é informativo, coexiste com o estado
  * ativo (RF-CRE, seção 4.3.3) e por isso é derivado em `statusDaCarteira`.
  */
-export type SituacaoCarteira = 'aguardando_ativacao' | 'ativa' | 'consumida' | 'expirada';
+export type SituacaoCarteira = 'ativa' | 'consumida' | 'expirada';
 
 export type MotivoEncerramentoCarteira = 'consumo_total' | 'vencimento' | 'reembolso';
 

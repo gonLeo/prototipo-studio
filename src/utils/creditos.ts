@@ -38,7 +38,7 @@ export function valorUnitarioDoCredito(valor: number, creditos: number): number 
  * (seção 4.3.3 do escopo) e é derivado dos limiares configuráveis, por isso
  * é calculado aqui e não gravado no registro.
  */
-export type StatusCarteira = 'aguardando_ativacao' | 'ativa' | 'finalizando' | 'consumida' | 'expirada';
+export type StatusCarteira = 'ativa' | 'finalizando' | 'consumida' | 'expirada';
 
 export interface LimiaresFinalizando {
   creditos: number;
@@ -58,7 +58,7 @@ export interface LeituraDaCarteira {
   /** Negativo quando a validade já passou. */
   diasParaVencer: number;
   motivoFinalizando?: MotivoFinalizando;
-  /** A carteira não permite mais agendar: consumida, expirada ou ainda não ativada. */
+  /** A carteira não permite mais agendar: consumida ou expirada. */
   encerrada: boolean;
   /** Situação que o registro deveria ter hoje — base do encerramento automático (RF-CRE-10). */
   situacaoCalculada: Carteira['situacao'];
@@ -79,10 +79,6 @@ export function lerCarteira(
     totais: carteira.creditosTotais,
     diasParaVencer,
   };
-
-  if (carteira.situacao === 'aguardando_ativacao') {
-    return { ...base, status: 'aguardando_ativacao', encerrada: true, situacaoCalculada: 'aguardando_ativacao' };
-  }
 
   // O encerramento acontece no primeiro dos dois eventos (RN-02). Créditos
   // reservados ainda não foram utilizados: a carteira só se esgota quando
@@ -110,7 +106,6 @@ export function lerCarteira(
 
 export function rotuloStatusCarteira(status: StatusCarteira): string {
   const rotulos: Record<StatusCarteira, string> = {
-    aguardando_ativacao: 'Aguardando ativação',
     ativa: 'Ativo',
     finalizando: 'Finalizando',
     consumida: 'Consumido',

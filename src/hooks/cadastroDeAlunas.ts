@@ -69,7 +69,22 @@ async function buscarPacote(pacoteId: string): Promise<Pacote> {
   return pacote;
 }
 
-function mensagemDeAcesso(pacote: Pacote, bolsista: boolean, precisaAceitar: boolean): string {
+/**
+ * Texto do e-mail de acesso (RF-NOT-01).
+ *
+ * `aguardaPagamento` distingue quem ainda precisa pagar para receber os
+ * créditos (cadastro administrativo sem bolsa) de quem já os tem. O termo e
+ * a anamnese aparecem como pendência a concluir, nunca como condição para
+ * agendar (RF-ALU-08).
+ */
+function mensagemDeAcesso(params: {
+  pacote: Pacote;
+  bolsista: boolean;
+  aguardaPagamento: boolean;
+  pendencias?: string;
+}): string {
+  const { pacote, bolsista, aguardaPagamento, pendencias } = params;
+
   const linhaValor = bolsista
     ? 'Você é bolsista — nenhuma cobrança será gerada, e seu pacote é renovado automaticamente.'
     : `Valor do pacote: ${formatarMoeda(pacote.valor)}, em pagamento único.`;
@@ -77,19 +92,23 @@ function mensagemDeAcesso(pacote: Pacote, bolsista: boolean, precisaAceitar: boo
   return [
     `Bem-vinda ao studio! O pacote "${pacote.nome}" está reservado para você, com ${formatarCreditos(pacote.creditos)} e validade de ${pacote.validadeDias} dias.`,
     linhaValor,
-    precisaAceitar
-      ? 'Acesse o sistema com o link enviado para assinar o termo de aceite e preencher a ficha de anamnese — seus créditos são liberados logo depois.'
+    aguardaPagamento
+      ? 'Acesse o sistema com o link enviado e confirme o pagamento: seus créditos são liberados na confirmação.'
       : 'Seus créditos já estão disponíveis para agendamento.',
-  ].join(' ');
+    pendencias ? `Ficou pendente: ${pendencias}. Conclua pelo seu painel quando puder — isso não impede o agendamento.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
- * Cadastro pela administração (RF-ALU-01/02/03).
+ * Cadastro pela administração (RF-ALU-01/02/03, fluxo 6.3).
  *
- * A aluna nasce "aguardando aceite": os créditos existem, mas só permitem
- * agendamento depois do termo assinado e da anamnese preenchida
- * (RF-ALU-08, RF-CRE-01). Bolsista não gera cobrança nenhuma (RF-BOL-02);
- * as demais deixam a venda pendente, quitada no primeiro acesso.
+ * A aluna entra com o acesso liberado e com termo e anamnese pendentes —
+ * pendência que gera alerta, não bloqueio (RF-ALU-08). Bolsista recebe a
+ * carteira ativa de imediato, sem cobrança (RF-BOL-02); as demais ficam
+ * com a venda pendente, e a carteira nasce quando o pagamento é
+ * confirmado, no primeiro acesso (RF-CRE-01).
  */
 export async function cadastrarAlunaPelaAdministracao(params: {
   dados: DadosCadastraisAluna;
@@ -106,7 +125,9 @@ export async function cadastrarAlunaPelaAdministracao(params: {
     nome: dados.nome.trim(),
     email: dados.email.trim(),
     cpf: dados.cpf.trim(),
-    situacao: 'aguardando_aceite',
+    // O acesso da aluna nunca fica bloqueado (RF-ALU-08); quem espera o
+    // aceite para entrar é a professora (RF-PRO-04).
+    situacao: 'ativo',
     perfis: ['aluna'],
   });
 
@@ -116,6 +137,8 @@ export async function cadastrarAlunaPelaAdministracao(params: {
     dataNascimento: dados.dataNascimento,
     contatoEmergencia: dados.contatoEmergencia.trim(),
     origem: 'direta',
+    // Termo e anamnese ainda não existem: a aluna nasce com a pendência do
+    // RF-ALU-08, que `sincronizarSituacaoDeAceite` limpa quando ela concluir.
     situacao: 'aguardando_aceite',
     bolsista,
     pacoteConcedidoId: bolsista ? pacote.id : undefined,
@@ -141,7 +164,12 @@ export async function cadastrarAlunaPelaAdministracao(params: {
   await notificar({
     destinatario: { tipo: 'usuario', id: usuario.id },
     evento: 'acesso_de_primeiro_login',
-    conteudo: mensagemDeAcesso(pacote, bolsista, true),
+    conteudo: mensagemDeAcesso({
+      pacote,
+      bolsista,
+      aguardaPagamento: !bolsista,
+      pendencias: 'o aceite do termo e a ficha de anamnese',
+    }),
   });
 
   await registroAuditoriaRepositorio.criar({
@@ -156,9 +184,13 @@ export async function cadastrarAlunaPelaAdministracao(params: {
 }
 
 /**
- * Matrícula pelo site (RF-ALU-04): termo, anamnese e pagamento fazem parte
- * do próprio fluxo, então a aluna já entra ativa e a carteira nasce
- * ativada — o acesso é liberado sem aprovação manual.
+ * Matrícula pelo site (RF-ALU-04, fluxo 6.1).
+ *
+ * O pagamento vem antes do termo e da anamnese: confirmada a compra, a
+ * carteira é ativada e o acesso liberado (RF-CRE-01). Termo, anamnese e
+ * primeira aula são passos seguintes, que a interessada pode pular — por
+ * isso a aluna nasce com a pendência do RF-ALU-08, limpa conforme ela
+ * concluir cada um, ali mesmo ou depois pelo painel.
  */
 export async function matricularAlunaPeloSite(params: {
   dados: DadosCadastraisAluna;
@@ -183,7 +215,8 @@ export async function matricularAlunaPeloSite(params: {
     dataNascimento: dados.dataNascimento,
     contatoEmergencia: dados.contatoEmergencia.trim(),
     origem: 'direta',
-    situacao: 'ativa',
+    // Termo e anamnese vêm depois do pagamento e podem ser pulados.
+    situacao: 'aguardando_aceite',
     // Bolsa é exclusiva do cadastro administrativo (RF-BOL-01).
     bolsista: false,
   });
@@ -203,7 +236,7 @@ export async function matricularAlunaPeloSite(params: {
   await notificar({
     destinatario: { tipo: 'usuario', id: usuario.id },
     evento: 'matricula_concluida_pelo_site',
-    conteudo: mensagemDeAcesso(pacote, false, false),
+    conteudo: mensagemDeAcesso({ pacote, bolsista: false, aguardaPagamento: false }),
   });
 
   return { aluna, usuario, venda };
@@ -292,9 +325,11 @@ export async function alterarBolsa(params: {
 }
 
 /**
- * Conclui o pagamento pendente do primeiro acesso. A carteira ainda não é
- * ativada aqui: quem ativa é `liberarAcessoDaAluna`, quando o termo e a
- * anamnese também estiverem cumpridos (RF-CRE-01).
+ * Conclui o pagamento pendente do primeiro acesso (RF-VEN-03).
+ *
+ * É aqui que a carteira da aluna cadastrada pela administração sem bolsa
+ * nasce e já fica ativa: `confirmarPagamentoDaVenda` aplica a compra
+ * (RF-CRE-01). Termo e anamnese pendentes não interferem.
  */
 export async function quitarVendaDoPrimeiroAcesso(params: {
   venda: Venda;

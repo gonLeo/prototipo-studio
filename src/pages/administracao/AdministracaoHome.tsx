@@ -165,7 +165,7 @@ export function AdministracaoHome() {
                 {pendencias.total > 0 ? `${pendencias.total} item(ns)` : 'Tudo em dia'}
               </Badge>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-5">
               <CartaoDePendencia
                 to="/administracao/solicitacoes"
                 rotulo="Solicitações de cancelamento"
@@ -185,6 +185,13 @@ export function AdministracaoHome() {
                 to="/administracao/vendas"
                 rotulo="Vendas aguardando pagamento"
                 quantidade={pendencias.vendasPendentes}
+              />
+              {/* RF-PNL-03: o aceite deixou de bloquear, então a cobrança
+                  passou a ser da administração — por isso vira pendência. */}
+              <CartaoDePendencia
+                to="/administracao/alunas?filtro=aguardando_aceite"
+                rotulo="Termo ou anamnese pendente"
+                quantidade={pendencias.alunasComPendenciaDeAceite}
               />
             </div>
           </section>

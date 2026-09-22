@@ -100,12 +100,6 @@ export async function carteiraVigenteDaAluna(alunaId: string, hoje = hojeISO()):
   return carteiras.find((c) => c.situacao === 'ativa' && !lerCarteira(c, hoje, limiares).encerrada);
 }
 
-/** Carteira que ainda aguarda a ativação — comprada, mas sem termo aceito (RF-CRE-01). */
-export async function carteiraAguardandoAtivacao(alunaId: string): Promise<Carteira | undefined> {
-  const carteiras = await carteirasDaAluna(alunaId);
-  return carteiras.find((c) => c.situacao === 'aguardando_ativacao');
-}
-
 export async function extratoDaCarteira(carteiraId: string): Promise<MovimentoCredito[]> {
   const movimentos = await movimentoCreditoRepositorio.listar();
   return movimentos
@@ -280,9 +274,9 @@ export async function estornarConsumo(params: {
  * única, a mais distante entre a atual e a do pacote (PA-10). Carteira
  * encerrada ou inexistente: nasce uma carteira nova, sem herdar nada.
  *
- * A carteira nova só nasce ativa se a aluna já tiver aceitado o termo e
- * preenchido a anamnese; caso contrário fica aguardando ativação, com os
- * créditos existindo mas sem permitir agendamento (RF-CRE-01).
+ * A carteira nasce **ativa**: só se chega aqui com o pagamento confirmado,
+ * e é a confirmação do pagamento que ativa (RF-CRE-01). Termo e anamnese
+ * pendentes não seguram os créditos — geram o alerta do RF-ALU-08.
  */
 export async function aplicarCompra(params: {
   aluna: Aluna;
@@ -334,17 +328,15 @@ export async function aplicarCompra(params: {
     await carteiraRepositorio.atualizar(carteira.id, { pacoteId: pacote.id });
     carteira = { ...carteira, pacoteId: pacote.id };
   } else {
-    const pendente = aluna.situacao === 'aguardando_aceite';
-
     carteira = await carteiraRepositorio.criar({
       alunaId: aluna.id,
       pacoteId: pacote.id,
       creditosTotais: creditosDaCompra,
       creditosUtilizados: 0,
       creditosReservados: 0,
-      dataAtivacao: pendente ? undefined : hoje,
+      dataAtivacao: hoje,
       dataValidade: previa.validadeResultante,
-      situacao: pendente ? 'aguardando_ativacao' : 'ativa',
+      situacao: 'ativa',
       bolsa: venda.bolsa,
     });
 
@@ -393,44 +385,6 @@ export async function aplicarCompra(params: {
   });
 
   return carteira;
-}
-
-/**
- * Ativa a carteira que estava esperando o aceite (RF-CRE-01). Chamada
- * quando a aluna conclui o primeiro acesso — antes disso os créditos
- * existem, mas não permitem agendar.
- */
-export async function ativarCarteirasPendentes(params: {
-  alunaId: string;
-  autorId: string;
-  hoje?: string;
-}): Promise<Carteira | undefined> {
-  const { alunaId, autorId, hoje = hojeISO() } = params;
-
-  const pendente = await carteiraAguardandoAtivacao(alunaId);
-  if (!pendente) return undefined;
-
-  const pacotes = await pacoteRepositorio.listar();
-  const pacote = pacotes.find((p) => p.id === pendente.pacoteId);
-
-  // A validade passa a correr da ativação, não da compra (RF-CRE-12).
-  const dataValidade = pacote ? somarDias(hoje, pacote.validadeDias) : pendente.dataValidade;
-
-  const ativada = await carteiraRepositorio.atualizar(pendente.id, {
-    situacao: 'ativa',
-    dataAtivacao: hoje,
-    dataValidade,
-  });
-
-  await registroAuditoriaRepositorio.criar({
-    entidadeAfetada: 'Carteira',
-    operacao: 'ativacao_apos_aceite',
-    autorId,
-    dataHora: new Date().toISOString(),
-    valorNovo: { carteiraId: pendente.id, dataAtivacao: hoje, dataValidade },
-  });
-
-  return ativada;
 }
 
 // --- Ajuste administrativo (RF-CRE-09) -----------------------------------
@@ -490,7 +444,7 @@ export async function ajustarCarteira(params: {
   // Prorrogar ou conceder crédito reabre uma carteira que estava encerrada:
   // é exatamente o caso previsto no RF-CRE-09 ("inclusive de carteira já
   // encerrada"), e sem isso o ajuste ficaria sem efeito prático.
-  if (carteira.situacao !== 'ativa' && carteira.situacao !== 'aguardando_ativacao') {
+  if (carteira.situacao !== 'ativa') {
     // Os créditos que o vencimento tinha dado por perdidos voltam a valer:
     // o encerramento só registra a expiração no extrato, sem tirá-los dos
     // totais, então ao reabrir eles reaparecem no saldo. Sem a linha de

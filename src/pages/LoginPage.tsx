@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { usuarioRepositorio } from '../services/repositorios';
+import { alunaRepositorio, usuarioRepositorio } from '../services/repositorios';
 import { useSessao } from '../hooks/useSessao';
 import type { PerfilAcesso, Usuario } from '../types/domain';
 
@@ -18,13 +18,16 @@ const ROTA_PERFIL: Record<PerfilAcesso, string> = {
 
 export function LoginPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  /** Usuárias de aluna com termo ou anamnese pendente (RF-ALU-08). */
+  const [comPendencia, setComPendencia] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(true);
   const { entrarComo } = useSessao();
   const navegar = useNavigate();
 
   useEffect(() => {
-    usuarioRepositorio.listar().then((lista) => {
+    Promise.all([usuarioRepositorio.listar(), alunaRepositorio.listar()]).then(([lista, alunas]) => {
       setUsuarios(lista);
+      setComPendencia(alunas.filter((a) => a.situacao === 'aguardando_aceite').map((a) => a.usuarioId));
       setCarregando(false);
     });
   }, []);
@@ -75,8 +78,12 @@ export function LoginPage() {
             <li key={usuario.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-ink">{usuario.nome}</p>
               <p className="text-xs text-neutral-500">{usuario.email}</p>
-              {usuario.situacao === 'aguardando_aceite' && (
+              {usuario.situacao === 'aguardando_aceite' ? (
                 <p className="mt-1 text-xs font-medium text-amber-600">Aguardando aceite do termo</p>
+              ) : (
+                comPendencia.includes(usuario.id) && (
+                  <p className="mt-1 text-xs font-medium text-amber-600">Termo ou anamnese pendente</p>
+                )
               )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {usuario.perfis.map((perfil) => (
