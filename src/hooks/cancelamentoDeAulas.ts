@@ -1,12 +1,20 @@
 import {
   agendamentoRepositorio,
+  alunaRepositorio,
   ocorrenciaSessaoRepositorio,
   parametroRepositorio,
   registroAuditoriaRepositorio,
   sessaoRepositorio,
+  usuarioRepositorio,
 } from '../services/repositorios';
 import { notificar } from '../services/notificador';
-import type { Agendamento, OcorrenciaSessao, Sessao } from '../types/domain';
+import type {
+  Agendamento,
+  AlunaAfetada,
+  OcorrenciaSessao,
+  OrigemCancelamentoDaOcorrencia,
+  Sessao,
+} from '../types/domain';
 import { hojeISO, formatarDataBR } from '../utils/data';
 import { sessaoOcorreEm } from '../utils/grade';
 import {
@@ -62,19 +70,27 @@ async function agendamentosAtivosDa(ocorrenciaId: string): Promise<Agendamento[]
 /**
  * Cancela uma data específica de uma sessão: marca a ocorrência como
  * cancelada, cancela os agendamentos ativos, devolve o crédito de cada
- * aluna afetada (saldo + dias adicionais de vigência) e registra a
- * notificação. Devolve quantas alunas foram afetadas.
+ * aluna afetada (saldo + dias adicionais de vigência), registra a
+ * notificação e **preserva na ocorrência a relação das alunas que estavam
+ * agendadas** (RF-CPR-09, RN-16). Devolve quantas alunas foram afetadas.
+ *
+ * A relação é gravada com nome e telefone copiados, porque ela existe para
+ * o contato manual: é dela que sai o botão "Enviar mensagem" da tela de
+ * aulas canceladas, e ela precisa sobreviver a mudanças de cadastro.
  */
 export async function cancelarOcorrencia(
   sessao: Sessao,
   data: string,
   motivo: string,
   autorId: string,
+  origem: OrigemCancelamentoDaOcorrencia = 'exclusao_sessao',
 ): Promise<number> {
   const ocorrencia = await garantirOcorrencia(sessao, data);
   await ocorrenciaSessaoRepositorio.atualizar(ocorrencia.id, {
     situacao: 'cancelada',
     motivoCancelamento: motivo,
+    origemCancelamento: origem,
+    dataCancelamento: new Date().toISOString(),
   });
   await registroAuditoriaRepositorio.criar({
     entidadeAfetada: 'OcorrenciaSessao',
@@ -89,6 +105,8 @@ export async function cancelarOcorrencia(
   if (agendamentos.length === 0) return 0;
 
   const diasAdicionais = await diasAdicionaisPorCancelamento();
+  const [alunas, usuarios] = await Promise.all([alunaRepositorio.listar(), usuarioRepositorio.listar()]);
+  const afetadas: AlunaAfetada[] = [];
 
   for (const agendamento of agendamentos) {
     await agendamentoRepositorio.atualizar(agendamento.id, {
@@ -129,7 +147,22 @@ export async function cancelarOcorrencia(
         diasAdicionais > 0 ? ` e a validade dos seus créditos foi estendida em ${diasAdicionais} dias` : ''
       }.`,
     });
+
+    const aluna = alunas.find((a) => a.id === agendamento.alunaId);
+    afetadas.push({
+      alunaId: agendamento.alunaId,
+      nome: usuarios.find((u) => u.id === aluna?.usuarioId)?.nome ?? 'Aluna removida',
+      telefone: aluna?.telefone ?? '',
+      creditosDevolvidos: creditos,
+      // Sem carteira não há o que prorrogar: quem cancelou a única aula de
+      // uma carteira já encerrada não ganha dias.
+      diasProrrogados: carteira && diasAdicionais > 0 ? diasAdicionais : 0,
+      experimental: agendamento.experimental,
+      convenio: aluna?.origem === 'convenio',
+    });
   }
+
+  await ocorrenciaSessaoRepositorio.atualizar(ocorrencia.id, { alunasAfetadas: afetadas });
 
   return agendamentos.length;
 }
@@ -162,7 +195,7 @@ export async function cancelarOcorrenciasFuturasDaSessao(
 
   let afetadas = 0;
   for (const ocorrencia of futuras) {
-    afetadas += await cancelarOcorrencia(sessao, ocorrencia.data, motivo, autorId);
+    afetadas += await cancelarOcorrencia(sessao, ocorrencia.data, motivo, autorId, 'exclusao_sessao');
   }
   return afetadas;
 }

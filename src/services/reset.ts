@@ -67,6 +67,19 @@ const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
 };
 
 /**
+ * Chaves estrangeiras **dentro de listas embutidas**:
+ * `recurso → campoDaLista → { campo: recursoApontado }`.
+ *
+ * Existe porque nem toda FK é um campo no topo do registro: a relação de
+ * alunas afetadas mora dentro da ocorrência cancelada (RF-CPR-09), e sem
+ * traduzir o `alunaId` de cada item ela apontaria para o id do backfill
+ * depois de um reset.
+ */
+const CHAVES_ESTRANGEIRAS_EM_LISTAS: Record<string, Record<string, Record<string, string>>> = {
+  ocorrenciasSessao: { alunasAfetadas: { alunaId: 'alunas' } },
+};
+
+/**
  * Ordena os recursos para que um registro só seja criado depois daquele a
  * que ele aponta — assim o id novo do alvo já existe no mapa quando a FK
  * precisa ser traduzida.
@@ -79,7 +92,10 @@ function ordenarPorDependencia(recursos: string[]): string[] {
     const antes = pendentes.size;
 
     for (const recurso of [...pendentes]) {
-      const dependencias = Object.values(CHAVES_ESTRANGEIRAS[recurso] ?? {}).filter(
+      const embutidas = Object.values(CHAVES_ESTRANGEIRAS_EM_LISTAS[recurso] ?? {}).flatMap((mapa) =>
+        Object.values(mapa),
+      );
+      const dependencias = [...Object.values(CHAVES_ESTRANGEIRAS[recurso] ?? {}), ...embutidas].filter(
         (alvo) => alvo !== recurso && recursos.includes(alvo),
       );
       if (dependencias.every((alvo) => resolvidos.includes(alvo))) {
@@ -105,15 +121,33 @@ function traduzirChavesEstrangeiras(
   idsPorRecurso: Record<string, Record<string, string>>,
 ): Record<string, unknown> {
   const mapaDoRecurso = CHAVES_ESTRANGEIRAS[recurso];
-  if (!mapaDoRecurso) return registro;
+  const mapaDeListas = CHAVES_ESTRANGEIRAS_EM_LISTAS[recurso];
+  if (!mapaDoRecurso && !mapaDeListas) return registro;
 
   const traduzido = { ...registro };
-  for (const [campo, recursoAlvo] of Object.entries(mapaDoRecurso)) {
+  for (const [campo, recursoAlvo] of Object.entries(mapaDoRecurso ?? {})) {
     const valor = traduzido[campo];
     if (typeof valor !== 'string') continue;
     const idNovo = idsPorRecurso[recursoAlvo]?.[valor];
     if (idNovo) traduzido[campo] = idNovo;
   }
+
+  for (const [campoDaLista, mapaDoItem] of Object.entries(mapaDeListas ?? {})) {
+    const lista = traduzido[campoDaLista];
+    if (!Array.isArray(lista)) continue;
+    traduzido[campoDaLista] = lista.map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      const copia = { ...(item as Record<string, unknown>) };
+      for (const [campo, recursoAlvo] of Object.entries(mapaDoItem)) {
+        const valor = copia[campo];
+        if (typeof valor !== 'string') continue;
+        const idNovo = idsPorRecurso[recursoAlvo]?.[valor];
+        if (idNovo) copia[campo] = idNovo;
+      }
+      return copia;
+    });
+  }
+
   return traduzido;
 }
 

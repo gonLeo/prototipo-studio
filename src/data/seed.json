@@ -613,7 +613,7 @@
       "creditosUtilizados": 1,
       "creditosReservados": 2,
       "dataAtivacao": "@hoje-42",
-      "dataValidade": "@hoje+48",
+      "dataValidade": "@hoje+55",
       "situacao": "ativa",
       "bolsa": false
     },
@@ -782,6 +782,37 @@
       "origem": "Créditos perdidos no vencimento de {{@hoje-48}}",
       "autorId": "usr-admin",
       "dataHora": "@hoje-47T03:00"
+    },
+    {
+      "id": "mov-14",
+      "carteiraId": "car-larissa",
+      "tipo": "reserva",
+      "quantidade": 1,
+      "origem": "Agendamento de {{@proxima(terca,quinta)}} às 15:00",
+      "referenciaId": "agd-larissa-cancelada",
+      "autorId": "usr-aluna-1",
+      "dataHora": "@hoje-2T19:10"
+    },
+    {
+      "id": "mov-15",
+      "carteiraId": "car-larissa",
+      "tipo": "liberacao",
+      "quantidade": 1,
+      "origem": "Aula de {{@proxima(terca,quinta)}} cancelada pelo studio: Exceção de calendário: Manutenção no ar-condicionado da sala principal",
+      "referenciaId": "agd-larissa-cancelada",
+      "autorId": "usr-admin",
+      "dataHora": "@hoje-1T08:30"
+    },
+    {
+      "id": "mov-16",
+      "carteiraId": "car-larissa",
+      "tipo": "ajuste",
+      "quantidade": 7,
+      "unidade": "dias",
+      "origem": "Prorrogação por cancelamento da aula de {{@proxima(terca,quinta)}}",
+      "referenciaId": "agd-larissa-cancelada",
+      "autorId": "usr-admin",
+      "dataHora": "@hoje-1T08:30"
     }
   ],
   "vendas": [
@@ -1008,6 +1039,36 @@
       "data": "@ultima(terca,quinta)",
       "professoraEfetivaId": "prof-2",
       "situacao": "ativa"
+    },
+    {
+      "id": "oco-danca-cancelada",
+      "sessaoId": "ses-3",
+      "data": "@proxima(terca,quinta)",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "cancelada",
+      "motivoCancelamento": "Exceção de calendário: Manutenção no ar-condicionado da sala principal",
+      "origemCancelamento": "excecao",
+      "dataCancelamento": "@hoje-1T08:30",
+      "alunasAfetadas": [
+        {
+          "alunaId": "alu-larissa",
+          "nome": "Larissa Prado",
+          "telefone": "(65) 9680-6348",
+          "creditosDevolvidos": 1,
+          "diasProrrogados": 7,
+          "experimental": false,
+          "convenio": false
+        },
+        {
+          "alunaId": "alu-renata",
+          "nome": "Renata Souza",
+          "telefone": "(65) 9680-6348",
+          "creditosDevolvidos": 0,
+          "diasProrrogados": 0,
+          "experimental": false,
+          "convenio": true
+        }
+      ]
     }
   ],
   "aulasExcepcionais": [],
@@ -1075,6 +1136,30 @@
       "situacao": "ativo",
       "experimental": true,
       "creditosReservados": 0
+    },
+    {
+      "id": "agd-larissa-cancelada",
+      "alunaId": "alu-larissa",
+      "ocorrenciaSessaoId": "oco-danca-cancelada",
+      "origem": "portal",
+      "dataHora": "@hoje-2T19:10",
+      "situacao": "cancelado",
+      "origemCancelamento": "studio",
+      "experimental": false,
+      "creditosReservados": 1,
+      "creditoDevolvido": true
+    },
+    {
+      "id": "agd-renata-cancelada",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-danca-cancelada",
+      "origem": "convenio",
+      "dataHora": "@hoje-2T20:05",
+      "situacao": "cancelado",
+      "origemCancelamento": "studio",
+      "experimental": false,
+      "creditosReservados": 0,
+      "creditoDevolvido": false
     }
   ],
   "excecoesCalendario": [
@@ -1085,6 +1170,14 @@
       "descricao": "Feriado municipal",
       "autorId": "usr-admin",
       "dataCriacao": "@hoje-20T10:00"
+    },
+    {
+      "id": "exc-2",
+      "data": "@proxima(terca,quinta)",
+      "tipo": "manutencao",
+      "descricao": "Manutenção no ar-condicionado da sala principal",
+      "autorId": "usr-admin",
+      "dataCriacao": "@hoje-1T08:30"
     }
   ],
   "chamadas": [],
@@ -1206,6 +1299,15 @@
       "conteudo": "Bem-vinda ao studio! O pacote \"Starter\" está reservado para você, com 4 créditos e validade de 45 dias. Valor do pacote: R$ 220,00, em pagamento único. Acesse o sistema com o link enviado e confirme o pagamento: seus créditos são liberados na confirmação. Ficou pendente: o aceite do termo e a ficha de anamnese. Conclua pelo seu painel quando puder — isso não impede o agendamento.",
       "dataEnvio": "@hoje-2T11:00",
       "situacaoEnvio": "enviada"
+    },
+    {
+      "id": "not-larissa-cancelada",
+      "destinatarioId": "usr-aluna-1",
+      "evento": "aula_cancelada_pelo_studio",
+      "canal": "email",
+      "conteudo": "Sua aula de {{@proxima(terca,quinta)}} foi cancelada. Motivo: Exceção de calendário: Manutenção no ar-condicionado da sala principal. Os créditos reservados voltaram ao seu saldo e a validade dos seus créditos foi estendida em 7 dias.",
+      "dataEnvio": "@hoje-1T08:30",
+      "situacaoEnvio": "enviada"
     }
   ],
   "registrosAuditoria": [
@@ -1244,6 +1346,20 @@
         "alunaId": "alu-helena",
         "pacote": "Starter",
         "bolsista": false
+      }
+    },
+    {
+      "id": "aud-cancelamento-danca",
+      "entidadeAfetada": "OcorrenciaSessao",
+      "operacao": "cancelamento",
+      "autorId": "usr-admin",
+      "dataHora": "@hoje-1T08:30",
+      "valorAnterior": {
+        "situacao": "ativa"
+      },
+      "valorNovo": {
+        "situacao": "cancelada",
+        "motivoCancelamento": "Exceção de calendário: Manutenção no ar-condicionado da sala principal"
       }
     }
   ]

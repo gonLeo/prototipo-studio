@@ -340,7 +340,7 @@ export function GradePage() {
       const canceladas = await grade.remover(sessao, usuario.id);
       mostrarToast(
         canceladas > 0
-          ? `Sessão excluída. ${canceladas} agendamento(s) cancelado(s) com crédito devolvido.`
+          ? `Sessão excluída. ${canceladas} agendamento(s) cancelado(s) com crédito devolvido. Veja quem avisar pelo WhatsApp em "Aulas canceladas".`
           : 'Sessão excluída.',
         'sucesso',
       );
@@ -563,7 +563,10 @@ export function GradePage() {
             onEncerrar={async (dataTermino) => {
               if (!usuario) return;
               await grade.encerrar(encerrando, dataTermino, usuario.id);
-              mostrarToast(`Sessão encerrada a partir de ${formatarDataBR(dataTermino)}.`, 'sucesso');
+              mostrarToast(
+                `Sessão encerrada a partir de ${formatarDataBR(dataTermino)}. As alunas das datas canceladas ficam em "Aulas canceladas".`,
+                'sucesso',
+              );
             }}
             onFechar={() => setEncerrando(null)}
           />

@@ -15,6 +15,7 @@ import { ProfessorasPage } from './pages/administracao/ProfessorasPage';
 import { CategoriasProfessoraPage } from './pages/administracao/CategoriasProfessoraPage';
 import { CategoriasAulaPage } from './pages/administracao/CategoriasAulaPage';
 import { GradePage } from './pages/administracao/GradePage';
+import { AulasCanceladasPage } from './pages/administracao/AulasCanceladasPage';
 import { ExcecoesPage } from './pages/administracao/ExcecoesPage';
 import { PacotesPage } from './pages/administracao/PacotesPage';
 import { AlunasPage } from './pages/administracao/AlunasPage';
@@ -98,6 +99,7 @@ function App() {
                 <Route path="categorias-aula" element={<CategoriasAulaPage />} />
                 <Route path="grade" element={<GradePage />} />
                 <Route path="excecoes" element={<ExcecoesPage />} />
+                <Route path="aulas-canceladas" element={<AulasCanceladasPage />} />
                 <Route path="alunas" element={<AlunasPage />} />
                 <Route path="alunas/:alunaId" element={<AlunaFichaPage />} />
                 <Route path="pacotes" element={<PacotesPage />} />

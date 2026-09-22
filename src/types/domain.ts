@@ -455,6 +455,36 @@ export interface Sessao {
 
 export type SituacaoOcorrencia = 'ativa' | 'cancelada';
 
+/**
+ * Por que o studio cancelou a ocorrência (RF-CPR-09). São os quatro
+ * caminhos do fluxo 6.6.1 — todos passam por `cancelarOcorrencia`.
+ */
+export type OrigemCancelamentoDaOcorrencia =
+  | 'excecao'
+  | 'exclusao_sessao'
+  | 'solicitacao_professora'
+  | 'conflito_excepcional';
+
+/**
+ * Aluna que estava agendada quando o studio cancelou a aula (RF-CPR-09).
+ *
+ * Nome e telefone são **copiados** no momento do cancelamento, não
+ * resolvidos depois: a relação precisa continuar íntegra mesmo que o
+ * cadastro mude ou a aluna seja removida. É o que a administração usa para
+ * avisar cada uma pelo WhatsApp enquanto o canal não é integrado.
+ */
+export interface AlunaAfetada {
+  alunaId: ID;
+  nome: string;
+  telefone: string;
+  creditosDevolvidos: number;
+  diasProrrogados: number;
+  /** Aula experimental: paga à parte, sem crédito a devolver (RF-EXP-06). */
+  experimental: boolean;
+  /** Aluna de convênio: a reserva é do parceiro, não há crédito no studio. */
+  convenio: boolean;
+}
+
 export interface OcorrenciaSessao {
   id: ID;
   sessaoId: ID;
@@ -462,6 +492,10 @@ export interface OcorrenciaSessao {
   professoraEfetivaId: ID;
   situacao: SituacaoOcorrencia;
   motivoCancelamento?: string;
+  origemCancelamento?: OrigemCancelamentoDaOcorrencia;
+  /** RN-16: a relação das alunas agendadas é preservada na ocorrência. */
+  alunasAfetadas?: AlunaAfetada[];
+  dataCancelamento?: string;
 }
 
 export type OrigemAgendamento = 'portal' | 'administracao' | 'convenio';

@@ -177,6 +177,7 @@ export async function aprovarComCancelamento(params: {
     solicitacao.data,
     `Aula cancelada pelo studio: ${solicitacao.motivo}`,
     autorId,
+    'solicitacao_professora',
   );
 
   await solicitacaoCancelamentoRepositorio.atualizar(solicitacao.id, {

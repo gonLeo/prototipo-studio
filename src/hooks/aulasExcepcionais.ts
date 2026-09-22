@@ -257,6 +257,7 @@ export async function criarAulaExcepcional(params: {
         dados.data,
         `Aula excepcional "${aula.nome}" ocupa este horário`,
         autorId,
+        'conflito_excepcional',
       );
       sessoesCanceladas += 1;
     }

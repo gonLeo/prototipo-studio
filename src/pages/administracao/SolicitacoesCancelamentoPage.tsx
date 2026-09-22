@@ -364,7 +364,7 @@ export function SolicitacoesCancelamentoPage() {
               await recarregar();
               mostrarToast(
                 alunasAfetadas > 0
-                  ? `Aula cancelada. ${alunasAfetadas} aluna(s) receberam o crédito de volta com dias adicionais.`
+                  ? `Aula cancelada. ${alunasAfetadas} aluna(s) receberam o crédito de volta com dias adicionais. Veja quem avisar pelo WhatsApp em "Aulas canceladas".`
                   : 'Aula cancelada.',
                 'sucesso',
               );

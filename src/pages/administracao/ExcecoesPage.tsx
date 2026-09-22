@@ -305,7 +305,7 @@ export function ExcecoesPage() {
               const resultado = await criar(dados, usuario.id);
               mostrarToast(
                 resultado.sessoesCanceladas > 0
-                  ? `Exceção cadastrada. ${resultado.sessoesCanceladas} sessão(ões) cancelada(s) e ${resultado.alunasAfetadas} aluna(s) notificada(s).`
+                  ? `Exceção cadastrada. ${resultado.sessoesCanceladas} sessão(ões) cancelada(s) e ${resultado.alunasAfetadas} aluna(s) notificada(s). Veja quem avisar pelo WhatsApp em "Aulas canceladas".`
                   : 'Exceção cadastrada. Nenhuma sessão acontecia nesta data.',
                 'sucesso',
               );

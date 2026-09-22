@@ -84,6 +84,7 @@ export function useExcecoesCalendario() {
         dados.data,
         `${PREFIXO_MOTIVO}: ${dados.descricao.trim()}`,
         autorId,
+        'excecao',
       );
     }
 

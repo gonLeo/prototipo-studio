@@ -9,7 +9,7 @@ Dinâmica: **um lote por ciclo.** O lote só começa com autorização explícit
 - [x] Preparação — cenários prometidos à cliente (termo nominal, renovação antecipada, prorrogação em carteira vencida) — entregue em 21/09/2026, registrado em `PROGRESSO_ATUALIZACAO.md`
 - [x] Lote 0 — Seed com datas relativas e telefone único das alunas
 - [x] Lote 1 — Pendência de aceite e pagamento antes do termo (item 1)
-- [ ] Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp (item 2)
+- [x] Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp (item 2)
 - [ ] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
 - [ ] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
 - [ ] Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone (itens 5, 6, 8, 10)
@@ -167,23 +167,61 @@ Percorrido no navegador, depois de um reset: contagem de pendências (3) e filtr
 
 ## Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp
 
-_Não iniciado. Escopo nas seções 4.4, 5, 6.3 e no Lote 2 da seção 10 do plano._
+**Quem estava agendada deixou de sumir com o toast.** Antes, cancelar uma aula devolvia crédito, prorrogava validade, mandava e-mail e dizia "3 alunas notificadas" — e pronto: a informação de *quem* eram acabava ali. Agora a relação fica gravada na própria ocorrência cancelada, com o telefone de cada uma, e a administração avisa pelo WhatsApp a partir de uma tela (RF-CPR-09, RN-16, fluxo 6.6.1).
 
 ### O que foi entregue
 
-_— a preencher —_
+**Modelo de dados**
+
+- **`OcorrenciaSessao`** ganhou `origemCancelamento` (exceção de calendário, sessão excluída ou encerrada, solicitação da professora, conflito com aula excepcional), `alunasAfetadas` e `dataCancelamento`.
+- **`AlunaAfetada`** (tipo novo) guarda `alunaId`, **nome e telefone copiados**, `creditosDevolvidos`, `diasProrrogados` e as marcas `experimental` e `convenio`. Copiados, e não resolvidos na leitura, porque a relação precisa continuar íntegra se o cadastro mudar — e porque ela é, literalmente, o registro de quem foi afetado naquele dia.
+
+**Domínio**
+
+- **`cancelarOcorrencia` passou a receber a origem e a gravar a relação.** Os quatro caminhos do fluxo 6.6.1 já convergiam nessa função; cada um agora diz de onde veio: `useExcecoesCalendario` (`excecao`), `useGradeHorarios` via `cancelarOcorrenciasFuturasDaSessao` (`exclusao_sessao`), `solicitacoesDeCancelamento` (`solicitacao_professora`) e `aulasExcepcionais` (`conflito_excepcional`).
+- **`src/hooks/alunasAfetadas.ts`** (novo) — leitura das aulas canceladas, com modalidade, horário e professora vindos da sessão; `mensagemParaAluna` e `linkDoWhatsApp`; `ROTULO_ORIGEM_CANCELAMENTO`.
+- **A mensagem muda com a origem e com a compensação.** Exceção convida a remarcar; turma encerrada oferece outra turma; solicitação da professora cita o nome dela; conflito com aula excepcional convida para o evento. Quem é de convênio não recebe promessa de crédito de volta — a reserva dela é do parceiro — e quem fez experimental é convidada a remarcar sem custo. O prefixo interno do motivo ("Exceção de calendário:") é removido do texto que vai para a aluna.
+- **`src/services/reset.ts`** aprendeu a traduzir **chaves estrangeiras dentro de listas embutidas** (`CHAVES_ESTRANGEIRAS_EM_LISTAS`). Sem isso, o `alunaId` de cada item de `alunasAfetadas` continuaria apontando para o id do backfill depois de um reset. A ordenação por dependência também passou a considerar essas chaves.
+
+**Telas**
+
+- **`AulasCanceladasPage`** (nova, `/administracao/aulas-canceladas`, menu Operação) — lista das ocorrências canceladas, mais recente primeiro, com data, horário, modalidade, professora, origem e motivo. Expandindo uma linha aparece a relação: nome, telefone, o que cada aluna recebeu de volta e o botão **"Enviar mensagem"**, que abre o WhatsApp em outra aba com o texto pronto. Filtro entre "aulas que ainda iam acontecer" e todas, busca por modalidade, professora, motivo ou aluna, e exportação CSV com uma linha por aluna.
+- **Os quatro toasts de cancelamento** passaram a apontar a tela: "Veja quem avisar pelo WhatsApp em «Aulas canceladas»". O toast é texto puro no kit atual; um link dentro dele exigiria mudar a API do `useToast`, o que não se justifica para isso.
+
+**Seed**
+
+- Uma **aula de dança já cancelada** por manutenção na próxima terça ou quinta, com **Larissa** (1 crédito devolvido, 7 dias de validade) e **Renata** (convênio, sem crédito) na relação — o cenário existe logo depois do reset, sem preparo. Vêm junto os agendamentos cancelados, os três movimentos de crédito da Larissa (reserva, liberação e prorrogação), a validade da carteira dela já com os 7 dias somados, a notificação e o registro de auditoria.
+
+**Guia**
+
+- Cenário novo **"Cancelamento pelo studio: avisar as alunas"**, com o fluxo 6.6.1.
+- "Exceção no calendário", "A professora pede para cancelar" e "Conflito com a grade" ganharam o passo final de abrir a relação.
+- "O que é simulado" ganhou o item **WhatsApp**, dizendo que o botão abre o aplicativo de verdade, sempre para +55 65 9680-6348, e que o envio não é registrado.
 
 ### Decisões deste lote
 
-_— a preencher —_
+- **A relação é gravada, não derivada.** Daria para recalcular varrendo agendamentos cancelados com `origemCancelamento: 'studio'`, mas o requisito fala em *preservar* a relação: ela precisa sobreviver a uma aluna excluída ou renomeada, e precisa registrar quanto cada uma recebeu de volta naquele momento — informação que o agendamento sozinho não guarda.
+- **Uma tela só, em Operação.** A alternativa era repetir a consulta nas quatro telas de origem. A cliente precisa de um lugar para procurar "quem eu tenho que avisar", não de quatro.
+- **A mensagem é pré-escrita e muda com o caso.** Um texto genérico ("sua aula foi cancelada") obrigaria a reescrever tudo à mão, que é exatamente o trabalho que o botão existe para poupar.
+- **O clique não registra nada.** O RF-CPR-09 é explícito: o sistema não controla se a mensagem foi enviada. Marcar "avisada" seria inventar comportamento.
+- **Sem carteira não há dias a prorrogar.** `diasProrrogados` fica em zero quando a aluna não tinha carteira vigente, para a mensagem não prometer uma prorrogação que não houve.
 
 ### Como testar
 
-_— a preencher —_
+1. **Resetar protótipo** e abrir **Operação → Aulas canceladas**: a aula de DANÇA da próxima terça ou quinta aparece com a origem "Exceção de calendário".
+2. Clique em **"2 aluna(s)"**: a relação abre com Larissa (telefone, "1 crédito devolvido · +7 dias de validade") e Renata, com o selo "Convênio".
+3. Clique em **"Enviar mensagem"** na Larissa: o WhatsApp abre em outra aba, para **+55 65 9680-6348**, com o texto citando o crédito e os dias. Faça o mesmo na Renata: a mensagem manda reservar pelo aplicativo do convênio, sem falar em crédito.
+4. **Cadastre uma exceção nova** numa data com aula agendada (a próxima segunda ou quarta tem a aula da Larissa). O toast aponta a tela; volte a ela e veja as duas novas linhas — a das 08:00 com duas alunas e a das 09:00 com "Nenhuma aluna".
+5. Troque o filtro para "Aulas que ainda iam acontecer" e exporte o CSV: uma linha por aluna, com telefone, créditos e dias.
+6. Confira os outros caminhos: aprovar uma solicitação da professora com cancelamento, ou criar uma aula excepcional em conflito com a grade — as linhas aparecem com a origem correta e a mensagem muda de texto.
 
 ### Verificação executada
 
-_— a preencher —_
+Percorrido no navegador depois de um reset: a tela com a aula do seed, a relação com as duas alunas, e os dois links do WhatsApp conferidos pelo `href` (número `556596806348` e a mensagem decodificada). Cadastrada uma exceção real em 23/09/2026: o toast citou a tela, as duas ocorrências foram canceladas com `origemCancelamento: 'excecao'`, e a relação foi gravada com Larissa (1 crédito, 7 dias) e Renata (0/0, convênio) — confirmando que o caminho de escrita funciona, não só o dado do backfill. Verificado também que o reset traduz o `alunaId` dentro de `alunasAfetadas` para os ids novos. Dados de teste apagados com um reset final.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes.
+
+**Ajustes feitos durante a verificação**: o detalhe dizia "1 crédito devolvido(s)", agora flexiona; a mensagem para a aluna de convênio terminava convidando a remarcar conosco logo depois de mandá-la ao aplicativo do parceiro; faltava um espaço entre duas frases da mensagem; e o motivo aparecia com o prefixo interno "Exceção de calendário:" repetido dentro do texto enviado.
 
 ---
 

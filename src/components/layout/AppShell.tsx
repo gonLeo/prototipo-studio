@@ -33,6 +33,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
         { to: '/administracao/grade', label: 'Grade de horários' },
         { to: '/administracao/aulas-excepcionais', label: 'Aulas excepcionais' },
         { to: '/administracao/excecoes', label: 'Exceções' },
+        { to: '/administracao/aulas-canceladas', label: 'Aulas canceladas' },
         { to: '/administracao/justificativas', label: 'Justificativas' },
         { to: '/administracao/solicitacoes', label: 'Solicitações' },
         { to: '/administracao/vendas', label: 'Vendas' },

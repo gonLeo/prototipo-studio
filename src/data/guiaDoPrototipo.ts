@@ -72,6 +72,7 @@ export const SIMULACOES = [
   { o: 'Pagamento', como: 'O gateway é simulado. Uma venda pendente tem os botões "Aprovar no gateway" e "Confirmar pagamento" em Vendas, que fazem o papel do retorno do provedor.' },
   { o: 'E-mail', como: 'Nenhum e-mail sai de verdade. Cada disparo fica registrado em Configuração → Notificações, com destinatária, evento, requisito e o texto que seria enviado.' },
   { o: 'Convênio', como: 'Não há API do Wellhub ou TotalPass. As mensagens que viriam do parceiro — reserva, cancelamento, check-in — são disparadas pela administração em Convênios.' },
+  { o: 'WhatsApp', como: 'O botão "Enviar mensagem", em Aulas canceladas, abre o WhatsApp de verdade com a mensagem já escrita — sempre para o número +55 65 9680-6348, para a conversa cair no aparelho de quem está demonstrando. O sistema não registra se a mensagem foi enviada.' },
   { o: 'Pendência de aceite', como: 'Termo e anamnese não bloqueiam nada: quem pula vê um alerta no painel e entra na contagem de pendências da administração. Bloquear o agendamento até o aceite é evolução de outra fase (EV-16).' },
   { o: 'Rotinas automáticas', como: 'O que no sistema real rodaria sozinho todo dia (encerrar carteiras vencidas, renovar bolsas, avisar "Finalizando") é o botão "Rodar rotina de carteiras", em Vendas. Carregar uma tela nunca altera dados.' },
   { o: 'Datas', como: 'Os dados de exemplo são gerados em relação ao dia do reset: a última aula de segunda ou quarta às 08:00 já passou (Larissa cancelou em cima da hora e justificou), a próxima está agendada, o pacote da Patrícia vence em 5 dias, o da Aline venceu há semanas. Resetar num outro dia refaz tudo em relação a esse dia.' },
@@ -500,7 +501,7 @@ export const GUIA: GrupoDoGuia[] = [
           { perfil: A, texto: 'Crie outra às 22:00: o alerta de fora do funcionamento aparece e o botão vira "Confirmar assim mesmo".' },
         ],
         conferir: [
-          'Cancelando a sessão em conflito, as alunas recebem os créditos de volta e a validade prorrogada.',
+          'Cancelando a sessão em conflito, as alunas recebem os créditos de volta e a validade prorrogada, e aparecem em Aulas canceladas com a origem "Conflito com aula excepcional".',
           'A aula fora do horário nasce com o selo "Fora do funcionamento".',
           'A aula excepcional nunca aparece na grade da aluna nem na lista de espelhamento dos convênios.',
         ],
@@ -528,8 +529,30 @@ export const GUIA: GrupoDoGuia[] = [
   {
     id: 'studio-cancela',
     titulo: 'Quando o studio cancela',
-    descricao: 'Feriado, professora indisponível, sessão excluída: crédito devolvido e validade prorrogada, sempre.',
+    descricao: 'Feriado, professora indisponível, sessão excluída: crédito devolvido, validade prorrogada e a relação de quem avisar.',
     cenarios: [
+      {
+        id: 'avisar-alunas',
+        titulo: 'Cancelamento pelo studio: avisar as alunas',
+        resumo: 'A relação de quem estava agendada fica registrada, com telefone e um botão que abre o WhatsApp com a mensagem pronta.',
+        fluxo: '6.6.1 Cancelamento de aula pelo estúdio',
+        regras: ['RN-16'],
+        requisitos: ['RF-CPR-09', 'RF-CPR-07', 'RF-NOT-05'],
+        preparo: 'Depois do reset já existe uma aula de dança cancelada por manutenção, com Larissa e Renata na relação.',
+        passos: [
+          { perfil: A, texto: 'Em Operação → Aulas canceladas, a lista traz a aula de dança, o motivo e a origem "Exceção de calendário".' },
+          { perfil: A, texto: 'Clique em "2 aluna(s)" para abrir a relação: nome, telefone e o que cada uma recebeu de volta.' },
+          { perfil: A, texto: 'Clique em "Enviar mensagem" na Larissa: o WhatsApp abre em outra aba, com o texto já escrito.' },
+          { perfil: A, texto: 'Faça o mesmo na Renata e compare as mensagens.' },
+          { perfil: A, texto: 'Cadastre uma exceção nova numa data com aula agendada e volte a esta tela.' },
+        ],
+        conferir: [
+          'A mensagem da Larissa fala do crédito devolvido e dos dias de validade; a da Renata, que é de convênio, manda reservar outro horário pelo aplicativo do parceiro — convênio não tem crédito no studio.',
+          'A origem do cancelamento muda o texto: exceção convida a remarcar, turma encerrada oferece outra turma, aula excepcional convida para o evento.',
+          'Nada é gravado ao clicar: o escopo diz que o sistema não controla o envio enquanto o WhatsApp não é integrado.',
+          'A relação continua lá depois de um tempo — ela é gravada na ocorrência, não recalculada dos agendamentos.',
+        ],
+      },
       {
         id: 'excecao-calendario',
         titulo: 'Exceção no calendário',
@@ -541,9 +564,11 @@ export const GUIA: GrupoDoGuia[] = [
           { perfil: A, texto: 'Em Exceções, "Nova exceção" nessa data, com o motivo. A prévia diz quantas alunas serão afetadas.' },
           { perfil: A, texto: 'Confirme.' },
           { perfil: L, texto: 'Como Larissa, navegue a grade até a data.' },
+          { perfil: A, texto: 'Em Aulas canceladas, abra a relação das alunas dessa data.' },
         ],
         conferir: [
           'A grade mostra "O studio não abre em…" com o motivo, em vez de um dia vazio.',
+          'A relação preservada traz quem estava agendada, com telefone e o botão do WhatsApp (RF-CPR-09).',
           'Em Minhas aulas, a aula aparece "Cancelada pelo studio" com o crédito devolvido, e a validade da carteira ganhou os dias de prorrogação.',
           'Duas exceções em datas diferentes prorrogam duas vezes: a prorrogação é por ocorrência.',
         ],
@@ -559,6 +584,7 @@ export const GUIA: GrupoDoGuia[] = [
           { perfil: A, texto: 'No painel, "Solicitações de cancelamento". Abra a fila.' },
           { perfil: A, texto: 'Aprove com substituta (a aula continua, com outra professora) ou "Aprovar e cancelar a aula".' },
           { perfil: P, texto: 'Como Beatriz, veja a situação da solicitação em Minhas aulas.' },
+          { perfil: A, texto: 'Cancelando: em Aulas canceladas, a origem é "Solicitação da professora" e a mensagem do WhatsApp cita o nome dela.' },
         ],
         conferir: [
           'Enquanto pendente, a aula continua na grade da aluna.',

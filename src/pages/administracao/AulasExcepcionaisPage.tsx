@@ -661,7 +661,7 @@ export function AulasExcepcionaisPage() {
               await recarregar();
               mostrarToast(
                 sessoesCanceladas > 0
-                  ? `Aula criada. ${sessoesCanceladas} sessão(ões) da grade cancelada(s) e ${alunasAfetadas} aluna(s) avisada(s).`
+                  ? `Aula criada. ${sessoesCanceladas} sessão(ões) da grade cancelada(s) e ${alunasAfetadas} aluna(s) avisada(s). Veja quem avisar pelo WhatsApp em "Aulas canceladas".`
                   : 'Aula excepcional criada.',
                 'sucesso',
               );
