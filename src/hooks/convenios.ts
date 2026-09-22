@@ -48,6 +48,20 @@ export const NOMES_CONVENIO: { valor: NomeConvenio; rotulo: string }[] = [
   { valor: 'totalpass', rotulo: 'TotalPass' },
 ];
 
+/**
+ * Convênios com integração automática na Fase 1.
+ *
+ * Só o Wellhub: o TotalPass opera em contingência manual até a Fase 2, e a
+ * integração dele é a evolução EV-21 (v2.1, capítulo 10.2). Os requisitos
+ * RF-CNV-01 a RF-CNV-13 valem, nesta fase, para o Wellhub; o TotalPass é
+ * atendido pelo RF-CNV-14, que é a reserva registrada manualmente.
+ */
+export const CONVENIOS_COM_INTEGRACAO: NomeConvenio[] = ['wellhub'];
+
+export function temIntegracaoAutomatica(convenio: NomeConvenio): boolean {
+  return CONVENIOS_COM_INTEGRACAO.includes(convenio);
+}
+
 export function rotuloDoConvenio(convenio: NomeConvenio): string {
   return NOMES_CONVENIO.find((c) => c.valor === convenio)?.rotulo ?? convenio;
 }
@@ -74,6 +88,12 @@ export async function salvarIntegracao(params: {
   autorId: string;
 }): Promise<ConvenioIntegracao> {
   const { convenio, credenciais, situacaoIntegracao, autorId } = params;
+
+  if (!temIntegracaoAutomatica(convenio)) {
+    throw new RegraNegocioError(
+      `A integração automática com o ${rotuloDoConvenio(convenio)} está prevista para a Fase 2 (EV-21). Na Fase 1 as reservas e presenças dele são registradas manualmente, em "Reserva manual".`,
+    );
+  }
 
   if (!credenciais.trim()) {
     throw new RegraNegocioError('Informe a credencial de integração fornecida pelo convênio.');
@@ -107,6 +127,11 @@ export async function salvarIntegracao(params: {
 
 /** Marca a sincronização da grade com o parceiro (RF-CNV-01). */
 export async function registrarSincronizacao(integracao: ConvenioIntegracao): Promise<ConvenioIntegracao> {
+  if (!temIntegracaoAutomatica(integracao.convenio)) {
+    throw new RegraNegocioError(
+      `Não há grade espelhada no ${rotuloDoConvenio(integracao.convenio)} nesta fase: as reservas dele são registradas manualmente.`,
+    );
+  }
   if (integracao.situacaoIntegracao === 'inativa') {
     throw new RegraNegocioError('Ative a integração deste convênio antes de sincronizar a grade.');
   }
@@ -514,6 +539,9 @@ export async function relatorioDeConvenios(params: {
 
 /** Texto curto do estado da integração, usado nas telas. */
 export function descreverIntegracao(integracao: ConvenioIntegracao | undefined): string {
+  if (integracao && !temIntegracaoAutomatica(integracao.convenio)) {
+    return 'Contingência manual na Fase 1 — reservas e presenças registradas pela administração. A integração automática está prevista para a Fase 2 (EV-21).';
+  }
   if (!integracao) return 'Sem credenciais cadastradas.';
   if (integracao.situacaoIntegracao === 'inativa') return 'Integração inativa.';
   const quando = integracao.dataUltimaSincronizacao

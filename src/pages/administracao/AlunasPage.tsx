@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useAlunas, aplicarFiltroDeAluna, FILTROS_ALUNA, rotuloDeAcesso } from '../../hooks/useAlunas';
+import {
+  alunaCorresponde,
+  aplicarFiltroDeAluna,
+  FILTROS_ALUNA,
+  rotuloDeAcesso,
+  useAlunas,
+} from '../../hooks/useAlunas';
 import type { FiltroAluna } from '../../hooks/useAlunas';
 import { usePacotes } from '../../hooks/usePacotes';
 import { useSessao } from '../../hooks/useSessao';
@@ -264,11 +270,8 @@ export function AlunasPage() {
           itens={filtradas}
           chave={(aluna) => aluna.id}
           busca={{
-            placeholder: 'Buscar por nome, e-mail ou CPF',
-            corresponde: (aluna, termo) =>
-              aluna.usuario.nome.toLowerCase().includes(termo) ||
-              aluna.usuario.email.toLowerCase().includes(termo) ||
-              aluna.usuario.cpf.includes(termo),
+            placeholder: 'Buscar por nome, CPF ou telefone',
+            corresponde: alunaCorresponde,
           }}
           colunas={[
             { chave: 'aluna', rotulo: 'Aluna' },

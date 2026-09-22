@@ -747,14 +747,32 @@ export function ModalReembolso({
         {formatarMoeda(venda.valor)} em {rotuloFormaPagamento(venda.formaPagamento, venda.parcelas)}.
       </p>
 
-      <SelectField label="Tipo de reembolso" value={tipo} onChange={(e) => setTipo(e.target.value as TipoReembolso)}>
+      <SelectField
+        label="Tipo de reembolso"
+        value={tipo}
+        onChange={(e) => setTipo(e.target.value as TipoReembolso)}
+        dica="O arrependimento vale dentro do prazo e com até metade dos créditos usados; fora disso, o caminho é o motivo legal (RF-REE-07)."
+      >
         <option value="arrependimento">Arrependimento (dentro do prazo)</option>
-        <option value="legal">Motivo legal (mediante documentação)</option>
+        <option value="legal">Motivo legal (após o prazo ou com mais de 50% consumidos)</option>
       </SelectField>
 
       {previa && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
           <dl className="flex flex-col gap-1 text-sm">
+            {/* RF-REE-03: a prévia mostra data da compra, dias decorridos e
+                percentual consumido antes de qualquer valor. */}
+            <div className="flex justify-between gap-2">
+              <dt className="text-neutral-500">Data da compra</dt>
+              <dd className="text-ink">{formatarDataBR(venda.data)}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-neutral-500">Dias decorridos</dt>
+              <dd className="text-ink">
+                {previa.diasDesdeACompra} {previa.diasDesdeACompra === 1 ? 'dia' : 'dias'}
+                {tipo === 'arrependimento' && ` · prazo de arrependimento: ${previa.prazoArrependimentoDias} dias`}
+              </dd>
+            </div>
             <div className="flex justify-between gap-2">
               <dt className="text-neutral-500">Valor pago</dt>
               <dd className="text-ink">{formatarMoeda(previa.valorPago)}</dd>

@@ -422,9 +422,11 @@ export async function fecharPeriodo(params: {
 /** RF-COM-09: registra o pagamento do período fechado. */
 export async function marcarFechamentoComoPago(params: {
   fechamento: FechamentoComissao;
+  /** Nome do arquivo do comprovante de transferência (RF-COM-09). Opcional. */
+  comprovante?: string;
   autorId: string;
 }): Promise<void> {
-  const { fechamento, autorId } = params;
+  const { fechamento, comprovante, autorId } = params;
 
   if (fechamento.situacao === 'pago') throw new RegraNegocioError('Este fechamento já está marcado como pago.');
   if (fechamento.situacao === 'aberto') throw new RegraNegocioError('Feche o período antes de registrar o pagamento.');
@@ -432,6 +434,9 @@ export async function marcarFechamentoComoPago(params: {
   await fechamentoComissaoRepositorio.atualizar(fechamento.id, {
     situacao: 'pago',
     dataPagamento: hojeISO(),
+    // Mesmo tratamento do anexo da justificativa: guardamos o nome
+    // informado como referência, e o upload fica para a API real.
+    comprovante: comprovante?.trim() ? `anexo-simulado://${comprovante.trim()}` : undefined,
   });
 
   await registroAuditoriaRepositorio.criar({
@@ -439,6 +444,11 @@ export async function marcarFechamentoComoPago(params: {
     operacao: 'registro_de_pagamento',
     autorId,
     dataHora: new Date().toISOString(),
-    valorNovo: { fechamentoId: fechamento.id, dataPagamento: hojeISO() },
+    valorNovo: { fechamentoId: fechamento.id, dataPagamento: hojeISO(), comprovante: comprovante?.trim() },
   });
+}
+
+/** Nome do arquivo do comprovante, sem o prefixo do anexo simulado. */
+export function nomeDoComprovante(fechamento: FechamentoComissao): string | undefined {
+  return fechamento.comprovante?.replace('anexo-simulado://', '');
 }

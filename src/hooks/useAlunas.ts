@@ -65,6 +65,22 @@ export const FILTROS_ALUNA: Array<{ valor: FiltroAluna; rotulo: string }> = [
   { valor: 'bolsistas', rotulo: 'Bolsistas' },
 ];
 
+/**
+ * Busca única por nome, CPF ou telefone (RF-ALU-10).
+ *
+ * CPF e telefone são comparados só pelos dígitos: quem busca digita
+ * "65968" ou "12345678900" sem a pontuação que o cadastro guarda.
+ */
+export function alunaCorresponde(aluna: AlunaComDetalhes, termo: string): boolean {
+  const digitos = termo.replace(/\D/g, '');
+  return (
+    aluna.usuario.nome.toLowerCase().includes(termo) ||
+    aluna.usuario.email.toLowerCase().includes(termo) ||
+    (digitos.length > 0 &&
+      (aluna.usuario.cpf.replace(/\D/g, '').includes(digitos) || aluna.telefone.replace(/\D/g, '').includes(digitos)))
+  );
+}
+
 export function aplicarFiltroDeAluna(aluna: AlunaComDetalhes, filtro: FiltroAluna): boolean {
   switch (filtro) {
     case 'todas':

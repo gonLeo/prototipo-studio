@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useSessao } from '../../hooks/useSessao';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -9,6 +10,7 @@ import {
   detalharComissoes,
   fecharPeriodo,
   marcarFechamentoComoPago,
+  nomeDoComprovante,
   periodoAtual,
   sessoesSemPresencaNoPeriodo,
 } from '../../hooks/comissoes';
@@ -25,6 +27,7 @@ import type { FechamentoComissao } from '../../types/domain';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { TextField } from '../../components/ui/Field';
 import { baixarCSV } from '../../utils/csv';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/creditos';
@@ -52,6 +55,54 @@ interface PendenciaDeChamada {
  * (RF-PRE-08), que precisam ser finalizadas antes de fechar o período —
  * cada uma delas é uma comissão que ainda não existe.
  */
+/** Registro do pagamento do fechamento, com comprovante opcional (RF-COM-09). */
+function FormularioPagamento({
+  fechamento,
+  onConfirmar,
+  onFechar,
+}: {
+  fechamento: FechamentoComissao;
+  onConfirmar: (comprovante?: string) => Promise<void>;
+  onFechar: () => void;
+}) {
+  const [comprovante, setComprovante] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  return (
+    <form
+      onSubmit={async (e: FormEvent) => {
+        e.preventDefault();
+        setSalvando(true);
+        await onConfirmar(comprovante.trim() || undefined);
+        setSalvando(false);
+      }}
+      className="flex flex-col gap-4"
+    >
+      <p className="text-sm text-neutral-600">
+        Confirmar o pagamento de <strong className="font-semibold text-ink">{formatarMoeda(fechamento.totalGeral)}</strong>{' '}
+        referente ao período de {formatarDataBR(fechamento.dataInicio)} a {formatarDataBR(fechamento.dataFim)}?
+      </p>
+
+      <TextField
+        label="Comprovante (opcional)"
+        value={comprovante}
+        onChange={(e) => setComprovante(e.target.value)}
+        dica="Informe o nome do arquivo da transferência. O envio de arquivo entra com a API real; o pagamento é registrado com ou sem ele."
+      />
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variante="secundaria" onClick={onFechar}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={salvando}>
+          {salvando ? 'Registrando…' : 'Marcar como pago'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+
 export function ComissoesPage() {
   const { usuario } = useSessao();
   const confirmar = useConfirm();
@@ -61,6 +112,7 @@ export function ComissoesPage() {
   const [fechamentos, setFechamentos] = useState<FechamentoComissao[]>([]);
   const [pendencias, setPendencias] = useState<PendenciaDeChamada[]>([]);
   const [semPresenca, setSemPresenca] = useState<SessaoSemPresenca[]>([]);
+  const [pagando, setPagando] = useState<FechamentoComissao | null>(null);
   const [detalhando, setDetalhando] = useState<ResumoDeProfessora | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -157,17 +209,19 @@ export function ComissoesPage() {
 
   async function registrarPagamento(fechamento: FechamentoComissao) {
     if (!usuario) return;
-    const ok = await confirmar({
-      titulo: 'Registrar pagamento',
-      mensagem: `Confirmar o pagamento de ${formatarMoeda(fechamento.totalGeral)} referente ao período de ${formatarDataBR(fechamento.dataInicio)} a ${formatarDataBR(fechamento.dataFim)}?`,
-      textoConfirmar: 'Marcar como pago',
-    });
-    if (!ok) return;
+    setPagando(fechamento);
+  }
 
+  async function confirmarPagamento(comprovante?: string) {
+    if (!usuario || !pagando) return;
     try {
-      await marcarFechamentoComoPago({ fechamento, autorId: usuario.id });
+      await marcarFechamentoComoPago({ fechamento: pagando, comprovante, autorId: usuario.id });
+      setPagando(null);
       await carregar();
-      mostrarToast('Pagamento registrado.', 'sucesso');
+      mostrarToast(
+        comprovante ? 'Pagamento registrado com o comprovante anexado.' : 'Pagamento registrado.',
+        'sucesso',
+      );
     } catch (erroCapturado) {
       mostrarToast(erroCapturado instanceof Error ? erroCapturado.message : 'Erro inesperado.', 'erro');
     }
@@ -335,6 +389,12 @@ export function ComissoesPage() {
                 <p className="text-xs text-neutral-500">
                   Fechado em {fechamento.dataFechamento ? formatarDataBR(fechamento.dataFechamento) : '—'}
                   {fechamento.dataPagamento ? ` · pago em ${formatarDataBR(fechamento.dataPagamento)}` : ''}
+                  {/* RF-COM-09: o anexo é opcional, e a tela diz qual dos
+                      dois casos aconteceu em vez de simplesmente omitir. */}
+                  {fechamento.situacao === 'pago' &&
+                    (nomeDoComprovante(fechamento)
+                      ? ` · comprovante: ${nomeDoComprovante(fechamento)}`
+                      : ' · sem comprovante anexado')}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -400,6 +460,16 @@ export function ComissoesPage() {
           </div>
         </Modal>
       )}
+      {pagando && (
+        <Modal titulo="Registrar pagamento" onFechar={() => setPagando(null)}>
+          <FormularioPagamento
+            fechamento={pagando}
+            onConfirmar={confirmarPagamento}
+            onFechar={() => setPagando(null)}
+          />
+        </Modal>
+      )}
+
     </div>
   );
 }

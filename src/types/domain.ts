@@ -662,6 +662,12 @@ export interface FechamentoComissao {
   situacao: SituacaoFechamento;
   dataFechamento?: string;
   dataPagamento?: string;
+  /**
+   * Comprovante da transferência (RF-COM-09). Opcional: o pagamento é
+   * registrado com ou sem ele. Como o resto dos anexos do protótipo,
+   * guarda o nome do arquivo — o upload entra com a API real.
+   */
+  comprovante?: string;
   autorId: ID;
 }
 

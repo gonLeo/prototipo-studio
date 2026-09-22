@@ -92,6 +92,8 @@ export interface PreviaDeReembolso {
   creditosComprados: number;
   creditosUtilizados: number;
   percentualUtilizado: number;
+  /** Prazo vigente do arrependimento, para a prévia dizer contra o que os dias foram comparados. */
+  prazoArrependimentoDias: number;
   valorPago: number;
   valorUnitario: number;
   valorDescontado: number;
@@ -151,6 +153,7 @@ export async function calcularPreviaDeReembolso(params: {
     creditosComprados: venda.creditos,
     creditosUtilizados,
     percentualUtilizado,
+    prazoArrependimentoDias: regras.prazoArrependimentoDias,
     valorPago: venda.valor,
     valorUnitario,
     valorDescontado,
@@ -188,8 +191,10 @@ export async function calcularPreviaDeReembolso(params: {
       );
     }
     if (percentualUtilizado > regras.percentualMaximoUtilizado) {
+      // RF-REE-07: passar do limite não fecha a porta — muda o caminho. A
+      // recusa diz a saída, como já fazia a recusa por prazo.
       return recusar(
-        `A aluna já utilizou ${percentualUtilizado}% dos créditos comprados, acima do limite de ${regras.percentualMaximoUtilizado}%.`,
+        `A aluna já utilizou ${percentualUtilizado}% dos créditos comprados, acima do limite de ${regras.percentualMaximoUtilizado}%. Avalie o reembolso por motivo legal, mediante documentação.`,
       );
     }
   }

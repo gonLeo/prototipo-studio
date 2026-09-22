@@ -5,6 +5,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
 import {
   NOMES_CONVENIO,
+  temIntegracaoAutomatica,
   alternarEspelhamento,
   cadastrarAlunaDeConvenio,
   cancelarReserva,
@@ -651,7 +652,7 @@ export function ConveniosPage() {
                               : 'Inativa'}
                         </Badge>
                       )}
-                      {integracao && integracao.situacaoIntegracao !== 'inativa' && (
+                      {integracao && integracao.situacaoIntegracao !== 'inativa' && temIntegracaoAutomatica(item.valor) && (
                         <Button
                           variante="secundaria"
                           onClick={() =>
@@ -664,12 +665,19 @@ export function ConveniosPage() {
                           Sincronizar grade
                         </Button>
                       )}
-                      <Button
-                        variante="secundaria"
-                        onClick={() => setModal({ tipo: 'integracao', convenio: item.valor })}
-                      >
-                        {integracao ? 'Editar credenciais' : 'Cadastrar credenciais'}
-                      </Button>
+                      {/* Sem integração automática nesta fase não há
+                          credencial a guardar: o que existe é a reserva
+                          manual, na aba Reservas (RF-CNV-14, EV-21). */}
+                      {temIntegracaoAutomatica(item.valor) ? (
+                        <Button
+                          variante="secundaria"
+                          onClick={() => setModal({ tipo: 'integracao', convenio: item.valor })}
+                        >
+                          {integracao ? 'Editar credenciais' : 'Cadastrar credenciais'}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-neutral-500">Sem credencial nesta fase</span>
+                      )}
                     </div>
                   </li>
                 );

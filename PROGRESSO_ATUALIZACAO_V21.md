@@ -12,7 +12,7 @@ Dinâmica: **um lote por ciclo.** O lote só começa com autorização explícit
 - [x] Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp (item 2)
 - [x] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
 - [x] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
-- [ ] Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone (itens 5, 6, 8, 10)
+- [x] Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone (itens 5, 6, 8, 10)
 - [ ] Lote 6 — Consolidação da documentação (README, CLAUDE.md, PROGRESSO_ATUALIZACAO.md)
 
 ## Decisões fixadas (21/09/2026)
@@ -354,23 +354,67 @@ Percorrido no navegador depois de um reset, com um workshop criado para o teste:
 
 ## Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone
 
-_Não iniciado. Escopo nas seções 4.4, 5, 6.5 e no Lote 5 da seção 10 do plano._
+Os quatro itens menores da v2.1, cada um em um módulo diferente.
 
 ### O que foi entregue
 
-_— a preencher —_
+**Item 5 — comprovante do fechamento (RF-COM-09)**
+
+- `FechamentoComissao.comprovante` (opcional) e `marcarFechamentoComoPago({ comprovante? })`. Guarda o nome do arquivo com o mesmo prefixo `anexo-simulado://` do anexo da justificativa; `nomeDoComprovante` devolve o nome limpo para a tela.
+- "Registrar pagamento" deixou de ser um `useConfirm` e virou modal com o campo **"Comprovante (opcional)"**. A linha do fechamento passou a dizer `comprovante: <arquivo>` ou **"sem comprovante anexado"** — o anexo é opcional, mas a tela não deixa a dúvida no ar.
+
+**Item 6 — prévia do reembolso (RF-REE-03, RF-REE-07)**
+
+- `PreviaDeReembolso` ganhou `prazoArrependimentoDias`, para a prévia dizer contra o que os dias foram comparados.
+- O modal mostra, antes de qualquer valor, **data da compra**, **dias decorridos** (com o prazo vigente ao lado, no arrependimento) e o percentual consumido, que já existia.
+- A recusa por mais de 50% consumidos passou a **indicar o motivo legal como saída**, como a recusa por prazo já fazia. O rótulo do tipo agora diz "Motivo legal (após o prazo ou com mais de 50% consumidos)", e a dica do campo resume a regra.
+
+**Item 8 — TotalPass em contingência manual (RF-CNV-14, EV-21)**
+
+- `CONVENIOS_COM_INTEGRACAO` e `temIntegracaoAutomatica` em `convenios.ts`: na Fase 1 só o Wellhub. Cadastrar credencial ou sincronizar a grade do TotalPass é recusado, com a mensagem apontando a reserva manual e a Fase 2.
+- Em Credenciais, o TotalPass aparece com o selo "Contingência", o texto explicando a fase, sem "Sincronizar grade" e sem botão de credencial — no lugar, "Sem credencial nesta fase".
+- Reserva manual, check-in, relatório e chamada continuam iguais para os dois: o que muda é quem registra.
+
+**Item 10 — busca única por nome, CPF ou telefone (RF-ALU-10)**
+
+- `alunaCorresponde` em `useAlunas.ts` compara nome e e-mail por texto e **CPF e telefone só pelos dígitos**: quem busca digita "65968" ou "12345678900" sem a pontuação que o cadastro guarda. A lista de alunas passou a usá-la, e o placeholder virou "Buscar por nome, CPF ou telefone".
+
+**Seed**
+
+- **TotalPass sem credencial, em contingência**, e sem data de sincronização.
+- **Mariana Teixeira** (nova): aluna do TotalPass, com termo e anamnese em dia, agendamento e **reserva registrada em contingência** (`origemRegistro: 'contingencia'`) na última aula de dança, mais o registro de auditoria da reserva manual.
+
+**Guia**
+
+- Cenário novo **"TotalPass em contingência manual"**; persona da Mariana.
+- "Fechar o mês e registrar o pagamento" ganhou o passo do comprovante e a conferência das duas linhas possíveis.
+- "Reembolso por arrependimento" passou a citar os dias decorridos e a recusa por percentual, com o caminho para reproduzi-la.
+- "Matrícula pulando o termo" ganhou o passo da busca por telefone.
+- "O que é simulado": item **Anexos** (comprovante e justificativa guardam só o nome do arquivo) e o texto de convênio reescrito para separar Wellhub de TotalPass.
 
 ### Decisões deste lote
 
-_— a preencher —_
+- **A tela diz "sem comprovante anexado" em vez de omitir.** Um campo opcional que simplesmente some deixa quem confere sem saber se o anexo não existe ou se a tela não mostra.
+- **Recusar não é fechar a porta.** As duas recusas do arrependimento — prazo e percentual — agora terminam apontando o reembolso por motivo legal, que é exatamente o que o RF-REE-07 passou a prever.
+- **O TotalPass perdeu o botão de credencial, não só a permissão.** Deixar o botão e recusar no salvamento faria a pessoa preencher um formulário para levar um "não".
+- **CPF e telefone são comparados por dígitos.** Comparar o texto cru exigiria digitar a máscara exata do cadastro, o que na prática inutiliza a busca.
 
 ### Como testar
 
-_— a preencher —_
+1. **Resetar protótipo.** Em **Alunas**, busque `9680`: todas aparecem (é o telefone comum do protótipo). Busque `121.212` ou `121212`: só Mariana Teixeira.
+2. Em **Convênios → Credenciais**: o Wellhub tem credencial e "Sincronizar grade"; o TotalPass aparece com "Contingência", o texto da Fase 2 e "Sem credencial nesta fase".
+3. Em **Convênios → Reservas**, veja a reserva da Mariana registrada em contingência, e registre outra pela "Reserva manual".
+4. Em **Comissões**, "Fechar período" e depois **"Registrar pagamento"**: informe o nome de um arquivo. A linha do fechamento passa a mostrar `comprovante: <arquivo>`. Repita sem informar nada em outro período: a linha diz "sem comprovante anexado".
+5. Na ficha da **Patrícia**, histórico de compras, "Reembolsar": a prévia mostra data da compra, **dias decorridos** com o prazo ao lado, e 75% consumidos. A recusa por prazo sugere o motivo legal.
+6. Para ver a recusa por consumo: em **Parâmetros**, aumente o "Prazo de arrependimento" para 60 dias e repita — a recusa passa a ser pelo percentual, também indicando o motivo legal.
 
 ### Verificação executada
 
-_— a preencher —_
+Percorrido no navegador depois de um reset: busca por `9680` (8 alunas) e por `121.212` (só Mariana); a aba Credenciais com o Wellhub completo e o TotalPass em contingência, sem sincronização e sem botão de credencial; fechamento do período de setembro e registro do pagamento com o comprovante `transferencia-beatriz-setembro.pdf`, gravado como `anexo-simulado://…` e exibido na linha do fechamento; a prévia de reembolso da Patrícia com "Data da compra 13/08/2026", "Dias decorridos 40 dias · prazo de arrependimento: 7 dias" e "3 de 4 (75%)", recusada pelo prazo com a indicação do motivo legal; e, com o prazo ampliado para 60 dias, a recusa pelo percentual com a mesma indicação. Dados de teste apagados com um reset final, que devolveu o parâmetro a 7 dias.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes.
+
+**Ajustes feitos durante a verificação**: o TotalPass ainda exibia "Editar credenciais", que levaria a um formulário fadado à recusa — o botão deu lugar a "Sem credencial nesta fase"; e o passo do guia sobre a recusa por percentual prometia um resultado que a regra de prazo alcançava antes, então passou a dizer como reproduzir o caso.
 
 ---
 
