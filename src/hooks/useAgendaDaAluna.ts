@@ -233,7 +233,8 @@ export function useAgendaDaAluna(usuarioId: string | undefined) {
     const alocacoes = await alocacoesDaAluna(minha.id);
     const excepcionais: AulaDaAluna[] = alocacoes.map((alocacao) => ({
       id: alocacao.id,
-      alunaId: alocacao.alunaId,
+      // `alocacoesDaAluna` já filtra pela aluna: aqui o id sempre existe.
+      alunaId: minha.id,
       ocorrenciaSessaoId: '',
       // A alocação não passa por portal nem por convênio: quem inclui a
       // aluna é a administração (RF-AEX-04).

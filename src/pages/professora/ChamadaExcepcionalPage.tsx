@@ -71,9 +71,11 @@ export function ChamadaExcepcionalPage() {
     carregar();
   }, [carregar]);
 
-  function alternarPresenca(alunaId: string) {
+  // A chave é o id da aluna ou, para participante sem cadastro, o da
+  // alocação (RF-AEX-06).
+  function alternarPresenca(chave: string) {
     setAlunas((atual) =>
-      atual.map((aluna) => (aluna.alunaId === alunaId ? { ...aluna, presente: !aluna.presente } : aluna)),
+      atual.map((aluna) => (aluna.chave === chave ? { ...aluna, presente: !aluna.presente } : aluna)),
     );
   }
 
@@ -136,8 +138,11 @@ export function ChamadaExcepcionalPage() {
 
       <div className="mt-4 rounded-lg bg-neutral-100 px-3 py-2 text-sm">
         <p className="text-neutral-600">
-          {presentes} de {alunas.length} presente(s) · cada participação consumiu{' '}
-          {formatarCreditos(aula.custoEmCreditos)}
+          {/* Parte das participantes pode ter sido alocada sem consumo, e
+              até sem cadastro (RF-AEX-06): o custo é da categoria da aula,
+              não uma afirmação sobre o que cada uma pagou. */}
+          {presentes} de {alunas.length} presente(s) · {formatarCreditos(aula.custoEmCreditos)} por participação com
+          consumo
         </p>
         <p className="mt-0.5 text-xs text-neutral-500">
           {aula.professoras.length === 0
@@ -155,18 +160,28 @@ export function ChamadaExcepcionalPage() {
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
           {alunas.map((aluna) => (
-            <li key={aluna.alunaId} className="flex flex-col gap-1">
+            <li key={aluna.chave} className="flex flex-col gap-1">
               <button
                 type="button"
-                onClick={() => alternarPresenca(aluna.alunaId)}
+                onClick={() => alternarPresenca(aluna.chave)}
                 disabled={finalizada}
                 aria-pressed={aluna.presente}
                 className={`flex w-full items-center justify-between gap-3 rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                   aluna.presente ? 'border-emerald-300 bg-emerald-50' : 'border-neutral-300 bg-white'
                 }`}
               >
-                <span className={`text-base font-medium ${aluna.presente ? 'text-ink' : 'text-neutral-500'}`}>
-                  {aluna.nome}
+                <span className="min-w-0">
+                  <span className={`block text-base font-medium ${aluna.presente ? 'text-ink' : 'text-neutral-500'}`}>
+                    {aluna.nome}
+                  </span>
+                  {/* RF-PRE-02: a participante sem cadastro aparece na lista
+                      identificada, com o telefone no lugar do link da ficha. */}
+                  {aluna.semCadastro && (
+                    <span className="text-xs text-neutral-500">Sem cadastro · {aluna.telefone}</span>
+                  )}
+                  {aluna.origemConvenio && (
+                    <span className="text-xs text-neutral-500">Convênio · participação paga à parte</span>
+                  )}
                 </span>
                 <span
                   className={`flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-semibold ${
@@ -176,13 +191,16 @@ export function ChamadaExcepcionalPage() {
                   {aluna.presente ? 'Presente' : 'Ausente'}
                 </span>
               </button>
-              {/* RF-PRE-09: o mesmo atalho da chamada regular. */}
-              <Link
-                to={`/professora/alunas/${aluna.alunaId}`}
-                className="self-start rounded px-1 py-0.5 text-xs font-medium text-primary-700 hover:text-primary-800"
-              >
-                Ver ficha da aluna
-              </Link>
+              {/* RF-PRE-09: o mesmo atalho da chamada regular. Participante
+                  sem cadastro não tem ficha para abrir. */}
+              {aluna.alunaId && (
+                <Link
+                  to={`/professora/alunas/${aluna.alunaId}`}
+                  className="self-start rounded px-1 py-0.5 text-xs font-medium text-primary-700 hover:text-primary-800"
+                >
+                  Ver ficha da aluna
+                </Link>
+              )}
             </li>
           ))}
         </ul>

@@ -45,7 +45,12 @@ const CHAVES_ESTRANGEIRAS: Record<string, Record<string, string>> = {
     aulaExcepcionalId: 'aulasExcepcionais',
     professoraId: 'professoras',
   },
-  registrosPresenca: { chamadaId: 'chamadas', alunaId: 'alunas', autorId: 'usuarios' },
+  registrosPresenca: {
+    chamadaId: 'chamadas',
+    alunaId: 'alunas',
+    alocacaoId: 'alocacoes',
+    autorId: 'usuarios',
+  },
   justificativas: { agendamentoId: 'agendamentos', alunaId: 'alunas', autorAnaliseId: 'usuarios' },
   solicitacoesCancelamento: {
     sessaoId: 'sessoes',

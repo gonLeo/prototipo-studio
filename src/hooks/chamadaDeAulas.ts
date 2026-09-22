@@ -35,11 +35,21 @@ import { alocacoesDaAula, professorasDaAula } from './aulasExcepcionais';
  */
 
 export interface AlunaNaChamada {
+  /**
+   * Identificador da linha na lista: o id da aluna, ou o da alocação
+   * quando a participante não tem cadastro (RF-AEX-06). É por ele que a
+   * tela alterna a presença.
+   */
+  chave: string;
   /** Preenchido na aula da grade; ausente na aula excepcional. */
   agendamentoId?: string;
   /** Preenchido na aula excepcional; ausente na aula da grade. */
   alocacaoId?: string;
-  alunaId: string;
+  /** Ausente para participante sem cadastro. */
+  alunaId?: string;
+  /** Telefone da participante sem cadastro, o único contato que existe dela. */
+  telefone?: string;
+  semCadastro: boolean;
   nome: string;
   origemConvenio: boolean;
   /** RF-EXP-06: a aluna experimental aparece identificada como tal. */
@@ -121,6 +131,8 @@ export async function carregarChamada(params: {
       (r) => r.ocorrenciaSessaoId === ocorrencia.id && r.alunaId === agendamento.alunaId && r.situacao === 'confirmada',
     );
     return {
+      chave: agendamento.alunaId,
+      semCadastro: false,
       agendamentoId: agendamento.id,
       alunaId: agendamento.alunaId,
       nome: dados?.nome ?? 'Aluna removida',
@@ -253,7 +265,13 @@ async function gravarRegistrosDePresenca(params: {
 
   for (const aluna of alunas) {
     const situacao: RegistroPresenca['situacao'] = aluna.presente ? 'presente' : 'ausente';
-    const existente = registros.find((r) => r.chamadaId === chamada.id && r.alunaId === aluna.alunaId);
+    // A participante sem cadastro não tem `alunaId`: o registro dela é
+    // identificado pela alocação (RF-AEX-06).
+    const existente = registros.find(
+      (r) =>
+        r.chamadaId === chamada.id &&
+        (aluna.alunaId ? r.alunaId === aluna.alunaId : r.alocacaoId === aluna.alocacaoId),
+    );
 
     if (existente) {
       await registroPresencaRepositorio.atualizar(existente.id, { situacao, dataHora: new Date().toISOString() });
@@ -261,6 +279,7 @@ async function gravarRegistrosDePresenca(params: {
       await registroPresencaRepositorio.criar({
         chamadaId: chamada.id,
         alunaId: aluna.alunaId,
+        alocacaoId: aluna.alunaId ? undefined : aluna.alocacaoId,
         situacao,
         // O check-in vem validado do aplicativo do parceiro (RF-CNV-06). A
         // presença marcada aqui sem check-in vale para o controle interno
@@ -275,7 +294,7 @@ async function gravarRegistrosDePresenca(params: {
     // convertem a reserva em consumo. A conversão acontece uma única vez —
     // a correção da chamada reescreve a presença, mas não cobra de novo. O
     // crédito só volta por justificativa aprovada (RF-JUS-04).
-    if (!aluna.agendamentoId) continue;
+    if (!aluna.agendamentoId || !aluna.alunaId) continue;
     const agendamento = agendamentos.find((a) => a.id === aluna.agendamentoId);
     const jaConsumido = agendamento?.situacao === 'realizado';
     const creditos = agendamento?.creditosReservados ?? 0;
@@ -395,9 +414,11 @@ export async function corrigirChamada(params: {
     },
   });
 
-  for (const aluna of alunas.filter((a) => !a.presente)) {
+  // Participante sem cadastro não recebe aviso: ela não tem acesso ao
+  // sistema (RF-AEX-06).
+  for (const aluna of alunas.filter((a) => !a.presente && a.alunaId)) {
     await notificar({
-      destinatario: { tipo: 'aluna', id: aluna.alunaId },
+      destinatario: { tipo: 'aluna', id: aluna.alunaId as string },
       evento: 'presenca_corrigida',
       conteudo: `A chamada da aula de ${formatarDataBR(dataAula)} foi corrigida e você consta como ausente. Se houver um motivo, você pode enviar uma justificativa.`,
     });
@@ -421,8 +442,9 @@ export async function corrigirChamada(params: {
  * mesmo motivo da chamada da grade.
  *
  * A lista sai das alocações ativas, não de agendamentos: em aula
- * excepcional quem inclui a aluna é a administração (RF-AEX-04). Alunas de
- * convênio não aparecem porque não podem ser alocadas (RF-AEX-11).
+ * excepcional quem inclui a participante é a administração (RF-AEX-04).
+ * Entram também as participantes sem cadastro e as alunas de convênio
+ * alocadas com pagamento à parte (RF-PRE-02, RF-AEX-06/11).
  */
 export async function carregarChamadaDeAulaExcepcional(
   aulaExcepcionalId: string,
@@ -440,13 +462,21 @@ export async function carregarChamadaDeAulaExcepcional(
     .filter((a) => a.situacao === 'ativa')
     .map((alocacao) => {
       const registro = chamada
-        ? registros.find((r) => r.chamadaId === chamada.id && r.alunaId === alocacao.alunaId)
+        ? registros.find(
+            (r) =>
+              r.chamadaId === chamada.id &&
+              (alocacao.alunaId ? r.alunaId === alocacao.alunaId : r.alocacaoId === alocacao.id),
+          )
         : undefined;
+      const daAluna = alocacao.alunaId ? alunasPorId[alocacao.alunaId] : undefined;
       return {
+        chave: alocacao.alunaId ?? alocacao.id,
         alocacaoId: alocacao.id,
         alunaId: alocacao.alunaId,
-        nome: alunasPorId[alocacao.alunaId]?.nome ?? 'Aluna removida',
-        origemConvenio: false,
+        telefone: alocacao.participanteSemCadastro?.telefone,
+        semCadastro: alocacao.participanteSemCadastro !== undefined,
+        nome: alocacao.participanteSemCadastro?.nome ?? daAluna?.nome ?? 'Aluna removida',
+        origemConvenio: daAluna?.origemConvenio ?? false,
         experimental: false,
         checkinConvenio: false,
         presente: registro ? registro.situacao === 'presente' : true,

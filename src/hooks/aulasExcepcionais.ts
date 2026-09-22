@@ -18,6 +18,7 @@ import type {
   AulaExcepcional,
   CategoriaAula,
   MotivoSemConsumo,
+  ParticipanteSemCadastro,
   ProfessoraDaAula,
   Sessao,
 } from '../types/domain';
@@ -327,31 +328,52 @@ export async function alocacoesDaAula(aulaExcepcionalId: string): Promise<Alocac
  */
 export async function alocarAluna(params: {
   aula: AulaExcepcional;
-  alunaId: string;
+  /** Ausente quando a participante não tem cadastro (RF-AEX-06). */
+  alunaId?: string;
+  participanteSemCadastro?: ParticipanteSemCadastro;
   consumoDispensado?: boolean;
   motivoSemConsumo?: MotivoSemConsumo;
   autorId: string;
 }): Promise<Alocacao> {
-  const { aula, alunaId, consumoDispensado = false, motivoSemConsumo, autorId } = params;
+  const { aula, alunaId, participanteSemCadastro, consumoDispensado = false, motivoSemConsumo, autorId } = params;
 
   if (aula.situacao === 'cancelada') throw new RegraNegocioError('Esta aula foi cancelada.');
+  if (!alunaId && !participanteSemCadastro) {
+    throw new RegraNegocioError('Escolha uma aluna ou informe a participante sem cadastro.');
+  }
   if (consumoDispensado && !motivoSemConsumo) {
     throw new RegraNegocioError('Escolha o motivo da alocação sem consumo de créditos.');
   }
 
-  const alunas = await alunaRepositorio.listar();
-  const aluna = alunas.find((a) => a.id === alunaId);
-  if (!aluna) throw new RegraNegocioError('Aluna não encontrada.');
+  // Participante sem cadastro não tem pacote de onde debitar: a
+  // participação dela é sempre sem consumo, com o pagamento fora do
+  // sistema (RF-AEX-06).
+  if (participanteSemCadastro) {
+    if (!consumoDispensado) {
+      throw new RegraNegocioError(
+        'Participante sem cadastro não tem pacote no studio: registre a participação sem consumo de créditos.',
+      );
+    }
+    if (!participanteSemCadastro.nome.trim() || !participanteSemCadastro.telefone.trim()) {
+      throw new RegraNegocioError('Informe o nome e o telefone da participante sem cadastro.');
+    }
+  }
 
-  // RF-AEX-11: aluna de convênio não participa de workshop nem de aula particular.
-  if (aluna.origem === 'convenio') {
+  const alunas = await alunaRepositorio.listar();
+  const aluna = alunaId ? alunas.find((a) => a.id === alunaId) : undefined;
+  if (alunaId && !aluna) throw new RegraNegocioError('Aluna não encontrada.');
+
+  // RF-AEX-11: o convênio cobre só a grade regular, mas a aluna de convênio
+  // pode participar pagando à parte — alocada sem consumo, como qualquer
+  // pagamento tratado fora do sistema.
+  if (aluna?.origem === 'convenio' && !consumoDispensado) {
     throw new RegraNegocioError(
-      'Alunas de convênio não participam de workshops nem de aulas particulares — o convênio cobre apenas a grade regular.',
+      'Alunas de convênio não têm créditos no studio: o convênio cobre apenas a grade regular. Para incluí-la, registre a participação sem consumo, com o pagamento tratado à parte.',
     );
   }
 
   const jaAlocadas = await alocacoesDaAula(aula.id);
-  if (jaAlocadas.some((a) => a.alunaId === alunaId && a.situacao === 'ativa')) {
+  if (alunaId && jaAlocadas.some((a) => a.alunaId === alunaId && a.situacao === 'ativa')) {
     throw new RegraNegocioError('Esta aluna já está alocada nesta aula.');
   }
 
@@ -359,7 +381,7 @@ export async function alocarAluna(params: {
   const categoria = categorias.find((c) => c.id === aula.categoriaAulaId);
   const custo = consumoDispensado ? 0 : (categoria?.custoEmCreditos ?? 0);
 
-  if (custo > 0) {
+  if (custo > 0 && alunaId) {
     const carteira = await carteiraVigenteDaAluna(alunaId);
     if (!carteira) {
       throw new RegraNegocioError(
@@ -377,6 +399,9 @@ export async function alocarAluna(params: {
   const alocacao = await alocacaoRepositorio.criar({
     aulaExcepcionalId: aula.id,
     alunaId,
+    participanteSemCadastro: participanteSemCadastro
+      ? { nome: participanteSemCadastro.nome.trim(), telefone: participanteSemCadastro.telefone.trim() }
+      : undefined,
     creditosConsumidos: custo,
     consumoDispensado,
     motivoSemConsumo: consumoDispensado ? motivoSemConsumo : undefined,
@@ -393,22 +418,27 @@ export async function alocarAluna(params: {
     valorNovo: {
       aulaId: aula.id,
       alunaId,
+      participante: participanteSemCadastro?.nome,
       creditosConsumidos: custo,
       consumoDispensado,
       motivoSemConsumo,
     },
   });
 
-  // RF-NOT-04: a aluna é avisada da alocação, com data, horário e créditos.
-  await notificar({
-    destinatario: { tipo: 'aluna', id: alunaId },
-    evento: 'alocacao_em_aula_excepcional',
-    conteudo:
-      `Você foi incluída em "${aula.nome}", em ${formatarDataBR(aula.data)} às ${aula.horarioInicio}. ` +
-      (custo > 0
-        ? `${formatarCreditos(custo)} foram consumidos do seu saldo.`
-        : 'Esta participação não consome créditos.'),
-  });
+  // RF-NOT-04: a aluna é avisada da alocação. Participante sem cadastro não
+  // tem acesso ao sistema nem e-mail registrado — o aviso dela é o contato
+  // que a administração já fez para combinar a participação.
+  if (alunaId) {
+    await notificar({
+      destinatario: { tipo: 'aluna', id: alunaId },
+      evento: 'alocacao_em_aula_excepcional',
+      conteudo:
+        `Você foi incluída em "${aula.nome}", em ${formatarDataBR(aula.data)} às ${aula.horarioInicio}. ` +
+        (custo > 0
+          ? `${formatarCreditos(custo)} foram consumidos do seu saldo.`
+          : 'Esta participação não consome créditos.'),
+    });
+  }
 
   return alocacao;
 }
@@ -430,7 +460,7 @@ export async function cancelarAlocacao(params: {
     motivoCancelamento: motivo.trim(),
   });
 
-  if (alocacao.creditosConsumidos > 0) {
+  if (alocacao.creditosConsumidos > 0 && alocacao.alunaId) {
     const carteira = await carteiraVigenteDaAluna(alocacao.alunaId);
     if (carteira) {
       await estornarConsumo({
@@ -452,15 +482,17 @@ export async function cancelarAlocacao(params: {
     valorNovo: { alunaId: alocacao.alunaId, motivo: motivo.trim() },
   });
 
-  await notificar({
-    destinatario: { tipo: 'aluna', id: alocacao.alunaId },
-    evento: 'alocacao_cancelada',
-    conteudo:
-      `Sua participação em "${aula.nome}" foi cancelada. Motivo: ${motivo.trim()}.` +
-      (alocacao.creditosConsumidos > 0
-        ? ` ${formatarCreditos(alocacao.creditosConsumidos)} voltaram ao seu saldo.`
-        : ''),
-  });
+  if (alocacao.alunaId) {
+    await notificar({
+      destinatario: { tipo: 'aluna', id: alocacao.alunaId },
+      evento: 'alocacao_cancelada',
+      conteudo:
+        `Sua participação em "${aula.nome}" foi cancelada. Motivo: ${motivo.trim()}.` +
+        (alocacao.creditosConsumidos > 0
+          ? ` ${formatarCreditos(alocacao.creditosConsumidos)} voltaram ao seu saldo.`
+          : ''),
+    });
+  }
 }
 
 // --- Consulta ------------------------------------------------------------
@@ -513,7 +545,10 @@ export async function listarAulasExcepcionais(): Promise<AulaExcepcionalDetalhad
 }
 
 export interface AlocacaoDetalhada extends Alocacao {
+  /** Nome da aluna ou da participante sem cadastro, para exibição. */
   nomeAluna: string;
+  telefone: string;
+  semCadastro: boolean;
 }
 
 export async function listarAlocacoesDetalhadas(aulaExcepcionalId: string): Promise<AlocacaoDetalhada[]> {
@@ -526,9 +561,15 @@ export async function listarAlocacoesDetalhadas(aulaExcepcionalId: string): Prom
   return alocacoes
     .map((alocacao) => {
       const aluna = alunas.find((a) => a.id === alocacao.alunaId);
+      const semCadastro = alocacao.participanteSemCadastro !== undefined;
       return {
         ...alocacao,
-        nomeAluna: usuarios.find((u) => u.id === aluna?.usuarioId)?.nome ?? 'Aluna removida',
+        nomeAluna:
+          alocacao.participanteSemCadastro?.nome ??
+          usuarios.find((u) => u.id === aluna?.usuarioId)?.nome ??
+          'Aluna removida',
+        telefone: alocacao.participanteSemCadastro?.telefone ?? aluna?.telefone ?? '',
+        semCadastro,
       };
     })
     .sort((a, b) => a.nomeAluna.localeCompare(b.nomeAluna));

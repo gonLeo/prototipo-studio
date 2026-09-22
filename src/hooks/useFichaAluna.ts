@@ -183,7 +183,8 @@ export function useFichaAluna(alunaId: string | undefined) {
 
     const deAulasExcepcionais: FrequenciaDaAluna[] = alocacoes.map((alocacao) => ({
       id: alocacao.id,
-      alunaId: alocacao.alunaId,
+      // A ficha é de uma aluna: as alocações vêm filtradas por ela.
+      alunaId: aluna.id,
       ocorrenciaSessaoId: '',
       origem: 'administracao',
       dataHora: alocacao.data,

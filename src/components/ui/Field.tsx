@@ -60,16 +60,19 @@ interface CheckboxFieldProps {
   label: string;
   checked: boolean;
   onChange: (marcado: boolean) => void;
+  /** Marcado e imutável: a regra já decidiu o valor, e a tela mostra por quê. */
+  desabilitado?: boolean;
 }
 
-export function CheckboxField({ label, checked, onChange }: CheckboxFieldProps) {
+export function CheckboxField({ label, checked, onChange, desabilitado = false }: CheckboxFieldProps) {
   return (
-    <label className="flex items-center gap-2 text-sm text-neutral-700">
+    <label className={`flex items-center gap-2 text-sm ${desabilitado ? 'text-neutral-400' : 'text-neutral-700'}`}>
       <input
         type="checkbox"
         checked={checked}
+        disabled={desabilitado}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 disabled:opacity-60"
       />
       {label}
     </label>

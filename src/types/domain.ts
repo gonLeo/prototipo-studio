@@ -422,10 +422,22 @@ export type MotivoSemConsumo = 'pagamento_avulso' | 'convidada' | 'cortesia';
  * reserva: a administração é quem aloca, e não há janela de cancelamento
  * pela aluna que justifique segurar o crédito.
  */
+/**
+ * Quem participa de uma aula excepcional sem ser aluna do studio
+ * (RF-AEX-06). Registrada só com nome e telefone: não há cadastro, não há
+ * pacote e o pagamento é tratado fora do sistema.
+ */
+export interface ParticipanteSemCadastro {
+  nome: string;
+  telefone: string;
+}
+
 export interface Alocacao {
   id: ID;
   aulaExcepcionalId: ID;
-  alunaId: ID;
+  /** Ausente quando a participante não tem cadastro (RF-AEX-06). */
+  alunaId?: ID;
+  participanteSemCadastro?: ParticipanteSemCadastro;
   creditosConsumidos: number;
   /** RF-AEX-06: participação registrada sem consumo, com motivo obrigatório. */
   consumoDispensado: boolean;
@@ -563,7 +575,10 @@ export interface Chamada {
 export interface RegistroPresenca {
   id: ID;
   chamadaId: ID;
-  alunaId: ID;
+  /** Ausente quando a presença é de participante sem cadastro (RF-PRE-02). */
+  alunaId?: ID;
+  /** Preenchido no lugar de `alunaId` para participante sem cadastro. */
+  alocacaoId?: ID;
   situacao: 'presente' | 'ausente';
   checkinConvenio: boolean;
   dataHora: string;

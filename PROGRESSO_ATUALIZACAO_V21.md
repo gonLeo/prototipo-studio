@@ -11,7 +11,7 @@ Dinâmica: **um lote por ciclo.** O lote só começa com autorização explícit
 - [x] Lote 1 — Pendência de aceite e pagamento antes do termo (item 1)
 - [x] Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp (item 2)
 - [x] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
-- [ ] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
+- [x] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
 - [ ] Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone (itens 5, 6, 8, 10)
 - [ ] Lote 6 — Consolidação da documentação (README, CLAUDE.md, PROGRESSO_ATUALIZACAO.md)
 
@@ -297,23 +297,58 @@ Percorrido no navegador depois de um reset: o cartão do painel (16% de média),
 
 ## Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte
 
-_Não iniciado. Escopo nas seções 4.3, 4.4, 5, 6.4 e no Lote 4 da seção 10 do plano._
+A v2.1 abriu o workshop para duas pessoas que a v2.0 deixava de fora: quem não é aluna do studio (RF-AEX-06) e a aluna de convênio disposta a pagar à parte (RF-AEX-11). As duas entram pelo mesmo caminho — alocação **sem consumo de créditos**, com o pagamento tratado fora do sistema.
 
 ### O que foi entregue
 
-_— a preencher —_
+**Modelo de dados**
+
+- **`Alocacao.alunaId` virou opcional** e ganhou `participanteSemCadastro: { nome, telefone }`. Tipo novo `ParticipanteSemCadastro`.
+- **`RegistroPresenca.alunaId` virou opcional** e ganhou `alocacaoId`: a presença de quem não tem cadastro é identificada pela alocação. A chave estrangeira nova entrou no mapa do reset.
+
+**Domínio**
+
+- **`alocarAluna` aceita os dois casos.** Participante sem cadastro exige nome e telefone e é **sempre** sem consumo — não há pacote de onde debitar. Aluna de convênio deixou de ser recusada sempre: é recusada só quando a alocação tentaria consumir créditos, com a mensagem explicando a saída ("registre a participação sem consumo, com o pagamento tratado à parte").
+- **Notificação e estorno só acontecem quando há aluna.** Participante sem cadastro não tem acesso ao sistema nem carteira; `cancelarAlocacao` e `alocarAluna` passaram a testar isso em vez de assumir que toda alocação tem uma aluna atrás.
+- **`listarAlocacoesDetalhadas`** devolve `nomeAluna`, `telefone` e `semCadastro`, resolvendo o nome da participante quando não há cadastro.
+- **A chamada da aula excepcional** passou a listar participantes sem cadastro e alunas de convênio (RF-PRE-02). `AlunaNaChamada` ganhou `chave` — o id da aluna ou o da alocação —, `telefone` e `semCadastro`; as duas telas de chamada passaram a alternar a presença por essa chave. `gravarRegistrosDePresenca` casa o registro por `alunaId` **ou** por `alocacaoId`, e pula a conversão de reserva quando não há aluna.
+- **A presença sem cadastro conta na comissão** (o número de presenças já vinha da lista) e **não conta na retenção**: quem não é aluna do studio não tem como "voltar" no período seguinte.
+
+**Telas**
+
+- **Modal de alocação**: caixa "Participante sem cadastro", que troca a lista de alunas por nome e telefone e marca "sem consumo de créditos" de forma travada; a lista de alunas passou a incluir as de convênio, com a marcação "convênio, só com pagamento à parte"; escolher uma delas sem dispensar o consumo mostra o aviso e bloqueia o envio. A lista de participantes mostra o selo "Sem cadastro" e o telefone.
+- **`CheckboxField`** ganhou o estado `desabilitado`, para o caso em que a regra já decidiu o valor e a tela precisa mostrar por quê.
+- **Chamada excepcional**: participante sem cadastro aparece com "Sem cadastro · telefone" e sem link de ficha; aluna de convênio, com "Convênio · participação paga à parte".
+
+**Guia**
+
+- Cenários novos: **"Convidada sem cadastro no workshop"** e **"Aluna de convênio paga à parte"**.
+- "Criar um workshop e alocar as alunas" deixou de mandar testar a recusa da Renata, que agora é aceita; a persona dela diz que pode participar pagando à parte.
 
 ### Decisões deste lote
 
-_— a preencher —_
+- **Participante sem cadastro não vira aluna.** Não aparece em Alunas, não tem ficha, não entra na retenção e não recebe notificação. Ela existe dentro da alocação, que é o escopo do requisito.
+- **Sem cadastro implica sem consumo, e a tela trava a caixa** em vez de deixar a pessoa marcar e receber um erro depois.
+- **A aluna de convênio continua na lista de alunas do modal**, com a condição escrita na própria opção. Escondê-la repetiria o comportamento da v2.0, que era justamente o que mudou.
+- **A presença de quem não tem cadastro é identificada pela alocação.** Criar uma aluna-fantasma para pendurar o registro poluiria o cadastro e a retenção.
 
 ### Como testar
 
-_— a preencher —_
+1. **Resetar protótipo**, criar uma aula excepcional (categoria Workshop) com uma professora vinculada e abrir **"Alocar alunas"**.
+2. Escolha **Renata Souza**: a opção dela diz "convênio, só com pagamento à parte". Sem marcar nada, o aviso aparece e o botão fica bloqueado. Marque "Sem consumo de créditos", escolha "Pagamento avulso" e aloque.
+3. Marque **"Participante sem cadastro"**: a lista de alunas dá lugar a Nome e Telefone, e "sem consumo" fica marcado e travado. Informe os dados e aloque.
+4. Na lista de participantes, a convidada aparece com o selo "Sem cadastro" e o telefone.
+5. Abra a chamada da aula (pela administração, se não houver professora vinculada, ou pela professora). As duas aparecem; só a aluna cadastrada tem "Ver ficha da aluna".
+6. Finalize a chamada: a comissão da professora sai com **2 presenças**, e nenhum crédito é movimentado.
+7. Confira que a convidada **não** aparece em Alunas nem nos indicadores de retenção.
 
 ### Verificação executada
 
-_— a preencher —_
+Percorrido no navegador depois de um reset, com um workshop criado para o teste: a opção da Renata com a condição escrita, o aviso e o botão bloqueado sem dispensa de consumo, e a alocação aceita com "Pagamento avulso" (0 créditos); a troca para "Participante sem cadastro", com os campos de nome e telefone e a caixa de consumo travada; a alocação da convidada; a chamada listando as duas, com link de ficha só para a Renata; a finalização gerando um registro de presença por `alocacaoId` (sem cadastro) e outro por `alunaId`, mais a comissão de R$ 180,00 com 2 presenças; e a confirmação de que nenhuma usuária foi criada para a convidada. Dados de teste apagados com um reset final.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes.
+
+**Ajustes feitos durante a verificação**: o botão de alocar ficava desabilitado no modo sem cadastro, porque a condição que bloqueia o convênio sem pagamento à parte também pegava esse caso; e o cabeçalho da chamada excepcional afirmava que "cada participação consumiu N créditos", o que passou a ser falso com participantes sem consumo — agora diz o custo da categoria por participação com consumo.
 
 ---
 

@@ -8,7 +8,7 @@ import {
   sessaoRepositorio,
   usuarioRepositorio,
 } from '../services/repositorios';
-import type { Chamada, OcorrenciaSessao, Sessao } from '../types/domain';
+import type { Chamada, OcorrenciaSessao, RegistroPresenca, Sessao } from '../types/domain';
 import { hojeISO, somarDias } from '../utils/data';
 import { rotularDias, sessaoOcorreEm } from '../utils/grade';
 import type { PeriodoDeApuracao } from './comissoes';
@@ -109,7 +109,7 @@ function alunasPresentesNaTurma(params: {
   periodo: PeriodoDeApuracao;
   ocorrencias: OcorrenciaSessao[];
   chamadas: Chamada[];
-  presencas: Array<{ chamadaId: string; alunaId: string; situacao: string }>;
+  presencas: RegistroPresenca[];
 }): Set<string> {
   const { sessaoId, periodo, ocorrencias, chamadas, presencas } = params;
 
@@ -118,8 +118,13 @@ function alunasPresentesNaTurma(params: {
     .map((o) => chamadaFinalizadaDa(o.id, chamadas)?.id)
     .filter((id): id is string => id !== undefined);
 
+  // Participante sem cadastro não entra na retenção: ela não é aluna do
+  // studio, e não há quem "voltar" no período seguinte (RF-AEX-06).
   return new Set(
-    presencas.filter((p) => idsDeChamada.includes(p.chamadaId) && p.situacao === 'presente').map((p) => p.alunaId),
+    presencas
+      .filter((p) => idsDeChamada.includes(p.chamadaId) && p.situacao === 'presente')
+      .map((p) => p.alunaId)
+      .filter((alunaId): alunaId is string => alunaId !== undefined),
   );
 }
 

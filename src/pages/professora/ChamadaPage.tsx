@@ -77,9 +77,11 @@ export function ChamadaPage() {
     carregar();
   }, [carregar]);
 
-  function alternarPresenca(alunaId: string) {
+  // A chave é o id da aluna ou, para participante sem cadastro, o da
+  // alocação (RF-AEX-06).
+  function alternarPresenca(chave: string) {
     setAlunas((atual) =>
-      atual.map((aluna) => (aluna.alunaId === alunaId ? { ...aluna, presente: !aluna.presente } : aluna)),
+      atual.map((aluna) => (aluna.chave === chave ? { ...aluna, presente: !aluna.presente } : aluna)),
     );
   }
 
@@ -195,10 +197,10 @@ export function ChamadaPage() {
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
           {alunas.map((aluna) => (
-            <li key={aluna.alunaId} className="flex flex-col gap-1">
+            <li key={aluna.chave} className="flex flex-col gap-1">
               <button
                 type="button"
-                onClick={() => alternarPresenca(aluna.alunaId)}
+                onClick={() => alternarPresenca(aluna.chave)}
                 disabled={bloqueada}
                 aria-pressed={aluna.presente}
                 className={`flex w-full items-center justify-between gap-3 rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${

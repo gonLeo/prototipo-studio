@@ -323,7 +323,8 @@ function PainelDeAlocacao({
 }: {
   aula: AulaExcepcionalDetalhada;
   onAlocar: (params: {
-    alunaId: string;
+    alunaId?: string;
+    participanteSemCadastro?: { nome: string; telefone: string };
     consumoDispensado: boolean;
     motivoSemConsumo?: MotivoSemConsumo;
   }) => Promise<void>;
@@ -332,6 +333,9 @@ function PainelDeAlocacao({
   const { alunas } = useAlunas();
   const [alocacoes, setAlocacoes] = useState<AlocacaoDetalhada[]>([]);
   const [alunaId, setAlunaId] = useState('');
+  const [semCadastro, setSemCadastro] = useState(false);
+  const [nomeConvidada, setNomeConvidada] = useState('');
+  const [telefoneConvidada, setTelefoneConvidada] = useState('');
   const [consumoDispensado, setConsumoDispensado] = useState(false);
   const [motivoSemConsumo, setMotivoSemConsumo] = useState<MotivoSemConsumo>('pagamento_avulso');
   const [erro, setErro] = useState<string>();
@@ -345,9 +349,15 @@ function PainelDeAlocacao({
     recarregar();
   }, [recarregar]);
 
-  // RF-AEX-11: aluna de convênio não participa de aula excepcional.
-  const elegiveis = alunas.filter((a) => a.origem !== 'convenio');
+  // RF-AEX-11: a aluna de convênio entra na lista, mas só pode ser alocada
+  // sem consumo — o convênio não dá créditos no studio, e a participação
+  // dela é paga à parte.
   const ativas = alocacoes.filter((a) => a.situacao === 'ativa');
+  const escolhida = alunas.find((a) => a.id === alunaId);
+  // Participante sem cadastro não tem pacote de onde debitar: marcar a
+  // opção já força a dispensa de consumo (RF-AEX-06), então quem bloqueia o
+  // envio é só o caso do convênio ainda sem pagamento à parte.
+  const convenioSemPagamentoAParte = escolhida?.origem === 'convenio' && !consumoDispensado;
 
   async function alocar(e: FormEvent) {
     e.preventDefault();
@@ -355,11 +365,16 @@ function PainelDeAlocacao({
     setSalvando(true);
     try {
       await onAlocar({
-        alunaId,
+        alunaId: semCadastro ? undefined : alunaId,
+        participanteSemCadastro: semCadastro
+          ? { nome: nomeConvidada, telefone: telefoneConvidada }
+          : undefined,
         consumoDispensado,
         motivoSemConsumo: consumoDispensado ? motivoSemConsumo : undefined,
       });
       setAlunaId('');
+      setNomeConvidada('');
+      setTelefoneConvidada('');
       setConsumoDispensado(false);
       await recarregar();
     } catch (erroCapturado) {
@@ -383,16 +398,52 @@ function PainelDeAlocacao({
       </div>
 
       <form onSubmit={alocar} className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3">
+        <CheckboxField
+          label="Participante sem cadastro — alguém que não é aluna do studio"
+          checked={semCadastro}
+          onChange={(valor) => {
+            setSemCadastro(valor);
+            // Sem cadastro não há pacote: a participação é sempre sem
+            // consumo, com o pagamento tratado fora do sistema.
+            if (valor) {
+              setAlunaId('');
+              setConsumoDispensado(true);
+            }
+          }}
+        />
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SelectField label="Aluna" value={alunaId} onChange={(e) => setAlunaId(e.target.value)} required>
-            <option value="">Selecione…</option>
-            {elegiveis.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.usuario.nome}
-                {a.leitura ? ` — ${a.leitura.disponiveis} crédito(s)` : ' — sem pacote ativo'}
-              </option>
-            ))}
-          </SelectField>
+          {semCadastro ? (
+            <>
+              <TextField
+                label="Nome"
+                value={nomeConvidada}
+                onChange={(e) => setNomeConvidada(e.target.value)}
+                required
+              />
+              <TextField
+                label="Telefone"
+                value={telefoneConvidada}
+                onChange={(e) => setTelefoneConvidada(e.target.value)}
+                required
+                dica="É o único contato dela: não há cadastro nem acesso ao sistema."
+              />
+            </>
+          ) : (
+            <SelectField label="Aluna" value={alunaId} onChange={(e) => setAlunaId(e.target.value)} required>
+              <option value="">Selecione…</option>
+              {alunas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.usuario.nome}
+                  {a.origem === 'convenio'
+                    ? ' — convênio, só com pagamento à parte'
+                    : a.leitura
+                      ? ` — ${a.leitura.disponiveis} crédito(s)`
+                      : ' — sem pacote ativo'}
+                </option>
+              ))}
+            </SelectField>
+          )}
 
           {consumoDispensado && (
             <SelectField
@@ -414,13 +465,28 @@ function PainelDeAlocacao({
           label="Sem consumo de créditos — pagamento tratado fora do sistema"
           checked={consumoDispensado}
           onChange={setConsumoDispensado}
+          desabilitado={semCadastro}
         />
+
+        {convenioSemPagamentoAParte && (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
+            Alunas de convênio não têm créditos no studio: o convênio cobre apenas a grade regular. Marque "sem
+            consumo de créditos" para incluí-la com o pagamento tratado à parte (RF-AEX-11).
+          </p>
+        )}
 
         {erro && <p className="text-sm font-medium text-rose-600">{erro}</p>}
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={salvando || !alunaId}>
-            {salvando ? 'Alocando…' : 'Alocar aluna'}
+          <Button
+            type="submit"
+            disabled={
+              salvando ||
+              convenioSemPagamentoAParte ||
+              (semCadastro ? !nomeConvidada.trim() || !telefoneConvidada.trim() : !alunaId)
+            }
+          >
+            {salvando ? 'Alocando…' : semCadastro ? 'Alocar participante' : 'Alocar aluna'}
           </Button>
         </div>
       </form>
@@ -434,8 +500,14 @@ function PainelDeAlocacao({
               <div className="min-w-0">
                 <p className={alocacao.situacao === 'cancelada' ? 'text-neutral-400 line-through' : 'text-ink'}>
                   {alocacao.nomeAluna}
+                  {alocacao.semCadastro && (
+                    <span className="ml-2">
+                      <Badge tom="neutro">Sem cadastro</Badge>
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-neutral-500">
+                  {alocacao.semCadastro && `${alocacao.telefone} · `}
                   {alocacao.consumoDispensado
                     ? `Sem consumo · ${ROTULO_MOTIVO_SEM_CONSUMO[alocacao.motivoSemConsumo!]}`
                     : `${formatarCreditos(alocacao.creditosConsumidos)} consumidos`}
@@ -675,17 +747,18 @@ export function AulasExcepcionaisPage() {
         <Modal titulo="Alocar alunas" largura="larga" onFechar={() => setAlocando(null)}>
           <PainelDeAlocacao
             aula={alocando}
-            onAlocar={async ({ alunaId, consumoDispensado, motivoSemConsumo }) => {
+            onAlocar={async ({ alunaId, participanteSemCadastro, consumoDispensado, motivoSemConsumo }) => {
               if (!usuario) return;
               await alocarAluna({
                 aula: alocando,
                 alunaId,
+                participanteSemCadastro,
                 consumoDispensado,
                 motivoSemConsumo,
                 autorId: usuario.id,
               });
               await recarregar();
-              mostrarToast('Aluna alocada.', 'sucesso');
+              mostrarToast(participanteSemCadastro ? 'Participante alocada.' : 'Aluna alocada.', 'sucesso');
             }}
             onCancelarAlocacao={async (alocacao, motivo) => {
               if (!usuario) return;
