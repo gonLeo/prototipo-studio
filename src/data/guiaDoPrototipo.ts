@@ -57,7 +57,7 @@ export const ROTULO_PERFIL_DO_PASSO: Record<PerfilDoPasso, string> = {
  */
 export const PERSONAS = [
   { nome: 'Camila Duarte', perfil: 'Administração e professora', estado: 'Dona do studio. Entre como Administração para tudo que é operação e configuração.' },
-  { nome: 'Beatriz Nogueira', perfil: 'Professora', estado: 'Tem chamadas passadas sem finalizar e uma solicitação de cancelamento aguardando decisão.' },
+  { nome: 'Beatriz Nogueira', perfil: 'Professora', estado: 'Tem uma chamada passada sem finalizar, aulas já realizadas nas últimas semanas e uma solicitação de cancelamento aguardando decisão.' },
   { nome: 'Larissa Prado', perfil: 'Aluna', estado: 'Pacote Flow ativo, 9 créditos disponíveis. A aluna "padrão" para agendar, cancelar e comprar.' },
   { nome: 'Patrícia Lima', perfil: 'Aluna', estado: 'Pacote em "Finalizando": 1 crédito e vencimento próximo.' },
   { nome: 'Fernanda Alves', perfil: 'Aluna', estado: 'Bolsista: carteira ativa, mas com termo e anamnese pendentes. É a persona do alerta de pendência.' },
@@ -352,6 +352,26 @@ export const GUIA: GrupoDoGuia[] = [
     titulo: 'Agendar, cancelar e frequentar',
     descricao: 'Agendar reserva o crédito. A chamada, a falta e o cancelamento em cima da hora consomem; cancelar no prazo devolve.',
     cenarios: [
+      {
+        id: 'ficha-pela-professora',
+        titulo: 'A professora consulta a ficha da aluna',
+        resumo: 'Qualquer aluna do studio, com a anamnese em destaque. Cada consulta fica na auditoria.',
+        regras: [],
+        requisitos: ['RF-PRE-09', 'RF-ALU-07'],
+        preparo: 'Larissa e Patrícia têm anamnese preenchida; Fernanda e Helena ainda não.',
+        passos: [
+          { perfil: P, texto: 'Entre como Beatriz e abra "Alunas" no menu. A lista traz todas as alunas do studio, não só as das turmas dela.' },
+          { perfil: P, texto: 'Repare na coluna Anamnese: "Com pontos de atenção" quando a aluna declarou lesão, dor, condição cardíaca, medicação ou gestação.' },
+          { perfil: P, texto: 'Abra a ficha da Larissa: a anamnese vem primeiro, com as respostas de atenção destacadas.' },
+          { perfil: P, texto: 'Durante uma chamada, use o link "Ver ficha" ao lado do nome da aluna.' },
+          { perfil: A, texto: 'Em Configuração → Auditoria, procure "Consulta à ficha pela professora".' },
+        ],
+        conferir: [
+          'A ficha da professora não mostra valores, compras, reembolsos nem ajustes de carteira — só o que serve para conduzir a aula.',
+          'Cada abertura de ficha gera um registro de auditoria com a professora, a aluna e a data e hora (RNF-05).',
+          'É a única tela do protótipo que grava algo ao carregar, e é o próprio requisito que pede isso.',
+        ],
+      },
       {
         id: 'agendar-realizar',
         titulo: 'Agendar e realizar a aula',
@@ -689,6 +709,29 @@ export const GUIA: GrupoDoGuia[] = [
     titulo: 'Comissão da professora',
     descricao: 'Gerada na chamada, apurada por mês, paga até o quinto dia útil do mês seguinte.',
     cenarios: [
+      {
+        id: 'indicadores-professoras',
+        titulo: 'Retenção e frequência das professoras',
+        resumo: 'Quantas aulas a professora conduziu do que lhe foi atribuído, e quantas alunas voltaram de um mês para o outro.',
+        regras: [],
+        requisitos: ['RF-PNL-07', 'REL-14'],
+        preparo: 'Depois do reset já existem seis aulas de POLE INICIANTE realizadas por Beatriz: quatro nas últimas semanas e duas de cerca de dois meses atrás.',
+        passos: [
+          { perfil: A, texto: 'No painel, o cartão "Frequência das professoras" mostra a média do mês. Clique em "Ver retenção e frequência por professora".' },
+          { perfil: A, texto: 'A tela abre no mês atual. Leia o quadro cinza: ele diz exatamente como cada conta é feita.' },
+          { perfil: A, texto: 'Troque o mês para o das aulas mais antigas e compare.' },
+          { perfil: A, texto: 'Veja a segunda tabela, de retenção por turma.' },
+          { perfil: P, texto: 'Entre como Beatriz e finalize a chamada pendente dela.' },
+          { perfil: A, texto: 'Volte à tela de indicadores: a frequência dela subiu.' },
+        ],
+        conferir: [
+          'A frequência começa baixa de propósito: o protótipo só tem chamada finalizada em algumas aulas, e o indicador conta exatamente isso — conduzidas sobre atribuídas.',
+          'Aula cancelada pelo studio não entra no denominador: a professora não deixou de dar uma aula que não aconteceu.',
+          'A retenção compara com o mês anterior; sem alunas naquele mês, aparece "—" em vez de 0%.',
+          'Substituir uma professora move a aula conduzida para quem realmente deu a aula.',
+          'Nada disso aparece no painel da professora: os indicadores são da administração.',
+        ],
+      },
       {
         id: 'fechamento',
         titulo: 'Fechar o mês e registrar o pagamento',

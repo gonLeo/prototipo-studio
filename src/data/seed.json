@@ -747,15 +747,6 @@
       "dataHora": "@hoje-40T14:00"
     },
     {
-      "id": "mov-10",
-      "carteiraId": "car-patricia",
-      "tipo": "consumo",
-      "quantidade": 3,
-      "origem": "Aulas realizadas em {{@hoje-10|mes}}",
-      "autorId": "usr-admin",
-      "dataHora": "@hoje-10T20:00"
-    },
-    {
       "id": "mov-11",
       "carteiraId": "car-aline",
       "tipo": "concessao",
@@ -764,15 +755,6 @@
       "referenciaId": "vnd-aline-starter",
       "autorId": "usr-admin",
       "dataHora": "@hoje-93T15:00"
-    },
-    {
-      "id": "mov-12",
-      "carteiraId": "car-aline",
-      "tipo": "consumo",
-      "quantidade": 2,
-      "origem": "Aulas realizadas em {{@hoje-63|mes}}",
-      "autorId": "usr-admin",
-      "dataHora": "@hoje-63T20:00"
     },
     {
       "id": "mov-13",
@@ -813,6 +795,56 @@
       "referenciaId": "agd-larissa-cancelada",
       "autorId": "usr-admin",
       "dataHora": "@hoje-1T08:30"
+    },
+    {
+      "id": "mov-consumo-patricia-1",
+      "carteiraId": "car-patricia",
+      "tipo": "consumo",
+      "quantidade": 1,
+      "origem": "Presença na aula de {{@ultima(segunda)-1s}} às 08:00",
+      "referenciaId": "cha-recente-seg",
+      "autorId": "usr-prof-2",
+      "dataHora": "@ultima(segunda)-1sT09:05"
+    },
+    {
+      "id": "mov-consumo-patricia-2",
+      "carteiraId": "car-patricia",
+      "tipo": "consumo",
+      "quantidade": 1,
+      "origem": "Presença na aula de {{@ultima(quarta)-1s}} às 08:00",
+      "referenciaId": "cha-recente-qua",
+      "autorId": "usr-prof-2",
+      "dataHora": "@ultima(quarta)-1sT09:05"
+    },
+    {
+      "id": "mov-consumo-patricia-3",
+      "carteiraId": "car-patricia",
+      "tipo": "consumo",
+      "quantidade": 1,
+      "origem": "Presença na aula de {{@ultima(segunda)-2s}} às 08:00",
+      "referenciaId": "cha-anterior-seg",
+      "autorId": "usr-prof-2",
+      "dataHora": "@ultima(segunda)-2sT09:05"
+    },
+    {
+      "id": "mov-consumo-aline-1",
+      "carteiraId": "car-aline",
+      "tipo": "consumo",
+      "quantidade": 1,
+      "origem": "Presença na aula de {{@ultima(segunda)-7s}} às 08:00",
+      "referenciaId": "cha-antiga-1",
+      "autorId": "usr-prof-2",
+      "dataHora": "@ultima(segunda)-7sT09:05"
+    },
+    {
+      "id": "mov-consumo-aline-2",
+      "carteiraId": "car-aline",
+      "tipo": "consumo",
+      "quantidade": 1,
+      "origem": "Presença na aula de {{@ultima(segunda)-8s}} às 08:00",
+      "referenciaId": "cha-antiga-2",
+      "autorId": "usr-prof-2",
+      "dataHora": "@ultima(segunda)-8sT09:05"
     }
   ],
   "vendas": [
@@ -1069,6 +1101,48 @@
           "convenio": true
         }
       ]
+    },
+    {
+      "id": "oco-recente-seg",
+      "sessaoId": "ses-1",
+      "data": "@ultima(segunda)-1s",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    },
+    {
+      "id": "oco-recente-qua",
+      "sessaoId": "ses-1",
+      "data": "@ultima(quarta)-1s",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    },
+    {
+      "id": "oco-anterior-seg",
+      "sessaoId": "ses-1",
+      "data": "@ultima(segunda)-2s",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    },
+    {
+      "id": "oco-anterior-qua",
+      "sessaoId": "ses-1",
+      "data": "@ultima(quarta)-2s",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    },
+    {
+      "id": "oco-antiga-1",
+      "sessaoId": "ses-1",
+      "data": "@ultima(segunda)-7s",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
+    },
+    {
+      "id": "oco-antiga-2",
+      "sessaoId": "ses-1",
+      "data": "@ultima(segunda)-8s",
+      "professoraEfetivaId": "prof-2",
+      "situacao": "ativa"
     }
   ],
   "aulasExcepcionais": [],
@@ -1180,8 +1254,151 @@
       "dataCriacao": "@hoje-1T08:30"
     }
   ],
-  "chamadas": [],
-  "registrosPresenca": [],
+  "chamadas": [
+    {
+      "id": "cha-recente-seg",
+      "ocorrenciaSessaoId": "oco-recente-seg",
+      "professoraId": "prof-2",
+      "dataHoraFinalizacao": "@ultima(segunda)-1sT09:05",
+      "situacao": "finalizada"
+    },
+    {
+      "id": "cha-recente-qua",
+      "ocorrenciaSessaoId": "oco-recente-qua",
+      "professoraId": "prof-2",
+      "dataHoraFinalizacao": "@ultima(quarta)-1sT09:05",
+      "situacao": "finalizada"
+    },
+    {
+      "id": "cha-anterior-seg",
+      "ocorrenciaSessaoId": "oco-anterior-seg",
+      "professoraId": "prof-2",
+      "dataHoraFinalizacao": "@ultima(segunda)-2sT09:05",
+      "situacao": "finalizada"
+    },
+    {
+      "id": "cha-anterior-qua",
+      "ocorrenciaSessaoId": "oco-anterior-qua",
+      "professoraId": "prof-2",
+      "dataHoraFinalizacao": "@ultima(quarta)-2sT09:05",
+      "situacao": "finalizada"
+    },
+    {
+      "id": "cha-antiga-1",
+      "ocorrenciaSessaoId": "oco-antiga-1",
+      "professoraId": "prof-2",
+      "dataHoraFinalizacao": "@ultima(segunda)-7sT09:05",
+      "situacao": "finalizada"
+    },
+    {
+      "id": "cha-antiga-2",
+      "ocorrenciaSessaoId": "oco-antiga-2",
+      "professoraId": "prof-2",
+      "dataHoraFinalizacao": "@ultima(segunda)-8sT09:05",
+      "situacao": "finalizada"
+    }
+  ],
+  "registrosPresenca": [
+    {
+      "id": "pre-recente-seg-patricia",
+      "chamadaId": "cha-recente-seg",
+      "alunaId": "alu-patricia",
+      "situacao": "presente",
+      "checkinConvenio": false,
+      "dataHora": "@ultima(segunda)-1sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-recente-seg-renata",
+      "chamadaId": "cha-recente-seg",
+      "alunaId": "alu-renata",
+      "situacao": "presente",
+      "checkinConvenio": true,
+      "dataHora": "@ultima(segunda)-1sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-recente-qua-patricia",
+      "chamadaId": "cha-recente-qua",
+      "alunaId": "alu-patricia",
+      "situacao": "presente",
+      "checkinConvenio": false,
+      "dataHora": "@ultima(quarta)-1sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-recente-qua-renata",
+      "chamadaId": "cha-recente-qua",
+      "alunaId": "alu-renata",
+      "situacao": "presente",
+      "checkinConvenio": true,
+      "dataHora": "@ultima(quarta)-1sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-anterior-seg-patricia",
+      "chamadaId": "cha-anterior-seg",
+      "alunaId": "alu-patricia",
+      "situacao": "presente",
+      "checkinConvenio": false,
+      "dataHora": "@ultima(segunda)-2sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-anterior-seg-renata",
+      "chamadaId": "cha-anterior-seg",
+      "alunaId": "alu-renata",
+      "situacao": "presente",
+      "checkinConvenio": true,
+      "dataHora": "@ultima(segunda)-2sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-anterior-qua-renata",
+      "chamadaId": "cha-anterior-qua",
+      "alunaId": "alu-renata",
+      "situacao": "presente",
+      "checkinConvenio": true,
+      "dataHora": "@ultima(quarta)-2sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-antiga-1-aline",
+      "chamadaId": "cha-antiga-1",
+      "alunaId": "alu-aline",
+      "situacao": "presente",
+      "checkinConvenio": false,
+      "dataHora": "@ultima(segunda)-7sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-antiga-1-renata",
+      "chamadaId": "cha-antiga-1",
+      "alunaId": "alu-renata",
+      "situacao": "presente",
+      "checkinConvenio": true,
+      "dataHora": "@ultima(segunda)-7sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-antiga-2-aline",
+      "chamadaId": "cha-antiga-2",
+      "alunaId": "alu-aline",
+      "situacao": "presente",
+      "checkinConvenio": false,
+      "dataHora": "@ultima(segunda)-8sT09:05",
+      "autorId": "usr-prof-2"
+    },
+    {
+      "id": "pre-antiga-2-renata",
+      "chamadaId": "cha-antiga-2",
+      "alunaId": "alu-renata",
+      "situacao": "presente",
+      "checkinConvenio": true,
+      "dataHora": "@ultima(segunda)-8sT09:05",
+      "autorId": "usr-prof-2"
+    }
+  ],
   "justificativas": [
     {
       "id": "jus-1",
@@ -1202,7 +1419,74 @@
       "situacao": "pendente"
     }
   ],
-  "comissoes": [],
+  "comissoes": [
+    {
+      "id": "com-recente-seg",
+      "chamadaId": "cha-recente-seg",
+      "professoraId": "prof-2",
+      "categoriaAplicadaId": "cat-1",
+      "baseDeCalculo": "Categoria I — R$ 35,00 por aula regular",
+      "valor": 35,
+      "dataAula": "@ultima(segunda)-1s",
+      "presencas": 2,
+      "situacao": "gerada"
+    },
+    {
+      "id": "com-recente-qua",
+      "chamadaId": "cha-recente-qua",
+      "professoraId": "prof-2",
+      "categoriaAplicadaId": "cat-1",
+      "baseDeCalculo": "Categoria I — R$ 35,00 por aula regular",
+      "valor": 35,
+      "dataAula": "@ultima(quarta)-1s",
+      "presencas": 2,
+      "situacao": "gerada"
+    },
+    {
+      "id": "com-anterior-seg",
+      "chamadaId": "cha-anterior-seg",
+      "professoraId": "prof-2",
+      "categoriaAplicadaId": "cat-1",
+      "baseDeCalculo": "Categoria I — R$ 35,00 por aula regular",
+      "valor": 35,
+      "dataAula": "@ultima(segunda)-2s",
+      "presencas": 2,
+      "situacao": "gerada"
+    },
+    {
+      "id": "com-anterior-qua",
+      "chamadaId": "cha-anterior-qua",
+      "professoraId": "prof-2",
+      "categoriaAplicadaId": "cat-1",
+      "baseDeCalculo": "Categoria I — R$ 35,00 por aula regular",
+      "valor": 35,
+      "dataAula": "@ultima(quarta)-2s",
+      "presencas": 1,
+      "situacao": "gerada"
+    },
+    {
+      "id": "com-antiga-1",
+      "chamadaId": "cha-antiga-1",
+      "professoraId": "prof-2",
+      "categoriaAplicadaId": "cat-1",
+      "baseDeCalculo": "Categoria I — R$ 35,00 por aula regular",
+      "valor": 35,
+      "dataAula": "@ultima(segunda)-7s",
+      "presencas": 2,
+      "situacao": "gerada"
+    },
+    {
+      "id": "com-antiga-2",
+      "chamadaId": "cha-antiga-2",
+      "professoraId": "prof-2",
+      "categoriaAplicadaId": "cat-1",
+      "baseDeCalculo": "Categoria I — R$ 35,00 por aula regular",
+      "valor": 35,
+      "dataAula": "@ultima(segunda)-8s",
+      "presencas": 2,
+      "situacao": "gerada"
+    }
+  ],
   "fechamentosComissao": [],
   "conveniosIntegracao": [
     {
@@ -1253,6 +1537,78 @@
       "situacao": "cancelada",
       "checkinValidado": false,
       "data": "@proxima(sabado)",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-recente-seg",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000200",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-recente-seg",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "@ultima(segunda)-1sT07:55",
+      "data": "@ultima(segunda)-1s",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-recente-qua",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000201",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-recente-qua",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "@ultima(quarta)-1sT07:55",
+      "data": "@ultima(quarta)-1s",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-anterior-seg",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000202",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-anterior-seg",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "@ultima(segunda)-2sT07:55",
+      "data": "@ultima(segunda)-2s",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-anterior-qua",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000203",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-anterior-qua",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "@ultima(quarta)-2sT07:55",
+      "data": "@ultima(quarta)-2s",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-antiga-1",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000204",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-antiga-1",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "@ultima(segunda)-7sT07:55",
+      "data": "@ultima(segunda)-7s",
+      "origemRegistro": "integracao"
+    },
+    {
+      "id": "res-antiga-2",
+      "convenio": "wellhub",
+      "identificadorExterno": "WELLHUB-000205",
+      "alunaId": "alu-renata",
+      "ocorrenciaSessaoId": "oco-antiga-2",
+      "situacao": "confirmada",
+      "checkinValidado": true,
+      "dataHoraCheckin": "@ultima(segunda)-8sT07:55",
+      "data": "@ultima(segunda)-8s",
       "origemRegistro": "integracao"
     }
   ],

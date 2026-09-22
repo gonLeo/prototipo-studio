@@ -155,7 +155,7 @@ export function ChamadaExcepcionalPage() {
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
           {alunas.map((aluna) => (
-            <li key={aluna.alunaId}>
+            <li key={aluna.alunaId} className="flex flex-col gap-1">
               <button
                 type="button"
                 onClick={() => alternarPresenca(aluna.alunaId)}
@@ -176,6 +176,13 @@ export function ChamadaExcepcionalPage() {
                   {aluna.presente ? 'Presente' : 'Ausente'}
                 </span>
               </button>
+              {/* RF-PRE-09: o mesmo atalho da chamada regular. */}
+              <Link
+                to={`/professora/alunas/${aluna.alunaId}`}
+                className="self-start rounded px-1 py-0.5 text-xs font-medium text-primary-700 hover:text-primary-800"
+              >
+                Ver ficha da aluna
+              </Link>
             </li>
           ))}
         </ul>

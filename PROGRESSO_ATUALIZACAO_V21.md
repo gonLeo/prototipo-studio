@@ -10,7 +10,7 @@ Dinâmica: **um lote por ciclo.** O lote só começa com autorização explícit
 - [x] Lote 0 — Seed com datas relativas e telefone único das alunas
 - [x] Lote 1 — Pendência de aceite e pagamento antes do termo (item 1)
 - [x] Lote 2 — Cancelamento pelo studio com relação preservada e WhatsApp (item 2)
-- [ ] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
+- [x] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
 - [ ] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
 - [ ] Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone (itens 5, 6, 8, 10)
 - [ ] Lote 6 — Consolidação da documentação (README, CLAUDE.md, PROGRESSO_ATUALIZACAO.md)
@@ -232,23 +232,66 @@ Percorrido no navegador depois de um reset: a tela com a aula do seed, a relaç�
 
 ## Lote 3 — Professora consulta a ficha; indicadores de professora
 
-_Não iniciado. Escopo nas seções 4.3, 4.4, 6.6 e no Lote 3 da seção 10 do plano._
+Dois requisitos novos da v2.1 que não tinham nada no protótipo: a professora passou a consultar a ficha de qualquer aluna, com a anamnese em destaque e auditoria por consulta (RF-PRE-09), e a administração ganhou os indicadores de retenção e frequência (RF-PNL-07, REL-14).
 
 ### O que foi entregue
 
-_— a preencher —_
+**Domínio**
+
+- **`src/hooks/fichaParaProfessora.ts`** (novo) — `useAlunasParaProfessora` (lista com nome, telefone e se a anamnese tem pontos de atenção) e `useFichaParaProfessora` (ficha reduzida: anamnese, contato, situação do pacote e próximas aulas). A leitura é **deliberadamente reduzida**: valores, compras, reembolsos e ajustes de carteira continuam só na ficha administrativa. Carregar a ficha **grava** o registro de auditoria `consulta_ficha_pela_professora` (RNF-05).
+- **`src/hooks/indicadoresDeProfessoras.ts`** (novo) — `indicadoresDeProfessoras(periodo)` devolve, por professora, aulas atribuídas, conduzidas e a frequência, mais a retenção; e, por turma, a retenção da sessão. `frequenciaMedia` alimenta o cartão do painel. `periodoAnteriorA` resolve o mês de comparação, inclusive na virada de ano.
+  - **Atribuída** é cada ocorrência da grade até hoje em que a professora estava escalada — projetada pelo calendário, porque a recorrência é derivada e a maioria das datas não existe como registro. Ocorrência cancelada e data de exceção saem do denominador: a professora não deixou de dar uma aula que não aconteceu.
+  - **Conduzida** é a que virou chamada finalizada. Substituição conta para quem conduziu, não para a titular.
+  - **Retenção** compara os conjuntos de alunas com presença no período anterior e no atual. Sem alunas no anterior, o indicador é "—", não 0%.
+
+**Telas**
+
+- **`AlunasDaProfessoraPage`** (`/professora/alunas`) — todas as alunas do studio, com busca por nome, CPF ou telefone, e um selo por aluna: "Com pontos de atenção" quando a anamnese declara lesão, dor articular, condição cardíaca, medicação contínua ou gestação; "Sem restrições declaradas"; "Não preenchida". Item **"Alunas"** no menu da professora.
+- **`FichaDaAlunaProfessoraPage`** (`/professora/alunas/:alunaId`) — anamnese primeiro, com as respostas "Sim" destacadas; contato e contato de emergência; pacote só como situação (créditos disponíveis e validade, sem valores); próximas aulas. O rodapé avisa que a consulta foi registrada.
+- **`ChamadaPage` e `ChamadaExcepcionalPage`** ganharam o link **"Ver ficha da aluna"** abaixo de cada cartão de presença — fora do botão, em linha própria, para um toque não virar o outro.
+- **`IndicadoresDeProfessorasPage`** (`/administracao/indicadores-professoras`, menu Operação) — seletor de mês e ano, tabela por professora (aulas, frequência, alunas do mês anterior, retenção), tabela de retenção por turma e exportação CSV. Um quadro no topo explica as duas contas, porque "retenção" e "frequência" significam coisas diferentes em cada studio.
+- **`AdministracaoHome`** ganhou o cartão **"Frequência das professoras"** e o link para a tela.
+- **`AuditoriaPage`** passou a ter um mapa de rótulos para operações cujo nome cru não se lê bem: "Consulta à ficha pela professora".
+
+**Seed**
+
+- **Seis aulas de POLE INICIANTE já realizadas** por Beatriz, com chamada finalizada, presenças e comissão: quatro nas últimas semanas (Patrícia e Renata) e duas de cerca de dois meses atrás (Aline e Renata). Isso dá número aos dois indicadores e enche a tela de Comissões, que estava vazia.
+- Os créditos consumidos por Patrícia (3) e Aline (2) deixaram de ser um lançamento em bloco ("Aulas realizadas em agosto") e passaram a **apontar cada aula**, agora que as aulas existem. A soma não mudou.
+- A chamada pendente da Beatriz (o cenário de chamada não finalizada) continua intocada: o bloco de aulas realizadas começa uma semana antes dela, de propósito.
+
+**Guia**
+
+- Cenários novos: **"A professora consulta a ficha da aluna"** e **"Retenção e frequência das professoras"**.
+- Persona da Beatriz atualizada, agora com aulas já realizadas.
 
 ### Decisões deste lote
 
-_— a preencher —_
+- **A professora vê qualquer aluna, não só as das turmas dela.** É o que o requisito diz, e é o caso real: reposição, aula excepcional e substituição colocam alunas desconhecidas na frente dela.
+- **A ficha da professora é reduzida por desenho.** Ela precisa saber se a aluna pode treinar, não quanto pagou. Isso também limita o alcance do acesso que a auditoria registra.
+- **A consulta grava ao carregar a tela** — a única exceção à regra "carregar uma tela nunca escreve no banco", e documentada como tal, porque é o próprio RF-PRE-09 que exige o registro. O efeito é atrelado ao par aluna + professora, disparado pela navegação.
+- **Os indicadores são só da administração** (D3). O painel da professora continua sendo o do RF-PNL-04.
+- **A frequência começa baixa e isso é correto.** O protótipo só tem chamada finalizada em algumas aulas, e o indicador conta exatamente conduzidas sobre atribuídas. O cenário do guia transforma isso em demonstração: finalize a chamada pendente e veja o número subir.
+- **O seletor é de mês, como em Comissões.** A retenção precisa de dois períodos comparáveis, e o escopo apura tudo por mês civil.
 
 ### Como testar
 
-_— a preencher —_
+1. **Resetar protótipo.** No painel administrativo, o cartão "Frequência das professoras" traz a média do mês; clique em "Ver retenção e frequência por professora".
+2. A tabela mostra **Beatriz com 4 de 16 aulas atribuídas (25%)** e retenção de **1 de 2 (50%)** — Renata voltou, Aline não. Camila aparece com 0 de 9, porque não há chamada finalizada nas turmas dela.
+3. A segunda tabela traz a retenção por turma: POLE INICIANTE com 50%, as demais com "—".
+4. Troque o mês para o anterior e compare; exporte o CSV.
+5. Entre como **Beatriz** e abra **Alunas**: as sete alunas, com o selo de anamnese. Larissa e Aline aparecem como "Com pontos de atenção"; Fernanda, Helena e Juliana como "Não preenchida".
+6. Abra a ficha da Larissa: a anamnese vem primeiro, com a lesão no ombro destacada. Não há valores em lugar nenhum.
+7. Abra a chamada pendente da Beatriz e use **"Ver ficha da aluna"** sob qualquer cartão.
+8. Como administração, em Configuração → Auditoria, procure **"Consulta à ficha pela professora"**: cada abertura de ficha deixou um registro.
+9. Finalize a chamada pendente da Beatriz e volte aos indicadores: a frequência dela sobe.
 
 ### Verificação executada
 
-_— a preencher —_
+Percorrido no navegador depois de um reset: o cartão do painel (16% de média), a tela de indicadores com Beatriz em 4 de 16 (25%) e retenção 1 de 2 (50%), POLE INICIANTE em 50% e as demais turmas em "—"; a lista de alunas da professora com os três selos de anamnese; a ficha da Larissa, conferindo que não há nenhum valor em reais na tela; o registro de auditoria criado na abertura (4 → 5 registros, operação `consulta_ficha_pela_professora` com aluna e professora); o link "Ver ficha da aluna" nos cartões da chamada. Finalizada a chamada pendente da Beatriz, a frequência subiu de 25% para 31% e a comissão foi gerada. Dados de teste apagados com um reset final.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes.
+
+**Ajuste feito durante a verificação**: o link "Ver ficha" estava posicionado em cima do selo de presença, no canto do cartão; passou para uma linha própria abaixo dele, em ambas as chamadas.
 
 ---
 

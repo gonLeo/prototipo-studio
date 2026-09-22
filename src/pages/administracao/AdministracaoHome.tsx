@@ -7,6 +7,8 @@ import {
 } from '../../hooks/indicadores';
 import type { IndicadoresAdministrativos, OcupacaoDaSessao, PendenciasDeAcao } from '../../hooks/indicadores';
 import { periodoAtual } from '../../hooks/comissoes';
+import { frequenciaMedia, indicadoresDeProfessoras } from '../../hooks/indicadoresDeProfessoras';
+import type { IndicadoresDeProfessoras } from '../../hooks/indicadoresDeProfessoras';
 import { Badge } from '../../components/ui/Badge';
 import { formatarDataBR, nomeDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/creditos';
@@ -120,6 +122,7 @@ export function AdministracaoHome() {
   const [pendencias, setPendencias] = useState<PendenciasDeAcao>();
   const [indicadores, setIndicadores] = useState<IndicadoresAdministrativos>();
   const [ocupacao, setOcupacao] = useState<OcupacaoDaSessao[]>([]);
+  const [indicadoresDeAula, setIndicadoresDeAula] = useState<IndicadoresDeProfessoras>();
   const [carregando, setCarregando] = useState(true);
 
   // `periodoAtual()` cria um objeto novo a cada chamada: sem memoizar, o
@@ -128,14 +131,16 @@ export function AdministracaoHome() {
 
   const carregar = useCallback(async () => {
     setCarregando(true);
-    const [listaPendencias, listaIndicadores, listaOcupacao] = await Promise.all([
+    const [listaPendencias, listaIndicadores, listaOcupacao, porProfessora] = await Promise.all([
       pendenciasDeAcao(),
       indicadoresAdministrativos(periodo),
       ocupacaoDasSessoes(),
+      indicadoresDeProfessoras(periodo),
     ]);
     setPendencias(listaPendencias);
     setIndicadores(listaIndicadores);
     setOcupacao(listaOcupacao);
+    setIndicadoresDeAula(porProfessora);
     setCarregando(false);
   }, [periodo]);
 
@@ -143,6 +148,7 @@ export function AdministracaoHome() {
     carregar();
   }, [carregar]);
 
+  const mediaDeFrequencia = indicadoresDeAula ? frequenciaMedia(indicadoresDeAula) : undefined;
   const lotadas = ocupacao.filter((o) => o.faixa === 'lotada');
   const baixaProcura = ocupacao.filter((o) => o.faixa === 'baixa' && o.ocorrenciasAnalisadas > 0);
 
@@ -226,7 +232,21 @@ export function AdministracaoHome() {
                 valor={String(lotadas.length)}
                 detalhe={`${baixaProcura.length} com baixa procura`}
               />
+              {/* RF-PNL-07: o resumo fica aqui; o detalhe por professora e
+                  por turma vive em "Indicadores de professoras". */}
+              <Indicador
+                rotulo="Frequência das professoras"
+                valor={mediaDeFrequencia === undefined ? '—' : `${mediaDeFrequencia}%`}
+                detalhe="Aulas conduzidas sobre atribuídas"
+              />
             </div>
+
+            <Link
+              to="/administracao/indicadores-professoras"
+              className="mt-2 inline-block text-sm font-medium text-primary-700 hover:text-primary-800"
+            >
+              Ver retenção e frequência por professora →
+            </Link>
 
             {indicadores.pacotesAVencer.length > 0 && (
               <ul className="mt-3 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">

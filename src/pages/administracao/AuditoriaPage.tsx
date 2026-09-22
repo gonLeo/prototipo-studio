@@ -13,7 +13,14 @@ interface RegistroDetalhado extends RegistroAuditoria {
   rotuloOperacao: string;
 }
 
+/** Operações cujo nome cru não se lê bem só trocando underscore por espaço. */
+const ROTULOS_DE_OPERACAO: Record<string, string> = {
+  consulta_ficha_pela_professora: 'Consulta à ficha pela professora',
+};
+
 function rotularOperacao(operacao: string): string {
+  const rotulo = ROTULOS_DE_OPERACAO[operacao];
+  if (rotulo) return rotulo;
   const texto = operacao.replaceAll('_', ' ');
   return `${texto.charAt(0).toUpperCase()}${texto.slice(1)}`;
 }

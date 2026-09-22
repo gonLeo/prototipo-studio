@@ -38,6 +38,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
         { to: '/administracao/solicitacoes', label: 'Solicitações' },
         { to: '/administracao/vendas', label: 'Vendas' },
         { to: '/administracao/comissoes', label: 'Comissões' },
+        { to: '/administracao/indicadores-professoras', label: 'Indicadores de professoras' },
         { to: '/administracao/experimentais', label: 'Experimentais' },
         { to: '/administracao/convenios', label: 'Convênios' },
       ],
@@ -64,6 +65,7 @@ const NAV_POR_PERFIL: Record<PerfilAcesso, GrupoNav[]> = {
       itens: [
         { to: '/professora', label: 'Painel', fim: true },
         { to: '/professora/aulas', label: 'Minhas aulas' },
+        { to: '/professora/alunas', label: 'Alunas' },
         { to: '/professora/pagamentos', label: 'Meus pagamentos' },
       ],
     },

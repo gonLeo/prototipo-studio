@@ -16,6 +16,7 @@ import { CategoriasProfessoraPage } from './pages/administracao/CategoriasProfes
 import { CategoriasAulaPage } from './pages/administracao/CategoriasAulaPage';
 import { GradePage } from './pages/administracao/GradePage';
 import { AulasCanceladasPage } from './pages/administracao/AulasCanceladasPage';
+import { IndicadoresDeProfessorasPage } from './pages/administracao/IndicadoresDeProfessorasPage';
 import { ExcecoesPage } from './pages/administracao/ExcecoesPage';
 import { PacotesPage } from './pages/administracao/PacotesPage';
 import { AlunasPage } from './pages/administracao/AlunasPage';
@@ -32,6 +33,8 @@ import { MinhasAulasProfessoraPage } from './pages/professora/MinhasAulasProfess
 import { PainelProfessoraPage } from './pages/professora/PainelProfessoraPage';
 import { AceiteDaProfessoraPage } from './pages/professora/AceiteDaProfessoraPage';
 import { ChamadaPage } from './pages/professora/ChamadaPage';
+import { AlunasDaProfessoraPage } from './pages/professora/AlunasDaProfessoraPage';
+import { FichaDaAlunaProfessoraPage } from './pages/professora/FichaDaAlunaProfessoraPage';
 import { ChamadaExcepcionalPage } from './pages/professora/ChamadaExcepcionalPage';
 import { MeusPagamentosPage } from './pages/professora/MeusPagamentosPage';
 import { ComissoesPage } from './pages/administracao/ComissoesPage';
@@ -100,6 +103,7 @@ function App() {
                 <Route path="grade" element={<GradePage />} />
                 <Route path="excecoes" element={<ExcecoesPage />} />
                 <Route path="aulas-canceladas" element={<AulasCanceladasPage />} />
+                <Route path="indicadores-professoras" element={<IndicadoresDeProfessorasPage />} />
                 <Route path="alunas" element={<AlunasPage />} />
                 <Route path="alunas/:alunaId" element={<AlunaFichaPage />} />
                 <Route path="pacotes" element={<PacotesPage />} />
@@ -131,6 +135,9 @@ function App() {
                     aluna, que também acontece dentro do painel dela. */}
                 <Route index element={<EntradaDaProfessora />} />
                 <Route path="aulas" element={<MinhasAulasProfessoraPage />} />
+                {/* RF-PRE-09: a professora consulta a ficha de qualquer aluna. */}
+                <Route path="alunas" element={<AlunasDaProfessoraPage />} />
+                <Route path="alunas/:alunaId" element={<FichaDaAlunaProfessoraPage />} />
                 <Route path="chamada/:sessaoId/:data" element={<ChamadaPage />} />
                 <Route path="chamada-excepcional/:aulaId" element={<ChamadaExcepcionalPage />} />
                 <Route path="pagamentos" element={<MeusPagamentosPage />} />

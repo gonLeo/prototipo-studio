@@ -195,7 +195,7 @@ export function ChamadaPage() {
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
           {alunas.map((aluna) => (
-            <li key={aluna.alunaId}>
+            <li key={aluna.alunaId} className="flex flex-col gap-1">
               <button
                 type="button"
                 onClick={() => alternarPresenca(aluna.alunaId)}
@@ -231,6 +231,15 @@ export function ChamadaPage() {
                   {aluna.presente ? 'Presente' : 'Ausente'}
                 </span>
               </button>
+              {/* RF-PRE-09: atalho para a anamnese sem sair da chamada. O
+                  link fica fora do botão de presença — um toque não pode
+                  virar o outro —, numa linha própria abaixo do cartão. */}
+              <Link
+                to={`/professora/alunas/${aluna.alunaId}`}
+                className="self-start rounded px-1 py-0.5 text-xs font-medium text-primary-700 hover:text-primary-800"
+              >
+                Ver ficha da aluna
+              </Link>
             </li>
           ))}
         </ul>
