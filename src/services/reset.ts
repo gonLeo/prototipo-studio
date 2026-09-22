@@ -1,4 +1,5 @@
 import seed from '../data/seed.json';
+import { resolverDatasDoSeed } from '../data/datasDoSeed.mjs';
 import { http } from './http';
 
 type Registro = { id: string } & Record<string, unknown>;
@@ -124,7 +125,9 @@ function traduzirChavesEstrangeiras(
  * o mesmo caminho que o app real usará no futuro.
  */
 export async function resetarPrototipo(): Promise<void> {
-  const dados = seed as BaseDeDados;
+  // As datas do backfill são tokens relativos e viram datas de verdade em
+  // relação ao dia do reset — a aula "de ontem" é sempre de ontem.
+  const dados = resolverDatasDoSeed(seed) as BaseDeDados;
   const recursos = Object.keys(dados);
 
   for (const recurso of recursos) {

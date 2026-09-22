@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://localhost:4000`, acessado pelo front via proxy `/api`). Na primeira execução, `db.json` é criado a partir do backfill em `src/data/seed.json`.
+Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://localhost:4000`, acessado pelo front via proxy `/api`). Na primeira execução, `db.json` é criado a partir do backfill em `src/data/seed.json`, com as datas resolvidas em relação ao dia da carga (ver "Seed com datas relativas").
 
 ## Arquitetura
 
@@ -24,8 +24,32 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 - `src/services/notificador.ts` — camada de notificação (M15). **Nenhuma regra grava `Notificacao` direto**: as regras dizem o que comunicar e para quem (`{ tipo: 'aluna' | 'professora' | 'usuario' | 'administracao', id }`), e a camada resolve o destinatário e decide o canal em `canalDoEvento`. Na Fase 1 tudo sai por e-mail; incluir WhatsApp é mudar essa função, sem tocar em regra de disparo (RF-NOT-10). Evento novo entra no catálogo `EVENTOS_NOTIFICACAO` junto com a regra que o dispara — é dele que sai o rótulo do registro de envios.
 - `src/services/gatewayPagamento.ts` — integração de pagamento **simulada** (M11). Todo o financeiro (retentativa, multa e juros, inadimplência, regularização) opera sobre o retorno dessas funções, então trocar pelo provedor real (RF-FIN-14, ainda em definição) não deve exigir mudança em regra nem em tela. A simulação é determinística: aprova sempre, exceto nas cobranças marcadas com `simularFalhaGateway`.
 - Integração com os convênios (M13) não tem API no protótipo: as mensagens que viriam dos parceiros (reserva, cancelamento, check-in) são disparadas pela administração em `src/pages/administracao/ConveniosPage.tsx`, sobre as regras de `src/hooks/convenios.ts`. O efeito no studio é idêntico ao da integração real — ocupa vaga, aparece na chamada, entra no relatório de repasse —, e é o mesmo caminho que atende à contingência prevista no escopo (RF-CNV-13).
-- `src/data/seed.json` — backfill versionado. Todo recurso já usado por algum repositório (mesmo que ainda sem tela) precisa existir aqui, nem que seja como array vazio — json-server responde 404 (não lista vazia) para uma chave que não existe no `db.json`, e um `listar()` que estoura 404 quebra qualquer regra de negócio que dependa dele. Botão "Resetar protótipo" na interface restaura este estado a qualquer momento.
+- `src/data/seed.json` — backfill versionado. Todo recurso já usado por algum repositório (mesmo que ainda sem tela) precisa existir aqui, nem que seja como array vazio — json-server responde 404 (não lista vazia) para uma chave que não existe no `db.json`, e um `listar()` que estoura 404 quebra qualquer regra de negócio que dependa dele. Botão "Resetar protótipo" na interface restaura este estado a qualquer momento. **Nenhuma data do seed é literal** — são tokens relativos (`@hoje-5`, `@proxima(segunda,quarta)`), resolvidos por `src/data/datasDoSeed.mjs` na carga e no reset; ver a seção "Seed com datas relativas".
 - `src/services/reset.ts` — restaura o backfill pela API REST. **O json-server ignora o `id` enviado no POST e gera um novo**, então toda entidade que aponte para outra precisa ter suas chaves estrangeiras declaradas no mapa `CHAVES_ESTRANGEIRAS` desse arquivo; sem isso, os vínculos do seed ficam órfãos depois de um reset (a tela passa a mostrar "Modalidade removida", "Professora removida" e afins). O reset recria os recursos em ordem de dependência e traduz cada FK para o id realmente gravado.
+
+## Seed com datas relativas
+
+O protótipo usa a data real como "hoje", e um backfill com datas fixas envelhece: a aula "futura" vira passada, o pacote "Finalizando" vence, a justificativa sai do prazo. Por isso **todo campo de data em `src/data/seed.json` é um token**, resolvido por `src/data/datasDoSeed.mjs` nos dois pontos em que o seed vira banco — `scripts/seed.mjs` (primeira carga e coleções novas) e `src/services/reset.ts` (botão "Resetar protótipo"). O módulo é JavaScript puro porque roda no Node do script e no bundle do Vite; a tipagem está em `datasDoSeed.d.mts`.
+
+| Token | Resolve para |
+| --- | --- |
+| `@hoje` | hoje |
+| `@hoje-5`, `@hoje+30`, `@hoje-1s` | hoje mais ou menos N dias (`s` = semanas) |
+| `@ultima(quarta)`, `@ultima(segunda,quarta)` | a data mais recente **anterior a hoje** num dos dias listados |
+| `@proxima(terca,quinta)`, `@proxima(sexta)+1s` | a primeira data **posterior a hoje** num dos dias listados; deslocamentos valem para qualquer base |
+| `@hoje-2T10:15` | com horário, vira ISO completo (`…T10:15:00.000Z`) |
+| `@fixa(1995-03-22)` | não resolve — deixa explícito que a data é fixa de propósito (nascimento) |
+| `"Aula de {{@proxima(segunda,quarta)}} às 08:00"` | token embutido em texto, formatado `dd/mm/aaaa`; `{{…\|mes}}` dá o nome do mês, `{{…\|iso}}` a data ISO |
+
+Uma data literal (`2026-08-17`) fora de `@fixa(...)` **faz a carga falhar** de propósito — melhor o `npm run seed` quebrar do que voltar a envelhecer.
+
+Regras que o seed respeita e que qualquer dado novo precisa manter:
+
+- Uma ocorrência de sessão usa `@ultima(...)`/`@proxima(...)` com os dias da própria sessão (ses-1 e ses-2: segunda e quarta; ses-3: terça e quinta; ses-4: sexta; ses-5: sábado). Uma ocorrência em dia que a sessão não tem fica órfã da grade.
+- Um agendamento tem `dataHora` anterior à ocorrência e nunca futura (`@hoje-1T10:15` para a aula futura; `@ultima(...)-2T09:00` para a passada).
+- O estado das personas é estável em qualquer dia: Patrícia vence em 5 dias com 1 crédito (sempre "Finalizando"), Aline venceu há 48 dias, Larissa tem 48 dias de validade, a justificativa da Larissa é da última aula passada (no máximo 5 dias, dentro do prazo de 7), a solicitação da Beatriz é para a próxima aula de dança.
+- Movimentos, vendas, notificações e auditoria seguem as datas dos fatos que registram; o texto usa o token embutido quando cita a data.
+- Todas as alunas têm o telefone `(65) 9680-6348`, para que o botão de WhatsApp (v2.1, RF-CPR-09) abra o aparelho da cliente na demonstração.
 
 ## Padrões de UI (valem para todas as fases, não só a atual)
 
@@ -54,7 +78,7 @@ Página pública, fora do `AppShell`, que ensina a reproduzir cada cenário do e
 
 - **O conteúdo é dado, não JSX**: `src/data/guiaDoPrototipo.ts` tem os grupos, cenários e passos tipados. Um cenário novo é uma entrada ali — a página (`src/pages/GuiaDoPrototipoPage.tsx`) só renderiza.
 - **Cada passo declara o perfil** (`administracao` | `professora` | `aluna` | `publico`). A tela só rotula o perfil quando ele muda entre um passo e o seguinte: a troca de perfil é a informação que precisa saltar aos olhos.
-- **Um cenário escreve para o estado pós-reset** e cita a persona pelo nome. Quando depender de data, prefere criar o dado (agendar uma aula) a apontar para uma data fixa do seed, que envelhece.
+- **Um cenário escreve para o estado pós-reset** e cita a persona pelo nome. Pode citar os dados do seed em termos relativos ("a última aula de segunda ou quarta", "vence em 5 dias"), porque o seed é gerado em relação ao dia do reset; nunca por data absoluta.
 - Ao mudar uma regra, uma tela ou o seed, **confira o cenário correspondente**: ele é a única parte do protótipo que descreve o próprio protótipo, e desatualiza sem aviso.
 
 ## Glossário do modelo de créditos

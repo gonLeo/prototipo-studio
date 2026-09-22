@@ -7,10 +7,11 @@
  * testa — os fluxos do studio cruzam três perfis, e a pergunta que trava
  * é sempre "com quem eu entro agora?".
  *
- * As datas dos dados de exemplo são de agosto de 2026 e o protótipo usa a
- * data real como "hoje". Por isso os cenários preferem criar o dado que
- * precisam (agendar uma aula, cadastrar uma exceção) a depender de uma
- * data fixa do seed.
+ * As datas dos dados de exemplo são relativas ao dia do reset (tokens
+ * resolvidos por `datasDoSeed.mjs`): a aula "de ontem" é sempre de ontem, a
+ * "próxima de segunda ou quarta" é sempre a próxima. Um cenário pode citar
+ * esses dados sem caducar — mas continua preferindo criar o que precisa
+ * quando o estado do seed não basta.
  */
 
 export type PerfilDoPasso = 'administracao' | 'professora' | 'aluna' | 'publico';
@@ -71,7 +72,7 @@ export const SIMULACOES = [
   { o: 'E-mail', como: 'Nenhum e-mail sai de verdade. Cada disparo fica registrado em Configuração → Notificações, com destinatária, evento, requisito e o texto que seria enviado.' },
   { o: 'Convênio', como: 'Não há API do Wellhub ou TotalPass. As mensagens que viriam do parceiro — reserva, cancelamento, check-in — são disparadas pela administração em Convênios.' },
   { o: 'Rotinas automáticas', como: 'O que no sistema real rodaria sozinho todo dia (encerrar carteiras vencidas, renovar bolsas, avisar "Finalizando") é o botão "Rodar rotina de carteiras", em Vendas. Carregar uma tela nunca altera dados.' },
-  { o: 'Datas', como: 'Os dados de exemplo são de agosto de 2026 e o protótipo usa a data real como hoje. Quando um cenário depender de uma aula futura, agende uma em vez de procurar a de exemplo.' },
+  { o: 'Datas', como: 'Os dados de exemplo são gerados em relação ao dia do reset: a última aula de segunda ou quarta às 08:00 já passou (Larissa cancelou em cima da hora e justificou), a próxima está agendada, o pacote da Patrícia vence em 5 dias, o da Aline venceu há semanas. Resetar num outro dia refaz tudo em relação a esse dia.' },
 ];
 
 const A = 'administracao' as const;
@@ -189,11 +190,11 @@ export const GUIA: GrupoDoGuia[] = [
         fluxo: '6.4 Compra de novo pacote',
         regras: ['RN-04', 'RN-05', 'RN-07'],
         requisitos: ['RF-CRE-13', 'RF-CRE-16', 'RF-NOT-02'],
-        preparo: 'O exemplo do escopo: sobram 3 créditos até 10/10, ela compra o Flow (12 créditos, 90 dias) em 01/10 e fica com 15 até 30/12. Patrícia Lima (1 crédito, vencimento próximo) é o estado equivalente; Larissa Prado (9 créditos até 08/11) serve para ver a validade mantida.',
+        preparo: 'O exemplo do escopo: sobram 3 créditos até 10/10, ela compra o Flow (12 créditos, 90 dias) em 01/10 e fica com 15 até 30/12. Patrícia Lima (1 crédito, vence em 5 dias) é o estado equivalente; Larissa Prado (9 créditos, validade daqui a 48 dias) serve para ver a validade mantida.',
         passos: [
           { perfil: L, texto: 'Entre como Patrícia e abra Meu pacote. Escolha o Flow: a prévia soma os créditos restantes aos 12 e mostra a validade nova, 90 dias à frente — mais distante que a atual.' },
           { perfil: L, texto: 'Pague e confira o saldo no topo.' },
-          { perfil: L, texto: 'Entre como Larissa e, em Meu pacote, escolha o Starter (45 dias): a prévia soma 9 + 4 e avisa que a validade atual, 08/11, é mais longa e foi mantida.' },
+          { perfil: L, texto: 'Entre como Larissa e, em Meu pacote, escolha o Starter (45 dias): a prévia soma 9 + 4 e avisa que a validade atual, mais distante que os 45 dias do Starter, foi mantida.' },
         ],
         conferir: [
           'Nos dois casos a carteira continua sendo uma só, com os créditos somados e a validade mais distante — nunca a mais curta.',
@@ -260,9 +261,9 @@ export const GUIA: GrupoDoGuia[] = [
         resumo: 'Crédito extra ou desconto na primeira compra depois da aula experimental, dentro do prazo.',
         regras: ['RN-35'],
         requisitos: ['RF-EXP-07', 'RF-EXP-08', 'RF-EXP-09'],
-        preparo: 'Juliana Rocha fez a experimental, mas o prazo padrão do benefício (3 dias) já passou e a compra recusada pelo gateway bloqueia o direito.',
+        preparo: 'Juliana Rocha fez a experimental na última aula de dança (terça ou quinta, às 15:00). O benefício vale 3 dias a partir da aula — na segunda e na terça ele já venceu. A compra recusada pelo gateway bloqueia o direito enquanto estiver pendente.',
         passos: [
-          { perfil: A, texto: 'Em Parâmetros, aumente a "Validade do benefício de conversão" para 60 dias.' },
+          { perfil: A, texto: 'Em Parâmetros, aumente a "Validade do benefício de conversão" para 10 dias, para não depender do dia da semana.' },
           { perfil: A, texto: 'Em Vendas, cancele a venda pendente da Juliana com um motivo.' },
           { perfil: A, texto: 'Na ficha da Juliana, "Comprar pacote": o aviso verde mostra o direito e a prévia soma 1 crédito de bônus.' },
           { perfil: A, texto: 'Confirme. Depois abra "Comprar pacote" de novo: o benefício não aparece mais.' },
@@ -342,7 +343,7 @@ export const GUIA: GrupoDoGuia[] = [
         resumo: 'A aluna envia, a administração decide. Aprovar devolve o crédito; recusar mantém o consumo.',
         regras: ['RN-08'],
         requisitos: ['RF-JUS-01', 'RF-JUS-02', 'RF-JUS-03', 'RF-JUS-04', 'RF-JUS-05', 'RF-NOT-10'],
-        preparo: 'Larissa já tem uma justificativa pendente de uma aula de agosto. O envio de uma nova só é possível dentro do prazo de 7 dias da aula.',
+        preparo: 'Larissa já tem uma justificativa pendente da última aula de segunda ou quarta às 08:00 — sempre dentro do prazo de 7 dias, que é o limite para enviar uma nova.',
         passos: [
           { perfil: A, texto: 'No painel, o bloco de pendências mostra "Justificativas a analisar". Abra.' },
           { perfil: A, texto: 'Analise a da Larissa: escreva o parecer e aprove.' },
@@ -380,7 +381,7 @@ export const GUIA: GrupoDoGuia[] = [
         preparo: 'Uma chamada já finalizada. Se precisar, finalize uma pelo cenário "Agendar e realizar a aula".',
         passos: [
           { perfil: P, texto: 'Abra a chamada finalizada dentro do prazo (3 dias): dá para trocar presença e "Salvar correção".' },
-          { perfil: A, texto: 'Numa chamada mais antiga (as de agosto servem), o mesmo botão exige a justificativa do ajuste fora do prazo.' },
+          { perfil: A, texto: 'Para o caso fora do prazo, em Parâmetros reduza o "Prazo de correção de chamada" para 0 dias e volte à mesma chamada: o botão passa a exigir a justificativa do ajuste.' },
           { perfil: A, texto: 'Caso especial: marque presente uma aluna cuja falta teve justificativa aprovada.' },
         ],
         conferir: [
@@ -550,7 +551,7 @@ export const GUIA: GrupoDoGuia[] = [
         passos: [
           { perfil: A, texto: 'Na ficha, no histórico de compras, clique em "Reembolsar" na venda recente.' },
           { perfil: A, texto: 'A prévia aplica as regras: prazo, percentual usado, valor devolvido já descontando os créditos utilizados. Confirme.' },
-          { perfil: A, texto: 'Tente reembolsar uma compra antiga (a Starter da Larissa, de junho).' },
+          { perfil: A, texto: 'Tente reembolsar uma compra antiga (a Starter da Larissa, de mais de três meses atrás).' },
           { perfil: L, texto: 'Entre como a aluna reembolsada.' },
         ],
         conferir: [

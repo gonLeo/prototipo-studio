@@ -1,14 +1,21 @@
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { hojeLocalISO, resolverDatasDoSeed } from '../src/data/datasDoSeed.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const seedPath = join(root, 'src', 'data', 'seed.json');
 const dbPath = join(root, 'db.json');
 
+// As datas do backfill são tokens relativos ("@hoje-5", "@proxima(segunda)")
+// e só viram datas de verdade aqui, em relação ao dia da carga — por isso o
+// arquivo nunca é copiado tal qual. A gramática está em datasDoSeed.mjs.
+const hoje = hojeLocalISO();
+const backfill = resolverDatasDoSeed(JSON.parse(readFileSync(seedPath, 'utf-8')), hoje);
+
 if (!existsSync(dbPath)) {
-  copyFileSync(seedPath, dbPath);
-  console.log('db.json criado a partir do backfill (src/data/seed.json).');
+  writeFileSync(dbPath, `${JSON.stringify(backfill, null, 2)}\n`, 'utf-8');
+  console.log(`db.json criado a partir do backfill (src/data/seed.json), com as datas resolvidas para ${hoje}.`);
 } else {
   // O db.json existente é a cópia de trabalho e não é sobrescrito — os dados
   // que a usuária criou navegando continuam ali. Mas uma coleção nova do
@@ -16,7 +23,6 @@ if (!existsSync(dbPath)) {
   // vazia) para uma chave ausente, e nem a tela nem o "Resetar protótipo"
   // conseguem criá-la depois. Por isso as chaves que faltam entram aqui, já
   // com o conteúdo do backfill.
-  const backfill = JSON.parse(readFileSync(seedPath, 'utf-8'));
   const db = JSON.parse(readFileSync(dbPath, 'utf-8'));
 
   const novas = Object.keys(backfill).filter((recurso) => !(recurso in db));

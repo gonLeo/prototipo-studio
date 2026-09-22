@@ -348,14 +348,14 @@
       "id": "hist-cat-1",
       "professoraId": "prof-admin",
       "categoriaId": "cat-3",
-      "dataInicioVigencia": "2026-01-05",
+      "dataInicioVigencia": "@hoje-260",
       "autorId": "usr-admin"
     },
     {
       "id": "hist-cat-2",
       "professoraId": "prof-2",
       "categoriaId": "cat-1",
-      "dataInicioVigencia": "2026-03-10",
+      "dataInicioVigencia": "@hoje-195",
       "autorId": "usr-admin"
     }
   ],
@@ -363,8 +363,8 @@
     {
       "id": "alu-larissa",
       "usuarioId": "usr-aluna-1",
-      "telefone": "(11) 98888-1010",
-      "dataNascimento": "1995-03-22",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1995-03-22)",
       "contatoEmergencia": "Marcos Prado — (11) 97777-2020",
       "origem": "direta",
       "situacao": "ativa",
@@ -373,8 +373,8 @@
     {
       "id": "alu-fernanda",
       "usuarioId": "usr-aluna-2",
-      "telefone": "(11) 96666-3030",
-      "dataNascimento": "1990-11-08",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1990-11-08)",
       "contatoEmergencia": "Juliana Alves — (11) 95555-4040",
       "origem": "direta",
       "situacao": "aguardando_aceite",
@@ -384,8 +384,8 @@
     {
       "id": "alu-patricia",
       "usuarioId": "usr-aluna-3",
-      "telefone": "(11) 94444-5050",
-      "dataNascimento": "1988-06-14",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1988-06-14)",
       "contatoEmergencia": "Renato Lima — (11) 93333-6060",
       "origem": "direta",
       "situacao": "ativa",
@@ -394,8 +394,8 @@
     {
       "id": "alu-renata",
       "usuarioId": "usr-aluna-4",
-      "telefone": "(11) 92222-7070",
-      "dataNascimento": "1993-02-19",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1993-02-19)",
       "contatoEmergencia": "",
       "origem": "convenio",
       "situacao": "ativa",
@@ -404,8 +404,8 @@
     {
       "id": "alu-juliana",
       "usuarioId": "usr-aluna-5",
-      "telefone": "(11) 91111-8080",
-      "dataNascimento": "1997-09-05",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1997-09-05)",
       "contatoEmergencia": "Marina Rocha — (11) 90000-9090",
       "origem": "direta",
       "situacao": "ativa",
@@ -414,8 +414,8 @@
     {
       "id": "alu-aline",
       "usuarioId": "usr-aluna-6",
-      "telefone": "(11) 98787-1212",
-      "dataNascimento": "1992-04-30",
+      "telefone": "(65) 9680-6348",
+      "dataNascimento": "@fixa(1992-04-30)",
       "contatoEmergencia": "Carla Martins — (11) 97676-1313",
       "origem": "direta",
       "situacao": "ativa",
@@ -426,7 +426,7 @@
     {
       "id": "ana-larissa",
       "alunaId": "alu-larissa",
-      "dataPreenchimento": "2026-08-10T14:30:00.000Z",
+      "dataPreenchimento": "@hoje-112T13:30",
       "versaoQuestionario": 1,
       "respostas": {
         "lesao_ou_cirurgia": "Sim — cirurgia no ombro direito em 2022, liberada para atividade",
@@ -441,7 +441,7 @@
     {
       "id": "ana-patricia",
       "alunaId": "alu-patricia",
-      "dataPreenchimento": "2025-08-30T10:05:00.000Z",
+      "dataPreenchimento": "@hoje-40T14:05",
       "versaoQuestionario": 1,
       "respostas": {
         "lesao_ou_cirurgia": "Não",
@@ -459,7 +459,7 @@
       "id": "termo-v1",
       "versao": 1,
       "conteudo": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: {{nome}}, CPF {{cpf}}.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima.",
-      "dataPublicacao": "2026-01-15T09:00:00.000Z",
+      "dataPublicacao": "@hoje-250T09:00",
       "situacao": "ativo",
       "publicoAlvo": "aluna"
     },
@@ -468,7 +468,7 @@
       "publicoAlvo": "professora",
       "versao": 1,
       "conteudo": "TERMO DE PRESTAÇÃO DE SERVIÇOS — PROFESSORA\n\nPRESTADORA: {{nome}}, CPF {{cpf}}.\n\n1. OBJETO\nA professora presta serviços de condução de aulas nas modalidades para as quais está habilitada, na condição de prestadora de serviço, sem vínculo empregatício.\n\n2. REMUNERAÇÃO\nA remuneração é por aula efetivamente realizada, conforme o valor da categoria vigente na data da aula. Aulas excepcionais têm o valor informado no cadastro da própria aula.\n\n3. APURAÇÃO E PAGAMENTO\nO período de apuração é mensal, do primeiro ao último dia do mês. O pagamento é feito até o quinto dia útil do mês seguinte ao período apurado.\n\n4. CHAMADA\nA professora é responsável por finalizar a chamada de suas aulas dentro do prazo configurado. A comissão de cada aula é gerada na finalização da chamada.\n\n5. CANCELAMENTO DE AULA\nO cancelamento de uma aula é solicitado à administração, que decide entre designar substituta ou cancelar a sessão. A aula permanece ativa até a decisão.\n\n6. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da professora.\n\nAo aceitar este termo, a professora declara ter lido e concordado integralmente com as condições acima.",
-      "dataPublicacao": "2026-06-01T09:00:00.000Z",
+      "dataPublicacao": "@hoje-120T09:00",
       "situacao": "ativo"
     }
   ],
@@ -477,7 +477,7 @@
       "id": "ace-larissa",
       "usuarioId": "usr-aluna-1",
       "termoVersaoId": "termo-v1",
-      "dataHora": "2026-08-10T14:28:00.000Z",
+      "dataHora": "@hoje-112T13:28",
       "enderecoIp": "203.0.113.10 (simulado no protótipo)",
       "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: Larissa Prado, CPF 333.333.333-33.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
     },
@@ -485,7 +485,7 @@
       "id": "ace-patricia",
       "usuarioId": "usr-aluna-3",
       "termoVersaoId": "termo-v1",
-      "dataHora": "2025-08-30T10:02:00.000Z",
+      "dataHora": "@hoje-40T14:02",
       "enderecoIp": "203.0.113.44 (simulado no protótipo)",
       "conteudoAceito": "TERMO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: Patrícia Lima, CPF 555.555.555-55.\n\n1. OBJETO\nO studio presta serviços de aulas nas modalidades ofertadas, conforme o pacote de créditos adquirido pela aluna.\n\n2. CRÉDITOS E VALIDADE\nO pacote adquirido concede a quantidade de créditos indicada, utilizáveis dentro do prazo de validade informado na compra. Cada categoria de aula tem um custo próprio em créditos. Os créditos não utilizados até a data de validade são perdidos.\n\n3. AGENDAMENTO E CANCELAMENTO\nO agendamento é feito pela aluna dentro do sistema e reserva os créditos correspondentes, respeitando a antecedência mínima de cancelamento configurada. Cancelamentos dentro do prazo liberam os créditos reservados; cancelamentos fora do prazo consomem esses créditos.\n\n4. SAÚDE E CONDIÇÕES PREEXISTENTES\nA aluna declara que as informações prestadas na ficha de anamnese são verdadeiras e assume a responsabilidade por condições de saúde preexistentes não informadas ao studio.\n\n5. PAGAMENTO\nO pagamento é único, realizado no ato da compra do pacote. Não há cobrança recorrente nem mensalidade automática.\n\n6. REEMBOLSO\nO cancelamento da compra com reembolso pode ser solicitado à administração do studio em até 7 dias corridos da data da compra, desde que utilizados no máximo 50% dos créditos adquiridos. Do valor a reembolsar são descontados os créditos já utilizados, calculados pelo valor unitário do pacote.\n\n7. IMAGEM\nEventual uso de imagem em materiais do studio depende de autorização específica da aluna.\n\nAo aceitar este termo, a aluna declara ter lido e concordado integralmente com as condições acima."
     }
@@ -524,11 +524,11 @@
       "creditosTotais": 4,
       "creditosUtilizados": 4,
       "creditosReservados": 0,
-      "dataAtivacao": "2026-06-01",
-      "dataValidade": "2026-07-16",
+      "dataAtivacao": "@hoje-112",
+      "dataValidade": "@hoje-67",
       "situacao": "consumida",
       "motivoEncerramento": "consumo_total",
-      "dataEncerramento": "2026-07-10",
+      "dataEncerramento": "@hoje-73",
       "bolsa": false
     },
     {
@@ -538,8 +538,8 @@
       "creditosTotais": 12,
       "creditosUtilizados": 1,
       "creditosReservados": 2,
-      "dataAtivacao": "2026-08-10",
-      "dataValidade": "2026-11-08",
+      "dataAtivacao": "@hoje-42",
+      "dataValidade": "@hoje+48",
       "situacao": "ativa",
       "bolsa": false
     },
@@ -550,7 +550,7 @@
       "creditosTotais": 4,
       "creditosUtilizados": 0,
       "creditosReservados": 0,
-      "dataValidade": "2026-10-11",
+      "dataValidade": "@hoje+42",
       "situacao": "aguardando_ativacao",
       "bolsa": true
     },
@@ -561,8 +561,8 @@
       "creditosTotais": 4,
       "creditosUtilizados": 3,
       "creditosReservados": 0,
-      "dataAtivacao": "2026-08-10",
-      "dataValidade": "2026-09-24",
+      "dataAtivacao": "@hoje-40",
+      "dataValidade": "@hoje+5",
       "situacao": "ativa",
       "bolsa": false
     },
@@ -573,11 +573,11 @@
       "creditosTotais": 4,
       "creditosUtilizados": 2,
       "creditosReservados": 0,
-      "dataAtivacao": "2026-06-20",
-      "dataValidade": "2026-08-04",
+      "dataAtivacao": "@hoje-93",
+      "dataValidade": "@hoje-48",
       "situacao": "expirada",
       "motivoEncerramento": "vencimento",
-      "dataEncerramento": "2026-08-05",
+      "dataEncerramento": "@hoje-47",
       "bolsa": false
     }
   ],
@@ -590,16 +590,16 @@
       "origem": "Compra do pacote Starter",
       "referenciaId": "vnd-larissa-starter",
       "autorId": "usr-admin",
-      "dataHora": "2026-06-01T13:00:00.000Z"
+      "dataHora": "@hoje-112T13:00"
     },
     {
       "id": "mov-2",
       "carteiraId": "car-larissa-antiga",
       "tipo": "consumo",
       "quantidade": 4,
-      "origem": "Aulas realizadas entre junho e julho",
+      "origem": "Aulas realizadas ao longo do pacote",
       "autorId": "usr-admin",
-      "dataHora": "2026-07-10T20:00:00.000Z"
+      "dataHora": "@hoje-73T20:00"
     },
     {
       "id": "mov-3",
@@ -609,47 +609,47 @@
       "origem": "Compra do pacote Flow",
       "referenciaId": "vnd-larissa-flow",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-10T13:00:00.000Z"
+      "dataHora": "@hoje-42T13:00"
     },
     {
       "id": "mov-4",
       "carteiraId": "car-larissa",
       "tipo": "reserva",
       "quantidade": 1,
-      "origem": "Agendamento de 12/08/2026 às 08:00",
+      "origem": "Agendamento de {{@ultima(segunda,quarta)}} às 08:00",
       "referenciaId": "agd-perdido",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-10T09:00:00.000Z"
+      "dataHora": "@ultima(segunda,quarta)-2T09:00"
     },
     {
       "id": "mov-5",
       "carteiraId": "car-larissa",
       "tipo": "consumo",
       "quantidade": 1,
-      "origem": "Cancelamento da aula de 12/08/2026 — fora da antecedência",
+      "origem": "Cancelamento da aula de {{@ultima(segunda,quarta)}} — fora da antecedência",
       "referenciaId": "agd-perdido",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-12T06:30:00.000Z"
+      "dataHora": "@ultima(segunda,quarta)T06:30"
     },
     {
       "id": "mov-6",
       "carteiraId": "car-larissa",
       "tipo": "reserva",
       "quantidade": 1,
-      "origem": "Agendamento de 13/08/2026 às 15:00",
+      "origem": "Agendamento de {{@ultima(terca,quinta)}} às 15:00",
       "referenciaId": "agd-danca-13",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-11T09:00:00.000Z"
+      "dataHora": "@ultima(terca,quinta)-2T09:00"
     },
     {
       "id": "mov-7",
       "carteiraId": "car-larissa",
       "tipo": "reserva",
       "quantidade": 1,
-      "origem": "Agendamento de 17/08/2026 às 08:00",
+      "origem": "Agendamento de {{@proxima(segunda,quarta)}} às 08:00",
       "referenciaId": "agd-futuro",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-13T10:15:00.000Z"
+      "dataHora": "@hoje-1T10:15"
     },
     {
       "id": "mov-8",
@@ -659,7 +659,7 @@
       "origem": "Compra do pacote Starter",
       "referenciaId": "vnd-fernanda-bolsa",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-27T12:00:00.000Z"
+      "dataHora": "@hoje-3T12:00"
     },
     {
       "id": "mov-9",
@@ -669,16 +669,16 @@
       "origem": "Compra do pacote Starter",
       "referenciaId": "vnd-patricia-starter",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-10T14:00:00.000Z"
+      "dataHora": "@hoje-40T14:00"
     },
     {
       "id": "mov-10",
       "carteiraId": "car-patricia",
       "tipo": "consumo",
       "quantidade": 3,
-      "origem": "Aulas realizadas em agosto",
+      "origem": "Aulas realizadas em {{@hoje-10|mes}}",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-25T20:00:00.000Z"
+      "dataHora": "@hoje-10T20:00"
     },
     {
       "id": "mov-11",
@@ -688,25 +688,25 @@
       "origem": "Compra do pacote Starter",
       "referenciaId": "vnd-aline-starter",
       "autorId": "usr-admin",
-      "dataHora": "2026-06-20T15:00:00.000Z"
+      "dataHora": "@hoje-93T15:00"
     },
     {
       "id": "mov-12",
       "carteiraId": "car-aline",
       "tipo": "consumo",
       "quantidade": 2,
-      "origem": "Aulas realizadas em julho",
+      "origem": "Aulas realizadas em {{@hoje-63|mes}}",
       "autorId": "usr-admin",
-      "dataHora": "2026-07-20T20:00:00.000Z"
+      "dataHora": "@hoje-63T20:00"
     },
     {
       "id": "mov-13",
       "carteiraId": "car-aline",
       "tipo": "expiracao",
       "quantidade": 2,
-      "origem": "Créditos perdidos no vencimento de 04/08/2026",
+      "origem": "Créditos perdidos no vencimento de {{@hoje-48}}",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-05T03:00:00.000Z"
+      "dataHora": "@hoje-47T03:00"
     }
   ],
   "vendas": [
@@ -719,7 +719,7 @@
       "validadeDias": 45,
       "valor": 220,
       "formaPagamento": "pix",
-      "data": "2026-06-01",
+      "data": "@hoje-112",
       "situacao": "confirmada",
       "identificadorGateway": "sim-seed-larissa-1",
       "bolsa": false,
@@ -735,7 +735,7 @@
       "valor": 380,
       "formaPagamento": "cartao_parcelado",
       "parcelas": 3,
-      "data": "2026-08-10",
+      "data": "@hoje-42",
       "situacao": "confirmada",
       "identificadorGateway": "sim-seed-larissa-2",
       "bolsa": false,
@@ -750,7 +750,7 @@
       "validadeDias": 45,
       "valor": 0,
       "formaPagamento": "manual",
-      "data": "2026-08-27",
+      "data": "@hoje-3",
       "situacao": "confirmada",
       "bolsa": true,
       "carteiraId": "car-fernanda",
@@ -765,7 +765,7 @@
       "validadeDias": 45,
       "valor": 220,
       "formaPagamento": "cartao_avista",
-      "data": "2026-08-10",
+      "data": "@hoje-40",
       "situacao": "confirmada",
       "identificadorGateway": "sim-seed-patricia",
       "bolsa": false,
@@ -780,7 +780,7 @@
       "validadeDias": 45,
       "valor": 220,
       "formaPagamento": "pix",
-      "data": "2026-06-20",
+      "data": "@hoje-93",
       "situacao": "confirmada",
       "identificadorGateway": "sim-seed-aline",
       "bolsa": false,
@@ -794,7 +794,7 @@
       "validadeDias": 0,
       "valor": 30,
       "formaPagamento": "pix",
-      "data": "2026-08-11",
+      "data": "@ultima(terca,quinta)-2",
       "situacao": "confirmada",
       "identificadorGateway": "sim-seed-juliana-exp",
       "bolsa": false,
@@ -809,7 +809,7 @@
       "validadeDias": 90,
       "valor": 380,
       "formaPagamento": "cartao_avista",
-      "data": "2026-08-26",
+      "data": "@ultima(terca,quinta)+1",
       "situacao": "pendente",
       "bolsa": false,
       "simularFalhaGateway": true
@@ -830,7 +830,7 @@
       "horarioInicio": "08:00",
       "horarioFim": "09:00",
       "capacidade": 6,
-      "dataInicio": "2026-02-02",
+      "dataInicio": "@hoje-200",
       "descricao": "Turma da manhã",
       "espelhadaConvenio": true,
       "situacao": "ativo"
@@ -847,7 +847,7 @@
       "horarioInicio": "09:00",
       "horarioFim": "10:00",
       "capacidade": 6,
-      "dataInicio": "2026-02-02",
+      "dataInicio": "@hoje-200",
       "espelhadaConvenio": false,
       "situacao": "ativo"
     },
@@ -863,7 +863,7 @@
       "horarioInicio": "15:00",
       "horarioFim": "16:00",
       "capacidade": 12,
-      "dataInicio": "2026-02-03",
+      "dataInicio": "@hoje-200",
       "espelhadaConvenio": true,
       "situacao": "ativo"
     },
@@ -878,7 +878,7 @@
       "horarioInicio": "18:00",
       "horarioFim": "19:00",
       "capacidade": 5,
-      "dataInicio": "2026-02-06",
+      "dataInicio": "@hoje-200",
       "espelhadaConvenio": false,
       "situacao": "ativo"
     },
@@ -893,7 +893,7 @@
       "horarioInicio": "09:00",
       "horarioFim": "10:00",
       "capacidade": 14,
-      "dataInicio": "2026-02-07",
+      "dataInicio": "@hoje-200",
       "descricao": "Aberta a todos os níveis",
       "espelhadaConvenio": true,
       "situacao": "ativo"
@@ -903,21 +903,21 @@
     {
       "id": "oco-futura",
       "sessaoId": "ses-1",
-      "data": "2026-08-17",
+      "data": "@proxima(segunda,quarta)",
       "professoraEfetivaId": "prof-2",
       "situacao": "ativa"
     },
     {
       "id": "oco-passada",
       "sessaoId": "ses-1",
-      "data": "2026-08-12",
+      "data": "@ultima(segunda,quarta)",
       "professoraEfetivaId": "prof-2",
       "situacao": "ativa"
     },
     {
       "id": "oco-danca-13",
       "sessaoId": "ses-3",
-      "data": "2026-08-13",
+      "data": "@ultima(terca,quinta)",
       "professoraEfetivaId": "prof-2",
       "situacao": "ativa"
     }
@@ -931,7 +931,7 @@
       "alunaId": "alu-larissa",
       "ocorrenciaSessaoId": "oco-futura",
       "origem": "portal",
-      "dataHora": "2026-08-13T10:15:00.000Z",
+      "dataHora": "@hoje-1T10:15",
       "situacao": "ativo",
       "experimental": false,
       "creditosReservados": 1
@@ -941,7 +941,7 @@
       "alunaId": "alu-larissa",
       "ocorrenciaSessaoId": "oco-passada",
       "origem": "portal",
-      "dataHora": "2026-08-10T09:00:00.000Z",
+      "dataHora": "@ultima(segunda,quarta)-2T09:00",
       "situacao": "cancelado",
       "origemCancelamento": "aluna",
       "creditoDevolvido": false,
@@ -953,7 +953,7 @@
       "alunaId": "alu-larissa",
       "ocorrenciaSessaoId": "oco-danca-13",
       "origem": "portal",
-      "dataHora": "2026-08-11T09:00:00.000Z",
+      "dataHora": "@ultima(terca,quinta)-2T09:00",
       "situacao": "ativo",
       "experimental": false,
       "creditosReservados": 1
@@ -963,7 +963,7 @@
       "alunaId": "alu-renata",
       "ocorrenciaSessaoId": "oco-danca-13",
       "origem": "convenio",
-      "dataHora": "2026-08-11T19:40:00.000Z",
+      "dataHora": "@ultima(terca,quinta)-2T19:40",
       "situacao": "ativo",
       "experimental": false,
       "creditosReservados": 0
@@ -973,7 +973,7 @@
       "alunaId": "alu-renata",
       "ocorrenciaSessaoId": "oco-futura",
       "origem": "convenio",
-      "dataHora": "2026-08-14T08:10:00.000Z",
+      "dataHora": "@hoje-1T08:10",
       "situacao": "ativo",
       "experimental": false,
       "creditosReservados": 0
@@ -983,7 +983,7 @@
       "alunaId": "alu-juliana",
       "ocorrenciaSessaoId": "oco-danca-13",
       "origem": "portal",
-      "dataHora": "2026-08-11T21:05:00.000Z",
+      "dataHora": "@ultima(terca,quinta)-2T21:05",
       "situacao": "ativo",
       "experimental": true,
       "creditosReservados": 0
@@ -992,11 +992,11 @@
   "excecoesCalendario": [
     {
       "id": "exc-1",
-      "data": "2026-09-07",
+      "data": "@proxima(sexta)+1s",
       "tipo": "feriado",
-      "descricao": "Feriado da Independência",
+      "descricao": "Feriado municipal",
       "autorId": "usr-admin",
-      "dataCriacao": "2026-08-01T10:00:00.000Z"
+      "dataCriacao": "@hoje-20T10:00"
     }
   ],
   "chamadas": [],
@@ -1008,14 +1008,14 @@
       "alunaId": "alu-larissa",
       "texto": "Tive um imprevisto no trabalho e não consegui avisar com antecedência.",
       "situacao": "pendente",
-      "data": "2026-08-12"
+      "data": "@ultima(segunda,quarta)"
     }
   ],
   "solicitacoesCancelamento": [
     {
       "id": "sol-1",
       "sessaoId": "ses-3",
-      "data": "2026-08-20",
+      "data": "@proxima(terca,quinta)",
       "professoraSolicitanteId": "prof-2",
       "motivo": "Consulta médica marcada para esse horário.",
       "situacao": "pendente"
@@ -1029,14 +1029,14 @@
       "convenio": "wellhub",
       "credenciais": "wh_live_**** (credencial simulada no protótipo)",
       "situacaoIntegracao": "ativa",
-      "dataUltimaSincronizacao": "2026-08-14T11:00:00.000Z"
+      "dataUltimaSincronizacao": "@hoje-1T11:00"
     },
     {
       "id": "int-totalpass",
       "convenio": "totalpass",
       "credenciais": "tp_live_**** (credencial simulada no protótipo)",
       "situacaoIntegracao": "ativa",
-      "dataUltimaSincronizacao": "2026-08-14T11:05:00.000Z"
+      "dataUltimaSincronizacao": "@hoje-1T11:05"
     }
   ],
   "reservasConvenio": [
@@ -1048,8 +1048,8 @@
       "ocorrenciaSessaoId": "oco-danca-13",
       "situacao": "confirmada",
       "checkinValidado": true,
-      "dataHoraCheckin": "2026-08-13T17:55:00.000Z",
-      "data": "2026-08-13",
+      "dataHoraCheckin": "@ultima(terca,quinta)T17:55",
+      "data": "@ultima(terca,quinta)",
       "origemRegistro": "integracao"
     },
     {
@@ -1060,7 +1060,7 @@
       "ocorrenciaSessaoId": "oco-futura",
       "situacao": "confirmada",
       "checkinValidado": false,
-      "data": "2026-08-17",
+      "data": "@proxima(segunda,quarta)",
       "origemRegistro": "integracao"
     }
   ],
@@ -1070,8 +1070,8 @@
       "destinatarioId": "usr-aluna-1",
       "evento": "acesso_de_primeiro_login",
       "canal": "email",
-      "conteudo": "Bem-vinda ao studio! O pacote \"Flow\" está reservado para você, com 12 créditos e validade de 90 dias. Valor do pacote: R$ 380,00, em pagamento único. Acesse o sistema com o link enviado para assinar o termo de aceite e preencher a ficha de anamnese — seus créditos são liberados logo depois.",
-      "dataEnvio": "2026-08-10T13:00:00.000Z",
+      "conteudo": "Bem-vinda ao studio! O pacote \"Starter\" está reservado para você, com 4 créditos e validade de 45 dias. Valor do pacote: R$ 220,00, em pagamento único. Acesse o sistema com o link enviado para assinar o termo de aceite e preencher a ficha de anamnese — seus créditos são liberados logo depois.",
+      "dataEnvio": "@hoje-112T13:00",
       "situacaoEnvio": "enviada"
     },
     {
@@ -1079,8 +1079,8 @@
       "destinatarioId": "usr-aluna-1",
       "evento": "agendamento_confirmado",
       "canal": "email",
-      "conteudo": "Aula agendada para 17/08/2026 às 08:00. 1 crédito reservado; saldo disponível: 9 créditos. Cancelamentos com 4h ou mais de antecedência liberam os créditos reservados.",
-      "dataEnvio": "2026-08-13T10:15:00.000Z",
+      "conteudo": "Aula agendada para {{@proxima(segunda,quarta)}} às 08:00. 1 crédito reservado; saldo disponível: 9 créditos. Cancelamentos com 4h ou mais de antecedência liberam os créditos reservados.",
+      "dataEnvio": "@hoje-1T10:15",
       "situacaoEnvio": "enviada"
     },
     {
@@ -1088,8 +1088,8 @@
       "destinatarioId": "usr-aluna-3",
       "evento": "compra_confirmada",
       "canal": "email",
-      "conteudo": "Compra do pacote Starter confirmada: 4 créditos. Saldo disponível: 4 créditos. Validade até 24/09/2026.",
-      "dataEnvio": "2026-07-30T03:00:00.000Z",
+      "conteudo": "Compra do pacote Starter confirmada: 4 créditos. Saldo disponível: 4 créditos. Validade até {{@hoje+5}}.",
+      "dataEnvio": "@hoje-40T14:00",
       "situacaoEnvio": "enviada"
     },
     {
@@ -1097,8 +1097,8 @@
       "destinatarioId": "usr-aluna-5",
       "evento": "aula_experimental_confirmada",
       "canal": "email",
-      "conteudo": "Sua aula experimental está confirmada para 13/08/2026 às 15:00. Pagamento de R$ 30,00 recebido. Chegue com 10 minutos de antecedência.",
-      "dataEnvio": "2026-08-11T21:05:00.000Z",
+      "conteudo": "Sua aula experimental está confirmada para {{@ultima(terca,quinta)}} às 15:00. Pagamento de R$ 30,00 recebido. Chegue com 10 minutos de antecedência.",
+      "dataEnvio": "@ultima(terca,quinta)-2T21:05",
       "situacaoEnvio": "enviada"
     },
     {
@@ -1106,8 +1106,8 @@
       "destinatarioId": "usr-admin",
       "evento": "solicitacao_de_cancelamento_recebida",
       "canal": "email",
-      "conteudo": "Beatriz Nogueira solicitou o cancelamento da aula de 20/08/2026 às 15:00. Motivo: Consulta médica marcada para esse horário. A aula segue na grade até a decisão.",
-      "dataEnvio": "2026-08-14T09:30:00.000Z",
+      "conteudo": "Beatriz Nogueira solicitou o cancelamento da aula de {{@proxima(terca,quinta)}} às 15:00. Motivo: Consulta médica marcada para esse horário. A aula segue na grade até a decisão.",
+      "dataEnvio": "@hoje-1T09:30",
       "situacaoEnvio": "enviada"
     }
   ],
@@ -1117,10 +1117,10 @@
       "entidadeAfetada": "Aluna",
       "operacao": "cadastro_administrativo",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-10T13:00:00.000Z",
+      "dataHora": "@hoje-112T13:00",
       "valorNovo": {
         "alunaId": "alu-larissa",
-        "pacote": "Flow",
+        "pacote": "Starter",
         "bolsista": false
       }
     },
@@ -1129,7 +1129,7 @@
       "entidadeAfetada": "Sessao",
       "operacao": "espelhamento_convenio",
       "autorId": "usr-admin",
-      "dataHora": "2026-08-14T11:00:00.000Z",
+      "dataHora": "@hoje-1T11:00",
       "valorAnterior": {
         "espelhadaConvenio": false
       },
