@@ -418,6 +418,44 @@ Percorrido no navegador depois de um reset: busca por `9680` (8 alunas) e por `1
 
 ---
 
+## Validação de coerência do seed
+
+Pergunta levantada depois do Lote 6: os nomes de dia da semana escritos à mão no seed podem gerar problema de envelhecimento?
+
+### O que a investigação mostrou
+
+Os dias da semana aparecem em dois lugares, e só um é risco. No `horarioFuncionamento` do studio e no `diasSemana` das sessões eles são **dado estrutural** — a sessão acontece naqueles dias, isso não envelhece. Dentro dos tokens (`@ultima(segunda,quarta)`) eles são a **instrução** de qual dia buscar: também precisam estar ali, porque é o token que diz onde a data cai.
+
+O risco real é outro: **nada garantia que o token combinasse com os `diasSemana` da sessão a que o registro pertence**. Trocar os dias de uma sessão e esquecer os dez tokens que apontam para ela produziria ocorrências fora da grade, em silêncio — exatamente o tipo de erro que o resolvedor já recusa para data literal, mas que passava batido aqui. As regras existiam, mas só em prosa no README.
+
+Sondagem antes de mexer, resolvendo o seed para **cada um dos 365 dias seguintes**: nenhuma violação estrutural — o seed está coerente hoje. O que a sondagem encontrou foi um cenário instável, discutido abaixo.
+
+### O que foi entregue
+
+- **`src/data/validacaoDoSeed.mjs`** (novo, com `.d.mts`) — `validarSeedResolvido(seed, hoje)` devolve `{ erros, avisos }`, e `exigirSeedCoerente` lança nos erros. Verifica: ocorrência num dia da própria sessão; agendamento anterior à aula e não futuro; reserva de convênio na data da aula; chamada finalizada só de aula passada; comissão com a data da aula que a gerou; carteira que não é ativada depois de vencer nem encerrada antes de existir; e aula cancelada por exceção com a exceção daquela data.
+- **Ligada nos dois pontos em que o seed vira banco**: `scripts/seed.mjs` (erro interrompe a carga) e `src/services/reset.ts` (erro sobe para a tela). **`BotaoResetar`** passou a mostrar a causa real no toast em vez de "tente novamente" — um backfill incoerente é erro de quem editou o seed, e esconder a causa faria procurar no lugar errado.
+- **Avisos**, que não impedem a carga: cenários do guia indisponíveis naquele dia, com a saída. Aparecem no `npm run seed` e no console do reset.
+
+### Sobre o cenário que envelhece
+
+O único aviso hoje é o **benefício de conversão da Juliana**, em 105 dos 365 dias (29%). A experimental dela é sempre a última aula de dança, e a dança só acontece terça e quinta; o benefício vale 3 dias corridos a partir da aula (PA-04). Quando hoje é segunda ou terça, a última terça/quinta foi há 4 ou 5 dias e o benefício já venceu.
+
+Não há correção sem torcer alguma coisa: nenhuma sessão da grade tem dias próximos o bastante para garantir o prazo em qualquer dia da semana (o maior intervalo de ses-3 é de cinco dias), mudar a grade por causa de um cenário distorceria ocupação e indicadores, e ampliar o prazo padrão contrariaria o PA-04. O cenário do guia já contorna mandando aumentar "Validade do benefício de conversão" em Parâmetros no primeiro passo; o que faltava era a informação chegar antes de alguém procurar o selo verde em vão — é o que o aviso faz agora.
+
+### Como testar
+
+1. `npm run seed` ou "Resetar protótipo": a carga funciona e, quando for o caso, imprime o aviso do benefício da Juliana.
+2. Para ver a validação pegando um erro, troque os `diasSemana` de `ses-1` no seed (de segunda/quarta para terça/sexta, por exemplo) e rode `npm run seed`: a carga para e lista as oito ocorrências que ficaram fora da grade, cada uma com a data, o dia em que caiu e os dias que a sessão tem.
+3. O mesmo erro, no "Resetar protótipo", aparece no toast com a causa.
+
+### Verificação executada
+
+Validador rodado contra os 365 dias seguintes a 22/09/2026: **nenhum erro**; um único aviso, o benefício da Juliana, em 29% dos dias — batendo com a conta de 2 dias da semana em 7. Sabotagem deliberada do seed (ses-1 de segunda/quarta para terça/sexta) confirmou que a carga é interrompida e que a mensagem nomeia os oito registros afetados e o que ajustar; seed restaurado em seguida. Reset pelo navegador conferido: 8 alunas e 10 ocorrências restauradas, com o aviso no console.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes.
+
+---
+
 ## Ajustes de UX e correção de bug — área da professora
 
 Pedidos depois da validação do Lote 6, sobre as telas entregues nos Lotes 3 e 5.

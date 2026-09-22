@@ -48,11 +48,25 @@ O protótipo usa a data real como "hoje", e um backfill com datas fixas envelhec
 
 Uma data literal (`2026-08-17`) fora de `@fixa(...)` **faz a carga falhar** de propósito — melhor o `npm run seed` quebrar do que voltar a envelhecer.
 
-Regras que o seed respeita e que qualquer dado novo precisa manter:
+### Coerência entre os registros
 
-- Uma ocorrência de sessão usa `@ultima(...)`/`@proxima(...)` com os dias da própria sessão (ses-1 e ses-2: segunda e quarta; ses-3: terça e quinta; ses-4: sexta; ses-5: sábado). Uma ocorrência em dia que a sessão não tem fica órfã da grade.
-- Um agendamento tem `dataHora` anterior à ocorrência e nunca futura (`@hoje-1T10:15` para a aula futura; `@ultima(...)-2T09:00` para a passada).
-- O estado das personas é estável em qualquer dia: Patrícia vence em 5 dias com 1 crédito (sempre "Finalizando"), Aline venceu há 48 dias, Larissa tem 48 dias de validade, a justificativa da Larissa é da última aula passada (no máximo 5 dias, dentro do prazo de 7), a solicitação da Beatriz é para a próxima aula de dança.
+Resolver as datas certo não basta: os registros precisam continuar coerentes **entre si** em qualquer dia do ano. O token de uma ocorrência nomeia dias da semana (`@ultima(segunda,quarta)`) e precisa combinar com os `diasSemana` da sessão a que ela pertence — trocar os dias de uma sessão e esquecer os tokens quebraria a grade em silêncio, que é justamente o tipo de erro que o resolvedor já recusa para data literal.
+
+Por isso essas regras não são só prosa: **`src/data/validacaoDoSeed.mjs` as executa** nos dois pontos em que o seed vira banco, e um erro interrompe a carga nomeando o registro e o que fazer. Rodar `npm run seed` ou clicar em "Resetar protótipo" é o que dispara a checagem; o reset mostra a causa na própria tela.
+
+O que é verificado:
+
+- **Ocorrência de sessão cai num dia da própria sessão** (ses-1 e ses-2: segunda e quarta; ses-3: terça e quinta; ses-4: sexta; ses-5: sábado).
+- **Agendamento antecede a aula e não é do futuro** (`@hoje-1T10:15` para a aula futura; `@ultima(...)-2T09:00` para a passada).
+- **Reserva de convênio é da data da aula**, e **chamada finalizada é de aula que já aconteceu**.
+- **Comissão registra a data da aula** que a gerou.
+- **Carteira não é ativada depois de vencer** nem encerrada antes de existir.
+- **Aula cancelada por exceção tem a exceção daquela data.**
+
+A validação também emite **avisos**, que não impedem a carga: são cenários do guia indisponíveis naquele dia específico, com a saída. O único hoje é o benefício de conversão da Juliana — a experimental dela é sempre a última aula de dança (terça ou quinta) e o benefício vale 3 dias corridos (PA-04), então em dois dias da semana ele já venceu. Não dá para resolver sem torcer a grade ou o parâmetro do escopo; o cenário do guia contorna mandando ampliar o prazo em Parâmetros, e o aviso lembra disso antes de alguém procurar o selo verde em vão.
+
+Duas convenções que a validação não alcança, mas que dado novo deve seguir:
+
 - Movimentos, vendas, notificações e auditoria seguem as datas dos fatos que registram; o texto usa o token embutido quando cita a data.
 - Todas as alunas têm o telefone `(65) 9680-6348`, para que o botão de WhatsApp (v2.1, RF-CPR-09) abra o aparelho da cliente na demonstração.
 

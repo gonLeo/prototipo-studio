@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { hojeLocalISO, resolverDatasDoSeed } from '../src/data/datasDoSeed.mjs';
+import { exigirSeedCoerente } from '../src/data/validacaoDoSeed.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const seedPath = join(root, 'src', 'data', 'seed.json');
@@ -12,6 +13,13 @@ const dbPath = join(root, 'db.json');
 // arquivo nunca é copiado tal qual. A gramática está em datasDoSeed.mjs.
 const hoje = hojeLocalISO();
 const backfill = resolverDatasDoSeed(JSON.parse(readFileSync(seedPath, 'utf-8')), hoje);
+
+// Resolver as datas certo não basta: os registros precisam continuar
+// coerentes entre si. Erro aqui interrompe a carga de propósito — melhor o
+// `npm run seed` quebrar do que o protótipo subir com aula fora da grade.
+for (const aviso of exigirSeedCoerente(backfill, hoje)) {
+  console.warn(`Aviso: ${aviso}`);
+}
 
 if (!existsSync(dbPath)) {
   writeFileSync(dbPath, `${JSON.stringify(backfill, null, 2)}\n`, 'utf-8');

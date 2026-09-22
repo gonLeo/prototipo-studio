@@ -1,5 +1,7 @@
 import seed from '../data/seed.json';
 import { resolverDatasDoSeed } from '../data/datasDoSeed.mjs';
+import { exigirSeedCoerente } from '../data/validacaoDoSeed.mjs';
+import { hojeISO } from '../utils/data';
 import { http } from './http';
 
 type Registro = { id: string } & Record<string, unknown>;
@@ -166,7 +168,15 @@ function traduzirChavesEstrangeiras(
 export async function resetarPrototipo(): Promise<void> {
   // As datas do backfill são tokens relativos e viram datas de verdade em
   // relação ao dia do reset — a aula "de ontem" é sempre de ontem.
-  const dados = resolverDatasDoSeed(seed) as BaseDeDados;
+  const hoje = hojeISO();
+  const dados = resolverDatasDoSeed(seed, hoje) as BaseDeDados;
+
+  // Mesma checagem do `npm run seed`: um backfill incoerente restauraria o
+  // protótipo num estado que contradiz as próprias regras. O erro sobe para
+  // a tela, com a causa — quem está mexendo no seed precisa vê-la.
+  for (const aviso of exigirSeedCoerente(dados, hoje)) {
+    console.warn(`Backfill: ${aviso}`);
+  }
   const recursos = Object.keys(dados);
 
   for (const recurso of recursos) {

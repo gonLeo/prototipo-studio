@@ -22,8 +22,16 @@ export function BotaoResetar() {
       await resetarPrototipo();
       mostrarToast('Protótipo resetado — dados originais restaurados.', 'sucesso');
       setTimeout(() => window.location.assign('/login'), 800);
-    } catch {
-      mostrarToast('Não foi possível resetar o protótipo. Tente novamente.', 'erro');
+    } catch (erro) {
+      // Um backfill incoerente é erro de quem editou o seed, não falha de
+      // rede: esconder a causa atrás de "tente novamente" faria procurar no
+      // lugar errado.
+      mostrarToast(
+        erro instanceof Error && erro.message.startsWith('Backfill incoerente')
+          ? erro.message
+          : 'Não foi possível resetar o protótipo. Tente novamente.',
+        'erro',
+      );
       setResetando(false);
     }
   }
