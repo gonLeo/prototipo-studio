@@ -1,18 +1,36 @@
-<!-- Gerado a partir de "Escopo Funcional Atualizado v2.1.docx" (versão 2.1, 19/09/2026). -->
+> **DOCUMENTO SUBSTITUÍDO — NÃO USAR COMO REFERÊNCIA DE DESENVOLVIMENTO**
+>
+> Esta é a versão 2.0 do escopo, de 25/08/2026. Foi substituída pela versão 2.1 (19/09/2026),
+> que está em [`escopo_funcional_contratado.md`](./escopo_funcional_contratado.md) e é a única
+> fonte da verdade do projeto.
+>
+> A v2.1 incorpora a devolutiva da cliente sobre a v2.0 (28/08/2026): pendência de aceite sem
+> bloqueio de agendamento (RF-ALU-08), relação preservada de alunas em cancelamento pelo estúdio
+> com aviso por WhatsApp (RF-CPR-09), consulta da professora à ficha da aluna (RF-PRE-09),
+> participante sem cadastro e convênio pagando à parte em aula excepcional (RF-AEX-06/11),
+> comprovante do fechamento de comissão (RF-COM-09), prévia de reembolso com dias decorridos
+> (RF-REE-03/07), indicadores de retenção e frequência de professora (RF-PNL-07), TotalPass em
+> contingência manual (RF-CNV-14, EV-21) e busca de alunas por telefone (RF-ALU-10) — nenhuma
+> regra de negócio foi renumerada (RN-01 a RN-38 mantêm os mesmos ids). O plano da migração está
+> em [`PLANO_ATUALIZACAO_V21.md`](./PLANO_ATUALIZACAO_V21.md) e o progresso em
+> [`PROGRESSO_ATUALIZACAO_V21.md`](./PROGRESSO_ATUALIZACAO_V21.md).
+>
+> Este arquivo permanece no repositório apenas como registro histórico, para consultar o que
+> mudou e justificar remoções.
 
 **ESCOPO FUNCIONAL ATUALIZADO**
 
-Sistema de Gestão do Estúdio — Fase 1
+Sistema de Gestão do Studio — Fase 1
 
-*Documento de referência para validação, desenvolvimento e aceite do projeto*
+Documento de referência para validação, desenvolvimento e aceite do projeto
 
 | **Campo** | **Valor** |
 | --- | --- |
-| Versão | 2.1 — Incorpora a devolutiva da cliente |
-| Data de emissão | 19/09/2026 |
-| Status | Aguardando validação final da cliente |
+| Versão | 2.0 — Para validação |
+| Data de emissão | 25/08/2026 |
+| Status | Aguardando validação da cliente |
 | Elaboração | FGC Digital |
-| Fontes | Levantamento de regras de negócio; reunião de validação de 13/08/2026; Modelo de Comercialização e Controle de Pacotes; definições da cliente por áudio e mensagem; devolutiva da cliente sobre a versão 2.0, de 28/08/2026; protótipo navegável da Fase 1 |
+| Fontes | Levantamento de regras de negócio; reunião de validação de 13/08/2026; Modelo de Comercialização e Controle de Pacotes; definições da cliente por áudio e mensagem; protótipo navegável da Fase 1 |
 
 > **Papel deste documento**
 >
@@ -33,39 +51,27 @@ Sistema de Gestão do Estúdio — Fase 1
 
 # 1. Introdução e Objetivo
 
-Este documento define, de forma completa e verificável, o sistema de gestão a ser desenvolvido para o estúdio. O sistema centraliza cadastro de alunas, comercialização de pacotes de créditos, agendamento de aulas, registro de presença, apuração de comissão das professoras e integração com os convênios corporativos em uma única aplicação, acessível por navegador em computador e celular.
+Este documento define, de forma completa e verificável, o sistema de gestão a ser desenvolvido para o studio. O sistema centraliza cadastro de alunas, comercialização de pacotes de créditos, agendamento de aulas, registro de presença, apuração de comissão das professoras e integração com os convênios corporativos em uma única aplicação, acessível por navegador em computador e celular.
 
 ## 1.1 Objetivos de negócio
 
 - Comercializar o acesso às aulas por meio de **pacotes de créditos pré-pagos**, com pagamento único no ato da compra e validade definida por pacote.
-
 - Permitir que a aluna utilize seus créditos com autonomia, escolhendo livremente quando e em quais aulas irá gastá-los, respeitando as regras de antecedência e a validade do pacote.
-
 - Controlar de forma precisa o saldo de créditos, distinguindo o que está disponível, o que está reservado em agendamentos futuros e o que já foi consumido.
-
 - Preservar a integração com Wellhub e TotalPass, responsável por parcela relevante da ocupação das turmas.
-
 - Oferecer trancamento de pacote com congelamento e prorrogação automática da validade.
-
 - Apurar automaticamente a comissão das professoras a partir do registro de presença, com fechamento mensal conferível antes do pagamento.
-
 - Comercializar workshops e aulas particulares com custo próprio em créditos, sob controle da administração.
-
 - Manter visibilidade sobre ocupação das turmas, receita, pacotes a vencer e conversão de aulas experimentais.
 
 ## 1.2 Características da operação
 
 - Um único espaço físico em operação, sem previsão de expansão no curto prazo.
-
 - Modalidades de pole dance e correlatas, com capacidade variável por modalidade em função do equipamento utilizado.
-
 - Aproximadamente 20 alunas ativas provenientes de Wellhub e TotalPass, com cerca de 100 check-ins mensais.
-
 - Comissão paga mensalmente, até o quinto dia útil do mês seguinte.
-
 - Aula experimental cobrada, valor único, independente da modalidade.
-
-- A proprietária acumula a administração do estúdio e a condução de aulas.
+- A proprietária acumula a administração do studio e a condução de aulas.
 
 # 2. Visão Geral do Escopo
 
@@ -83,10 +89,10 @@ A Fase 1 é composta pelos módulos abaixo. Todos os requisitos do capítulo 5 p
 | **M8** | Cancelamento e Justificativa | Cancelamento pela aluna com regra de antecedência, justificativa de falta e cancelamento pela professora com aprovação da administração. |
 | **M9** | Aulas Excepcionais | Workshops e aulas particulares criados pela administração, fora da grade regular, com alocação manual de alunas. |
 | **M10** | Presença e Chamada | Registro de presença pela professora, correção dentro do prazo e histórico de frequência. |
-| **M11** | Comissão e Fechamento | Geração automática de comissão, fechamento mensal e registro de pagamento com anexo opcional de comprovante. |
+| **M11** | Comissão e Fechamento | Geração automática de comissão, fechamento mensal e registro de pagamento. |
 | **M12** | Vendas, Pagamentos e Reembolso | Venda de pacotes com pagamento único, formas de pagamento, confirmação, reembolso e histórico financeiro. |
 | **M13** | Aula Experimental | Agendamento e pagamento de aula experimental, com limite por modalidade e conversão em pacote. |
-| **M14** | Convênios Corporativos | Integração automática com o Wellhub na Fase 1 — espelhamento da grade, recebimento de reservas, validação de check-in e conciliação — e contingência manual para o TotalPass, cuja integração fica para a Fase 2. |
+| **M14** | Convênios Corporativos | Integração com Wellhub e TotalPass: espelhamento da grade, recebimento de reservas, validação de check-in e conciliação. |
 | **M15** | Painéis e Indicadores | Painel administrativo, painel da professora e painel da aluna. |
 | **M16** | Notificações | Comunicações transacionais por e-mail, com arquitetura preparada para WhatsApp na Fase 2. |
 | **M17** | Perfis e Permissões | Perfis de acesso de administração, professora e aluna. |
@@ -95,13 +101,13 @@ A Fase 1 é composta pelos módulos abaixo. Todos os requisitos do capítulo 5 p
 
 | **Ator** | **Papel no sistema** |
 | --- | --- |
-| Administração | Acesso completo: configuração do estúdio, cadastros, pacotes e créditos, grade, calendário de exceções, aulas excepcionais, aprovações, trancamento, vendas e reembolsos, comissão, convênios e painéis. |
-| Professora | Consulta às próprias sessões, registro e correção de presença, solicitação de cancelamento de sessão, consulta à ficha das alunas e acompanhamento dos próprios ganhos. |
+| Administração | Acesso completo: configuração do studio, cadastros, pacotes e créditos, grade, calendário de exceções, aulas excepcionais, aprovações, trancamento, vendas e reembolsos, comissão, convênios e painéis. |
+| Professora | Consulta às próprias sessões, registro e correção de presença, solicitação de cancelamento de sessão e acompanhamento dos próprios ganhos. |
 | Aluna | Consulta à grade disponível, agendamento e cancelamento das próprias aulas regulares, envio de justificativa de falta, compra de pacotes, consulta ao próprio saldo de créditos, validade, histórico de frequência e histórico de compras. |
 | Aluna de convênio | Agenda e cancela pelo aplicativo do convênio. Não possui pacote nem créditos no sistema; ocupa vaga na sessão e realiza check-in. |
 | Interessada (visitante) | Acesso público ao fluxo de matrícula e ao agendamento de aula experimental, sem autenticação prévia. |
 
-*A proprietária acumula os perfis de Administração e Professora. O sistema permite que um mesmo usuário possua mais de um perfil, alternando o contexto de navegação sem necessidade de segundo cadastro.*
+A proprietária acumula os perfis de Administração e Professora. O sistema permite que um mesmo usuário possua mais de um perfil, alternando o contexto de navegação sem necessidade de segundo cadastro.
 
 # 4. Requisitos Funcionais
 
@@ -113,11 +119,11 @@ A Fase 1 é composta pelos módulos abaixo. Todos os requisitos do capítulo 5 p
 | --- | --- | --- | --- |
 | **RF-CFG-01** | Cadastro de modalidades | Cadastro das modalidades oferecidas, com nome único e capacidade máxima de alunas. Nomes normalizados em maiúsculas e duplicidade bloqueada. Modalidade vinculada a sessões ativas não pode ser excluída, apenas inativada. | MVP |
 | **RF-CFG-02** | Capacidade por modalidade | A capacidade máxima é definida na modalidade, refletindo a limitação por equipamento. A sessão herda a capacidade da modalidade, com possibilidade de ajuste pontual. | MVP |
-| **RF-CFG-03** | Cadastro de espaços | Cadastro opcional de espaços do estúdio, utilizado para validação de conflito quando houver mais de um espaço em operação. | MVP |
-| **RF-CFG-04** | Horário de funcionamento | Configuração dos dias da semana e da faixa de horário em que o estúdio opera. Sessões regulares não podem ser criadas fora dessa faixa. | MVP |
+| **RF-CFG-03** | Cadastro de espaços | Cadastro opcional de espaços do studio, utilizado para validação de conflito quando houver mais de um espaço em operação. | MVP |
+| **RF-CFG-04** | Horário de funcionamento | Configuração dos dias da semana e da faixa de horário em que o studio opera. Sessões regulares não podem ser criadas fora dessa faixa. | MVP |
 | **RF-CFG-05** | Categorias de aula e custo em créditos | Cadastro das categorias de aula com o respectivo custo em créditos. Valores iniciais: aula regular = 1 crédito; workshop = 2 créditos; aula particular = 4 créditos. A administração pode alterar os custos e cadastrar novas categorias sem intervenção técnica. | MVP |
-| **RF-CFG-06** | Parâmetros operacionais | Tela única de parâmetros configuráveis pela administração: janela de agendamento para alunas com pacote, janela para alunas de convênio, antecedência mínima de cancelamento, prazo de correção de chamada, dias de prorrogação por cancelamento do estúdio, limite de aulas experimentais, valor da aula experimental, benefício de conversão da experimental (prazo, tipo e montante), prazo para envio de justificativa, limiares do status Finalizando e antecedências dos avisos. | MVP |
-| **RF-CFG-07** | Dados do estúdio | Cadastro dos dados de identificação do estúdio (nome, contato, endereço), utilizados nas comunicações automáticas e no termo de aceite. | MVP |
+| **RF-CFG-06** | Parâmetros operacionais | Tela única de parâmetros configuráveis pela administração: janela de agendamento para alunas com pacote, janela para alunas de convênio, antecedência mínima de cancelamento, prazo de correção de chamada, dias de prorrogação por cancelamento do studio, limite de aulas experimentais, valor da aula experimental, prazo para envio de justificativa, limiares do status Finalizando e antecedências dos avisos. | MVP |
+| **RF-CFG-07** | Dados do studio | Cadastro dos dados de identificação do studio (nome, contato, endereço), utilizados nas comunicações automáticas e no termo de aceite. | MVP |
 
 > **Decisão de interface**
 >
@@ -130,13 +136,13 @@ A Fase 1 é composta pelos módulos abaixo. Todos os requisitos do capítulo 5 p
 | **RF-ALU-01** | Cadastro administrativo | Cadastro de aluna pela administração com nome, e-mail, CPF, telefone, data de nascimento e contato de emergência. E-mail e CPF são únicos e a duplicidade é bloqueada com mensagem que orienta a localizar o cadastro existente. | MVP |
 | **RF-ALU-02** | Atribuição de pacote no cadastro | Na mesma tela de cadastro é possível selecionar o pacote a ser adquirido e registrar a condição de bolsista, sem navegar para outra área. | MVP |
 | **RF-ALU-03** | Envio de acesso | Ao concluir o cadastro, o sistema envia e-mail com credencial de primeiro acesso, informação dos créditos disponíveis e orientação para assinatura do termo de aceite. | MVP |
-| **RF-ALU-04** | Matrícula pelo site | Link público no qual a interessada preenche seus dados, escolhe o pacote e efetua o pagamento. Confirmado o pagamento, o acesso é liberado automaticamente, sem aprovação manual, e o fluxo segue para o aceite do termo, a ficha de anamnese e o agendamento da primeira aula — cada uma dessas três etapas com opção de pular e concluir depois. | MVP |
+| **RF-ALU-04** | Matrícula pelo site | Link público no qual a interessada preenche seus dados, escolhe o pacote, aceita o termo, preenche a ficha de anamnese, efetua o pagamento e agenda a primeira aula em fluxo único. O acesso é liberado automaticamente após a confirmação do pagamento, sem aprovação manual. | MVP |
 | **RF-ALU-05** | Termo de aceite digital | Exibição do termo de prestação de serviço com aceite explícito. O sistema registra identidade do usuário, data, hora, endereço IP e o conteúdo integral da versão aceita. | MVP |
 | **RF-ALU-06** | Versionamento do termo | O termo é versionado. Alterações geram nova versão e o sistema identifica qual versão cada usuária aceitou, mantendo o histórico. | MVP |
 | **RF-ALU-07** | Ficha de anamnese | Questionário de saúde apresentado junto ao termo de aceite, com respostas autodeclaradas pela aluna. Não há validação ou aprovação pela administração. As respostas ficam registradas na ficha da aluna. | MVP |
-| **RF-ALU-08** | Pendência de aceite | Termo não aceito ou anamnese não preenchida não bloqueiam o agendamento. A aluna nessa condição vê um alerta persistente no próprio painel, com atalho para concluir a pendência, e aparece na lista de alunas e no bloco de pendências da administração como "aguardando aceite". Cabe à administração acompanhar e solicitar o aceite. | MVP |
+| **RF-ALU-08** | Bloqueio até o aceite | O acesso ao agendamento permanece bloqueado até que o termo seja aceito e a anamnese preenchida. A aluna nessa condição aparece na lista com situação "aguardando aceite". | MVP |
 | **RF-ALU-09** | Ficha da aluna | Visão consolidada: dados cadastrais, respostas da anamnese, pacote vigente, saldo de créditos, validade, histórico de frequência, histórico de compras e histórico de pacotes. | MVP |
-| **RF-ALU-10** | Lista de alunas | Listagem com busca por nome, CPF ou telefone em um único campo, e filtros por situação (com pacote ativo, sem pacote ativo, trancada, aguardando aceite), por pacote a vencer e por condição de bolsista. | MVP |
+| **RF-ALU-10** | Lista de alunas | Listagem com busca por nome e filtros por situação (com pacote ativo, sem pacote ativo, trancada, aguardando aceite), por pacote a vencer e por condição de bolsista. | MVP |
 | **RF-ALU-11** | Conteúdo da anamnese | Definição das perguntas que compõem o questionário de saúde. | Em definição |
 | **RF-ALU-12** | Anexo do contrato assinado | Quando o contrato jurídico estiver disponível, possibilidade de anexar o documento à versão do termo, mantendo o mesmo fluxo de aceite dentro do sistema. | Importante |
 
@@ -166,7 +172,7 @@ A **carteira de créditos** é o saldo vivo da aluna. Ela nasce na primeira comp
 
 | **ID** | **Requisito** | **Descrição** | **Prio.** |
 | --- | --- | --- | --- |
-| **RF-CRE-01** | Ativação da carteira | A carteira é ativada na confirmação do pagamento. Termo e anamnese pendentes não impedem a ativação nem o agendamento; geram o alerta descrito em RF-ALU-08. | MVP |
+| **RF-CRE-01** | Ativação da carteira | A carteira é ativada após a confirmação do pagamento, o aceite do termo e o preenchimento da anamnese. Antes disso, os créditos existem mas não permitem agendamento. | MVP |
 | **RF-CRE-02** | Composição do saldo | O saldo é composto por créditos totais, créditos reservados em agendamentos futuros e créditos já utilizados. O disponível para agendamento é: totais menos utilizados menos reservados. | MVP |
 | **RF-CRE-03** | Reserva no agendamento | O agendamento de uma aula reserva a quantidade de créditos correspondente à categoria daquela aula. A reserva bloqueia o crédito, mas ainda não o consome. | MVP |
 | **RF-CRE-04** | Liberação da reserva | Cancelamento realizado dentro da antecedência mínima libera os créditos reservados, que voltam a ficar disponíveis. | MVP |
@@ -269,10 +275,10 @@ A grade contempla apenas as **aulas regulares**, que são recorrentes. Workshops
 | **RF-GRD-02** | Múltiplos horários por sessão | O cadastro permite informar vários dias e horários em uma única operação, com validação individual de cada faixa. | MVP |
 | **RF-GRD-03** | Validação de conflito de professora | O sistema bloqueia a criação ou alteração quando a professora já possui outra sessão no mesmo dia e horário, informando qual sessão gera o conflito. | MVP |
 | **RF-GRD-04** | Validação de conflito de espaço | O sistema bloqueia a criação ou alteração quando o espaço já está ocupado no mesmo dia e horário, incluindo ocupação por aula excepcional. | MVP |
-| **RF-GRD-05** | Validação de funcionamento | A sessão não pode ser criada fora dos dias e da faixa de horário de funcionamento do estúdio. | MVP |
+| **RF-GRD-05** | Validação de funcionamento | A sessão não pode ser criada fora dos dias e da faixa de horário de funcionamento do studio. | MVP |
 | **RF-GRD-06** | Visão semanal da grade | Visualização em calendário semanal com as sessões posicionadas por dia e horário, exibindo modalidade, horário, espaço, professora e ocupação atual sobre a capacidade. | MVP |
 | **RF-GRD-07** | Alteração com alunas agendadas | Alteração de sessão com alunas agendadas exige confirmação explícita, exibindo previamente quantas alunas serão afetadas e o tratamento dos créditos. | MVP |
-| **RF-GRD-08** | Exclusão de sessão | A exclusão de sessão com alunas agendadas cancela os agendamentos futuros, devolve os créditos reservados, prorroga a validade das carteiras afetadas (parâmetro de RF-CFG-06, referência 7 dias) e dispara notificação. | MVP |
+| **RF-GRD-08** | Exclusão de sessão | A exclusão de sessão com alunas agendadas cancela os agendamentos futuros, devolve os créditos reservados, prorroga a validade das carteiras afetadas e dispara notificação. | MVP |
 | **RF-GRD-09** | Encerramento de sessão | Definição de data de término para retirar a sessão da grade a partir de determinada data, sem excluir o histórico de aulas realizadas. | MVP |
 | **RF-GRD-10** | Respeito ao calendário de exceções | Sessões não são ofertadas em datas marcadas como exceção no calendário. | MVP |
 
@@ -280,7 +286,7 @@ A grade contempla apenas as **aulas regulares**, que são recorrentes. Workshops
 
 | **ID** | **Requisito** | **Descrição** | **Prio.** |
 | --- | --- | --- | --- |
-| **RF-EXC-01** | Cadastro de exceção | Cadastro de datas em que o estúdio não opera, com tipo (feriado, recesso, manutenção, fechamento) e descrição. | MVP |
+| **RF-EXC-01** | Cadastro de exceção | Cadastro de datas em que o studio não opera, com tipo (feriado, recesso, manutenção, fechamento) e descrição. | MVP |
 | **RF-EXC-02** | Seleção de período | O calendário permite navegação por mês e ano, exibindo as exceções já cadastradas. | MVP |
 | **RF-EXC-03** | Prévia de impacto | Antes de confirmar, o sistema exibe as sessões que serão canceladas e as alunas agendadas afetadas. | MVP |
 | **RF-EXC-04** | Cancelamento automático | A confirmação cancela todas as sessões da data, devolve os créditos reservados, prorroga a validade das carteiras afetadas e dispara notificação. | MVP |
@@ -299,13 +305,13 @@ A grade contempla apenas as **aulas regulares**, que são recorrentes. Workshops
 | **RF-AGD-01** | Grade disponível para a aluna | A aluna visualiza as sessões disponíveis dentro da janela de agendamento, com modalidade, data, horário, professora, vagas restantes e o custo em créditos da aula. | MVP |
 | **RF-AGD-02** | Saldo visível na jornada | O saldo de créditos disponíveis e a data de validade permanecem visíveis de forma persistente no painel da aluna e na tela de grade. | MVP |
 | **RF-AGD-03** | Janela de agendamento diferenciada | A janela de agendamento é configurável e admite valores distintos para alunas com pacote e para alunas de convênio, permitindo priorizar o acesso das alunas com pacote. | MVP |
-| **RF-AGD-04** | Reserva de vaga | O agendamento reserva a vaga e reserva os créditos correspondentes no momento da confirmação. Uma aluna possui no máximo um agendamento por ocorrência de sessão, independentemente da origem. | MVP |
+| **RF-AGD-04** | Reserva de vaga | O agendamento reserva a vaga e reserva os créditos correspondentes no momento da confirmação. | MVP |
 | **RF-AGD-05** | Validação de saldo e validade | O agendamento é bloqueado quando o saldo disponível é insuficiente ou quando a data pretendida é posterior à validade da carteira. | MVP |
 | **RF-AGD-06** | Validação de capacidade | O agendamento é bloqueado quando a sessão atinge a capacidade da modalidade, com indicação de que a lista de espera estará disponível em fase futura. | MVP |
 | **RF-AGD-07** | Bloqueio por trancamento | Aluna com carteira trancada não visualiza a grade para agendamento. | MVP |
 | **RF-AGD-08** | Agendamento pela administração | A administração pode agendar, cancelar e remarcar aulas em nome de qualquer aluna, com registro de autoria. | MVP |
 | **RF-AGD-09** | Reagendamento livre | A aluna pode cancelar e reagendar quantas vezes desejar dentro da validade da carteira, inclusive para outra sessão no mesmo dia, desde que haja vaga e saldo. | MVP |
-| **RF-AGD-10** | Agendamento na matrícula | No fluxo de matrícula pelo site, a aluna agenda a primeira aula após a confirmação do pagamento, com opção de pular e agendar depois pelo próprio painel. | MVP |
+| **RF-AGD-10** | Agendamento na matrícula | No fluxo de matrícula pelo site, a aluna agenda a primeira aula imediatamente após a confirmação do pagamento. | MVP |
 | **RF-AGD-11** | Confirmação de agendamento | Após o agendamento, o sistema exibe o novo saldo disponível, a regra de cancelamento aplicável e envia confirmação por e-mail. | MVP |
 
 > **Decisão de escopo**
@@ -343,9 +349,8 @@ A grade contempla apenas as **aulas regulares**, que são recorrentes. Workshops
 | **RF-CPR-04** | Aprovação com cancelamento | Ao aprovar sem substituta, a sessão daquela data é cancelada, os créditos reservados são devolvidos, a validade das carteiras afetadas é prorrogada e as alunas são notificadas. | MVP |
 | **RF-CPR-05** | Recusa da solicitação | A administração pode recusar a solicitação, mantendo a sessão e notificando a professora. | MVP |
 | **RF-CPR-06** | Acompanhamento pela professora | A professora acompanha a situação da solicitação: aguardando aprovação, aprovada com substituta, aprovada com cancelamento ou recusada. | MVP |
-| **RF-CPR-07** | Prorrogação de validade | Sessão cancelada por iniciativa do estúdio concede dias adicionais de validade às carteiras afetadas. Valor de referência: 7 dias, configurável. | MVP |
+| **RF-CPR-07** | Prorrogação de validade | Sessão cancelada por iniciativa do studio concede dias adicionais de validade às carteiras afetadas. Valor de referência: 7 dias, configurável. | MVP |
 | **RF-CPR-08** | Filtro por habilitação | Filtro de professoras habilitadas na modalidade na seleção de substituta. | Evolução |
-| **RF-CPR-09** | Histórico de alunas em aula cancelada | Em todo cancelamento por iniciativa do estúdio — exclusão de sessão, exceção de calendário, aprovação de cancelamento solicitado pela professora ou conflito com aula excepcional — a relação das alunas que estavam agendadas permanece registrada e consultável pela administração, com o telefone de contato de cada uma e um botão "Enviar mensagem" que abre o WhatsApp com o número da aluna. O sistema não controla se a mensagem foi enviada; é apoio ao contato manual enquanto o WhatsApp não está integrado. | MVP |
 
 ## 4.9 M9 — Aulas Excepcionais: Workshop e Aula Particular
 
@@ -358,14 +363,14 @@ Workshops e aulas particulares são **aulas excepcionais**: acontecem fora da gr
 | **RF-AEX-03** | Conflito com a grade | Ao criar uma aula excepcional em data e horário que coincidam com sessões regulares, o sistema informa o conflito e oferece o cancelamento das sessões afetadas. Havendo alunas agendadas, o cancelamento devolve os créditos, prorroga a validade e dispara notificação. Não havendo, o sistema apenas informa que a grade daquele horário deixará de ser ofertada. | MVP |
 | **RF-AEX-04** | Alocação de alunas | A administração aloca as alunas participantes. A alocação consome imediatamente os créditos correspondentes à categoria da aula, sem passar pelo estado de reserva. | MVP |
 | **RF-AEX-05** | Custo por participante | Cada aluna alocada consome integralmente o custo em créditos da categoria. O custo não é dividido entre participantes. | MVP |
-| **RF-AEX-06** | Alocação sem consumo de créditos | A administração pode alocar participante sem consumo de créditos, para os casos em que o pagamento é tratado fora do sistema, com registro obrigatório de motivo em lista curta. Vale tanto para aluna cadastrada que prefira não usar créditos quanto para **participante sem cadastro**, registrada apenas com nome e telefone, sem exigência de pacote. | MVP |
+| **RF-AEX-06** | Alocação sem consumo de créditos | A administração pode alocar participante sem consumo de créditos, para os casos em que o pagamento é tratado fora do sistema. A operação exige registro de motivo. | MVP |
 | **RF-AEX-07** | Cancelamento da alocação | A administração pode cancelar a alocação de uma aluna a qualquer momento. Os créditos consumidos são estornados ao saldo disponível, com registro de autor e motivo. | MVP |
 | **RF-AEX-08** | Sem controle de capacidade | A aula excepcional não possui limite de participantes controlado pelo sistema. A tela exibe a quantidade de alunas alocadas, cabendo à administração decidir sobre a lotação. | MVP |
 | **RF-AEX-09** | Visibilidade para a aluna | A aluna visualiza as aulas excepcionais em que foi alocada nas suas próximas aulas e no histórico de frequência, com o consumo de créditos correspondente, ainda que não possa agendá-las por conta própria. | MVP |
 | **RF-AEX-10** | Presença | A aula excepcional possui chamada, como qualquer outra aula, e aparece na lista de sessões do dia de cada professora vinculada. Não havendo professora vinculada, a chamada é realizada pela administração. | MVP |
-| **RF-AEX-11** | Restrição para convênio | Alunas de convênio não participam de workshops nem de aulas particulares por meio do convênio. Podem participar com pagamento à parte, alocadas conforme RF-AEX-06. | MVP |
-| **RF-AEX-12** | Professoras e comissão | O vínculo de professoras é opcional. Quando houver, é possível vincular **uma ou mais professoras**, informando para cada uma o seu próprio valor de comissão no cadastro da aula. Na finalização da chamada, cada professora vinculada gera um lançamento de comissão com o valor que lhe foi atribuído. Aula sem professora vinculada não gera comissão. | MVP |
-| **RF-AEX-13** | Horário fora do funcionamento | A aula excepcional **pode** ser criada fora dos dias e da faixa de horário de funcionamento do estúdio. O sistema não bloqueia: exibe alerta informando que o horário está fora do funcionamento e oferece duas saídas — confirmar assim mesmo ou ajustar a data e o horário. A validação de conflito de espaço e de professora permanece bloqueante. | MVP |
+| **RF-AEX-11** | Restrição para convênio | Alunas de convênio não participam de workshops nem de aulas particulares. | MVP |
+| **RF-AEX-12** | Professoras e comissão | O vínculo de professoras é opcional. Quando houver, é possível vincular uma ou mais professoras, informando para cada uma o seu próprio valor de comissão no cadastro da aula. Na finalização da chamada, cada professora vinculada gera um lançamento de comissão com o valor que lhe foi atribuído. Aula sem professora vinculada não gera comissão. | MVP |
+| **RF-AEX-13** | Horário fora do funcionamento | A aula excepcional pode ser criada fora dos dias e da faixa de horário de funcionamento do studio. O sistema não bloqueia: exibe alerta informando que o horário está fora do funcionamento e oferece duas saídas — confirmar assim mesmo ou ajustar a data e o horário. A validação de conflito de espaço e de professora permanece bloqueante. | MVP |
 
 > **Definido com a cliente**
 >
@@ -375,21 +380,20 @@ Workshops e aulas particulares são **aulas excepcionais**: acontecem fora da gr
 >
 > **Orientação de uso:** vincule as professoras e informe o valor da comissão sempre que a aula gerar pagamento. Quando não houver comissão a pagar — por exemplo, um workshop conduzido pela própria proprietária ou por convidado externo remunerado por fora —, a orientação é **não cadastrar a professora**. A aula acontece normalmente, tem chamada e consome créditos, apenas sem lançamento de comissão.
 >
-> **Horário fora do funcionamento.** Diferentemente da grade regular, a aula excepcional não é bloqueada quando cai fora dos dias e horários de funcionamento do estúdio. Workshop de sábado e aula particular em horário atípico são justamente os casos em que isso acontece, e um bloqueio obrigaria a administração a alterar a configuração do estúdio para cadastrar um evento pontual. O sistema alerta e deixa a decisão com quem está cadastrando.
+> **Horário fora do funcionamento.** Diferentemente da grade regular, a aula excepcional não é bloqueada quando cai fora dos dias e horários de funcionamento do studio. Workshop de sábado e aula particular em horário atípico são justamente os casos em que isso acontece, e um bloqueio obrigaria a administração a alterar a configuração do studio para cadastrar um evento pontual. O sistema alerta e deixa a decisão com quem está cadastrando.
 
 ## 4.10 M10 — Presença e Chamada
 
 | **ID** | **Requisito** | **Descrição** | **Prio.** |
 | --- | --- | --- | --- |
 | **RF-PRE-01** | Sessões do dia | A professora visualiza suas sessões do dia — regulares e excepcionais — com horário, modalidade, espaço, quantidade de alunas e situação da chamada. | MVP |
-| **RF-PRE-02** | Lista de presença | A lista exibe as alunas com agendamento ativo ou alocação, incluindo alunas de convênio e participantes sem cadastro de aula excepcional. Alunas que cancelaram não aparecem. | MVP |
+| **RF-PRE-02** | Lista de presença | A lista exibe as alunas com agendamento ativo ou alocação, incluindo alunas de convênio. Alunas que cancelaram não aparecem. | MVP |
 | **RF-PRE-03** | Marcação padrão | As alunas são apresentadas como presentes por padrão, cabendo à professora marcar apenas as ausências. | MVP |
 | **RF-PRE-04** | Finalização da chamada | A finalização consolida os registros, converte os créditos reservados em utilizados, gera a comissão da professora e encerra a edição ordinária. A tela exibe o valor da comissão gerada e o período em que será paga. | MVP |
 | **RF-PRE-05** | Correção de chamada | A chamada pode ser corrigida dentro do prazo configurado. A correção ajusta automaticamente a comissão apurada e o saldo de créditos da aluna quando aplicável. | MVP |
 | **RF-PRE-06** | Bloqueio fora do prazo | Após o prazo, a chamada não pode ser alterada pela professora. A administração pode ajustar mediante registro de justificativa. | MVP |
 | **RF-PRE-07** | Histórico da aluna | A aluna visualiza o histórico com data, modalidade, professora, registro de presença, falta ou cancelamento, e os créditos consumidos em cada ocorrência. | MVP |
 | **RF-PRE-08** | Chamada não finalizada | Sessões com chamada não finalizada são sinalizadas no painel administrativo e no painel da professora. | MVP |
-| **RF-PRE-09** | Consulta à ficha da aluna pela professora | A professora pode consultar a ficha de qualquer aluna do estúdio, incluindo as respostas da anamnese, para conhecer condições de saúde relevantes à condução da aula. Cada consulta é registrada na trilha de auditoria. | MVP |
 
 > **Decisão de interface**
 >
@@ -407,7 +411,7 @@ Workshops e aulas particulares são **aulas excepcionais**: acontecem fora da gr
 | **RF-COM-06** | Painel da professora | A professora acompanha aulas realizadas, valor por aula vigente, total acumulado no período, data de fechamento e data prevista de pagamento. | MVP |
 | **RF-COM-07** | Fechamento de período | A administração fecha o período, visualizando o total a pagar por professora e o total geral. | MVP |
 | **RF-COM-08** | Detalhamento conferível | Relatório com o detalhamento das aulas que compõem o valor de cada professora, para conferência antes do pagamento. | MVP |
-| **RF-COM-09** | Registro de pagamento | Após o pagamento, a administração marca o fechamento como pago, podendo anexar o comprovante de transferência. O anexo é opcional. O período fechado não aceita novos lançamentos. | MVP |
+| **RF-COM-09** | Registro de pagamento | Após o pagamento, a administração marca o fechamento como pago. O período fechado não aceita novos lançamentos. | MVP |
 | **RF-COM-10** | Histórico de fechamentos | Consulta aos fechamentos anteriores, com valores e situação, disponível para administração e professora. | MVP |
 | **RF-COM-11** | Ajuste em período fechado | Correção de chamada referente a período já fechado gera lançamento de ajuste no período seguinte, preservando o fechamento anterior. | MVP |
 
@@ -430,29 +434,29 @@ Todo pagamento é **único**, realizado no ato da compra do pacote. Não existe 
 | **RF-VEN-05** | Cancelamento de venda pendente | A administração pode cancelar uma venda ainda não confirmada, com registro de motivo. | MVP |
 | **RF-VEN-06** | Histórico de compras | Histórico de compras por aluna com pacote, valor, forma de pagamento, data, situação e eventual reembolso. | MVP |
 | **RF-VEN-07** | Painel de vendas | Visão consolidada do período com totais por situação: confirmado, pendente, cancelado e reembolsado. | MVP |
-| **RF-VEN-08** | Recebimento de venda parcelada | Definição sobre o repasse ao estúdio em vendas parceladas: recebimento antecipado do valor integral ou recebimento conforme as parcelas. | Em definição |
+| **RF-VEN-08** | Recebimento de venda parcelada | Definição sobre o repasse ao studio em vendas parceladas: recebimento antecipado do valor integral ou recebimento conforme as parcelas. | Em definição |
 
 ### 4.12.2 Reembolso
 
-O reembolso é um **recurso de mediação da administração**, operado exclusivamente pelo perfil de administração, no mesmo espírito do trancamento. A solicitação da aluna chega pelos canais de atendimento do estúdio — presencialmente, por telefone ou por mensagem — e a administração avalia e executa a operação no sistema. **Não existe, na Fase 1, jornada de solicitação de reembolso pela aluna dentro do sistema.**
+O reembolso é um **recurso de mediação da administração**, operado exclusivamente pelo perfil de administração, no mesmo espírito do trancamento. A solicitação da aluna chega pelos canais de atendimento do studio — presencialmente, por telefone ou por mensagem — e a administração avalia e executa a operação no sistema. **Não existe, na Fase 1, jornada de solicitação de reembolso pela aluna dentro do sistema.**
 
 | **ID** | **Requisito** | **Descrição** | **Prio.** |
 | --- | --- | --- | --- |
 | **RF-REE-01** | Cancelamento por arrependimento | A administração pode cancelar o pacote com reembolso quando a solicitação da aluna ocorrer em até 7 dias corridos após a data da compra e a aluna tiver utilizado no máximo 50% dos créditos adquiridos. | MVP |
 | **RF-REE-02** | Cálculo do reembolso | São descontados do valor a reembolsar os créditos já utilizados, calculados pelo valor unitário do crédito (valor total do pacote dividido pela quantidade de créditos). | MVP |
-| **RF-REE-03** | Prévia do reembolso | Antes de confirmar, o sistema exibe a data da compra, os dias decorridos, o percentual de créditos consumidos, o valor pago, os créditos utilizados, o valor descontado e o valor líquido a reembolsar. | MVP |
+| **RF-REE-03** | Prévia do reembolso | Antes de confirmar, o sistema exibe o valor pago, os créditos utilizados, o valor descontado e o valor líquido a reembolsar. | MVP |
 | **RF-REE-04** | Execução do reembolso | O reembolso é processado na mesma forma de pagamento da compra, por meio do gateway, com registro da transação de estorno. | MVP |
 | **RF-REE-05** | Encerramento da carteira | Confirmado o reembolso, a carteira é encerrada, os créditos remanescentes são anulados e as aulas futuras agendadas são canceladas. | MVP |
 | **RF-REE-06** | Pacotes não reembolsáveis | Não há reembolso quando a carteira já foi consumida, quando já expirou, ou quando mais de 50% dos créditos foram utilizados. | MVP |
-| **RF-REE-07** | Cancelamento por motivo legal | Após o prazo de 7 dias, ou com mais de 50% dos créditos consumidos, situações amparadas em legislação são analisadas pela administração mediante documentação datada e assinada, apresentada em até 7 dias a partir do evento. A administração pode conceder prorrogação de validade, crédito para uso futuro ou reembolso parcial. | MVP |
+| **RF-REE-07** | Cancelamento por motivo legal | Após o prazo de 7 dias, situações amparadas em legislação são analisadas pela administração mediante documentação datada e assinada, apresentada em até 7 dias a partir do evento. A administração pode conceder prorrogação de validade, crédito para uso futuro ou reembolso parcial. | MVP |
 | **RF-REE-08** | Registro da operação | Toda operação de reembolso registra data, motivo, documentação anexada, decisão, autor e valor reembolsado. | MVP |
 | **RF-REE-09** | Operação exclusiva da administração | O reembolso é executado exclusivamente pelo perfil de administração. O sistema não oferece à aluna qualquer caminho para solicitar reembolso, e nenhum elemento de interface do perfil da aluna sugere a existência do recurso. | MVP |
 | **RF-REE-10** | Visibilidade para a aluna | A aluna visualiza o reembolso no próprio histórico de compras apenas quando tiver havido um reembolso efetivamente aplicado ao seu cadastro. Não havendo, nenhuma menção, rótulo, coluna ou filtro relacionado a reembolso é exibido no perfil dela. | MVP |
-| **RF-REE-11** | Prazo de processamento | Definir o gateway e levantar junto a ele o prazo de estorno por forma de pagamento, que será o prazo informado à aluna. | Em definição |
+| **RF-REE-11** | Prazo de processamento | Definição do prazo informado à aluna para o processamento do reembolso. | Em definição |
 
 > **Decisão de escopo e de interface**
 >
-> O reembolso é recurso de mediação da administração, não uma jornada da aluna. A solicitação chega pelos canais de atendimento do estúdio e a administração decide caso a caso, com o sistema servindo para executar, calcular e registrar a operação — nunca para receber o pedido.
+> O reembolso é recurso de mediação da administração, não uma jornada da aluna. A solicitação chega pelos canais de atendimento do studio e a administração decide caso a caso, com o sistema servindo para executar, calcular e registrar a operação — nunca para receber o pedido.
 >
 > **Nenhuma evidência do recurso aparece para quem não passou por ele.** O perfil da aluna não exibe botão, aba, rótulo, coluna nem filtro de reembolso. A informação só surge no histórico de compras daquela aluna se um reembolso tiver sido efetivamente aplicado ao cadastro dela.
 >
@@ -471,14 +475,12 @@ A aula experimental é a porta de entrada para quem ainda não possui pacote. El
 | **RF-EXP-05** | Confirmação por pagamento | A vaga é confirmada após a confirmação do pagamento. | MVP |
 | **RF-EXP-06** | Presença na chamada | A aluna experimental aparece na lista de presença identificada como experimental, sem consumo de créditos. | MVP |
 | **RF-EXP-07** | Conversão em pacote | Após a aula, a interessada pode adquirir um pacote pelo próprio painel, preservando o cadastro existente. | MVP |
-| **RF-EXP-08** | Benefício de conversão | Quem adquire um pacote em até 3 dias após realizar a aula experimental recebe **um crédito adicional** nesse primeiro pacote. Prazo, tipo e montante do benefício são parametrizáveis (RF-CFG-06). | MVP |
+| **RF-EXP-08** | Benefício de conversão | Definição do benefício concedido a quem adquire um pacote após realizar a aula experimental, e do prazo de validade desse benefício. | Em definição |
 | **RF-EXP-09** | Relatório de conversão | Relação de aulas experimentais realizadas no período e taxa de conversão em pacote. | Importante |
 
 ## 4.14 M14 — Convênios Corporativos
 
-O estúdio atende Wellhub e TotalPass. A aluna de convênio **não possui pacote nem créditos no sistema**: ela reserva pelo aplicativo do convênio, ocupa vaga na sessão e realiza check-in no local. O controle de quantas aulas ela pode fazer é do próprio convênio.
-
-**Na Fase 1, a integração automática contempla apenas o Wellhub.** O TotalPass, que atende no máximo quatro alunas, opera em contingência manual (RF-CNV-14) até a Fase 2, quando sua integração automática será implementada (EV-21). Os requisitos RF-CNV-01 a RF-CNV-13 aplicam-se, nesta fase, ao Wellhub.
+O studio atende Wellhub e TotalPass. A aluna de convênio **não possui pacote nem créditos no sistema**: ela reserva pelo aplicativo do convênio, ocupa vaga na sessão e realiza check-in no local. O controle de quantas aulas ela pode fazer é do próprio convênio.
 
 | **ID** | **Requisito** | **Descrição** | **Prio.** |
 | --- | --- | --- | --- |
@@ -490,7 +492,7 @@ O estúdio atende Wellhub e TotalPass. A aluna de convênio **não possui pacote
 | **RF-CNV-06** | Validação de check-in | O check-in realizado pela aluna no aplicativo do convênio é recebido e validado automaticamente, sem necessidade de confirmação manual. | MVP |
 | **RF-CNV-07** | Controle de vagas | As vagas ocupadas por alunas de convênio compõem a capacidade total da sessão, respeitando o limite da modalidade. | MVP |
 | **RF-CNV-08** | Sem controle de limite | O sistema não controla a quantidade de aulas que a aluna de convênio pode realizar. Esse controle é feito pelo próprio convênio. | MVP |
-| **RF-CNV-09** | Convivência com pacote | Uma mesma pessoa pode possuir pacote de créditos no estúdio e também utilizar o convênio. Uma condição não bloqueia a outra, e cada agendamento registra sua origem. | MVP |
+| **RF-CNV-09** | Convivência com pacote | Uma mesma pessoa pode possuir pacote de créditos no studio e também utilizar o convênio. Uma condição não bloqueia a outra, e cada agendamento registra sua origem. | MVP |
 | **RF-CNV-10** | Identificação na chamada | Alunas de convênio aparecem na lista de presença identificadas, com indicação de check-in realizado ou pendente. | MVP |
 | **RF-CNV-11** | Presença sem check-in | A professora pode registrar a presença de aluna de convênio que compareceu sem realizar o check-in, para fins de controle interno de ocupação. O registro não substitui o check-in nem gera repasse. | MVP |
 | **RF-CNV-12** | Relatório de convênios | Relatório com reservas, check-ins validados, ausências e reservas sem check-in por período e por convênio, para conferência do repasse. | MVP |
@@ -499,7 +501,7 @@ O estúdio atende Wellhub e TotalPass. A aluna de convênio **não possui pacote
 
 > **Dependência crítica**
 >
-> A integração automática exige homologação prévia da FGC Digital como sistema de gestão parceiro junto ao Wellhub — e, para a Fase 2, junto ao TotalPass. Trata-se de processo comercial e técnico conduzido por essas plataformas, com prazo não controlado pela FGC Digital. O detalhamento consta no capítulo 10.
+> A integração exige homologação prévia da FGC Digital como sistema de gestão parceiro junto a Wellhub e TotalPass. Trata-se de processo comercial e técnico conduzido por essas plataformas, com prazo não controlado pela FGC Digital. O detalhamento consta no capítulo 11.
 
 ## 4.15 M15 — Painéis e Indicadores
 
@@ -507,11 +509,10 @@ O estúdio atende Wellhub e TotalPass. A aluna de convênio **não possui pacote
 | --- | --- | --- | --- |
 | **RF-PNL-01** | Painel administrativo | Visão consolidada com alunas com pacote ativo, pacotes a vencer, receita do período, aulas realizadas, comissão gerada e créditos em circulação. | MVP |
 | **RF-PNL-02** | Ocupação das sessões | Indicador de ocupação por sessão, destacando turmas com lotação máxima e turmas com baixa procura. | MVP |
-| **RF-PNL-03** | Pendências de ação | Bloco de pendências reunindo solicitações de cancelamento de sessão, justificativas aguardando análise, chamadas não finalizadas e alunas com termo ou anamnese pendentes. | MVP |
+| **RF-PNL-03** | Pendências de ação | Bloco de pendências reunindo solicitações de cancelamento de sessão, justificativas aguardando análise e chamadas não finalizadas. | MVP |
 | **RF-PNL-04** | Painel da professora | Sessões do dia, aulas realizadas no período, valor por aula vigente, total acumulado, data de fechamento e data prevista de pagamento. | MVP |
-| **RF-PNL-05** | Painel da aluna | Saldo de créditos disponíveis, reservados e utilizados, validade do pacote, próximas aulas agendadas, histórico de frequência, histórico de compras e, quando houver, o alerta persistente de termo ou anamnese pendente. | MVP |
+| **RF-PNL-05** | Painel da aluna | Saldo de créditos disponíveis, reservados e utilizados, validade do pacote, próximas aulas agendadas, histórico de frequência e histórico de compras. | MVP |
 | **RF-PNL-06** | Exportação | Exportação em CSV das listagens de alunas, vendas, comissões e convênios. | Importante |
-| **RF-PNL-07** | Indicadores de professora | Taxa de retenção por turma e por professora — percentual de alunas que frequentaram a turma no período anterior e voltaram a frequentar no período atual — e frequência da professora — aulas efetivamente conduzidas sobre aulas atribuídas no período. | MVP |
 
 > **Decisão de interface**
 >
@@ -527,7 +528,7 @@ Na Fase 1 todas as comunicações transacionais são enviadas por e-mail. A arqu
 | **RF-NOT-02** | Confirmação de compra | E-mail confirmando a aquisição do pacote, com créditos, validade e valor pago. | MVP |
 | **RF-NOT-03** | Confirmação de agendamento | E-mail com data, horário, modalidade, professora, créditos reservados e regra de cancelamento aplicável. | MVP |
 | **RF-NOT-04** | Alocação em aula excepcional | E-mail à aluna informando a alocação em workshop ou aula particular, com data, horário e créditos consumidos. | MVP |
-| **RF-NOT-05** | Cancelamento pelo Estúdio | E-mail às alunas afetadas informando os créditos devolvidos e a prorrogação de validade concedida. | MVP |
+| **RF-NOT-05** | Cancelamento pelo studio | E-mail às alunas afetadas informando os créditos devolvidos e a prorrogação de validade concedida. | MVP |
 | **RF-NOT-06** | Substituição de professora | E-mail às alunas agendadas informando a troca na data específica. | MVP |
 | **RF-NOT-07** | Alteração de sessão | E-mail às alunas agendadas quando a sessão tem horário ou dia alterado. | MVP |
 | **RF-NOT-08** | Pacote finalizando | E-mail quando a carteira entra no status Finalizando, informando o motivo (poucos créditos ou proximidade do vencimento) e convidando à renovação. | MVP |
@@ -567,14 +568,14 @@ Na Fase 1 todas as comunicações transacionais são enviadas por e-mail. A arqu
 | **RN-13** | Em aula excepcional, os créditos são consumidos no momento da alocação, sem passar pelo estado de reserva. Cada participante consome o custo integral da categoria. |
 | **RN-14** | O cancelamento da alocação em aula excepcional é exclusivo da administração e estorna os créditos consumidos. |
 | **RN-15** | Aula excepcional não possui limite de participantes controlado pelo sistema. |
-| **RN-16** | Sessão cancelada por iniciativa do estúdio devolve os créditos reservados, concede dias adicionais de validade às carteiras afetadas e preserva a relação das alunas que estavam agendadas, com contato, para consulta da administração. |
+| **RN-16** | Sessão cancelada por iniciativa do studio devolve os créditos reservados e concede dias adicionais de validade às carteiras afetadas. |
 | **RN-17** | Durante o trancamento a validade fica congelada e é prorrogada, ao final, pelo número de dias trancados. Aulas agendadas no período são canceladas com devolução dos créditos. |
 | **RN-18** | A aluna bolsista tem isenção total na Fase 1 e sua carteira é renovada automaticamente ao encerrar, com o pacote concedido pela administração. Todas as demais regras operacionais são idênticas às das outras alunas. |
-| **RN-19** | A carteira é ativada na confirmação do pagamento. Termo e anamnese pendentes não bloqueiam o agendamento; geram alerta persistente para a aluna e para a administração. |
+| **RN-19** | A carteira só é ativada após a confirmação do pagamento, o aceite do termo e o preenchimento da anamnese. |
 | **RN-20** | O reembolso por arrependimento exige solicitação em até 7 dias corridos da compra e utilização de no máximo 50% dos créditos, descontando-se os créditos já utilizados pelo valor unitário do pacote. |
 | **RN-21** | Não há reembolso de carteira consumida, expirada ou com mais de 50% dos créditos utilizados. |
 | **RN-22** | O reembolso é operação exclusiva do perfil de administração. Não existe jornada de solicitação pela aluna no sistema, e nenhum elemento de interface do perfil da aluna revela a existência do recurso enquanto não houver reembolso aplicado ao seu cadastro. |
-| **RN-23** | Sessão regular não pode ser criada quando houver conflito de horário para a professora ou para o espaço, nem fora do horário de funcionamento do estúdio. Para aula excepcional, o conflito de professora e de espaço permanece bloqueante, mas o horário fora do funcionamento é apenas alertado, cabendo à administração confirmar ou ajustar. |
+| **RN-23** | Sessão regular não pode ser criada quando houver conflito de horário para a professora ou para o espaço, nem fora do horário de funcionamento do studio. Para aula excepcional, o conflito de professora e de espaço permanece bloqueante, mas o horário fora do funcionamento é apenas alertado, cabendo à administração confirmar ou ajustar. |
 | **RN-24** | A comissão da professora é gerada na finalização da chamada. Aula regular utiliza o valor da categoria vigente na data. Aula excepcional admite o vínculo opcional de uma ou mais professoras, cada uma com valor de comissão próprio informado no cadastro da aula, e gera um lançamento por professora vinculada. Aula excepcional sem professora vinculada não gera comissão. |
 | **RN-25** | Sessão finalizada sem nenhuma presença registrada não gera comissão. |
 | **RN-26** | Em substituição, a comissão é atribuída à professora que efetivamente conduziu a sessão. Alteração de categoria não tem efeito retroativo. |
@@ -595,197 +596,183 @@ Na Fase 1 todas as comunicações transacionais são enviadas por e-mail. A arqu
 
 ## 6.1 Matrícula pelo site
 
-**1. **A interessada acessa o link público de matrícula.
+**1.** A interessada acessa o link público de matrícula.
 
-**2. **Preenche os dados cadastrais e escolhe o pacote entre os disponíveis.
+**2.** Preenche os dados cadastrais e escolhe o pacote entre os disponíveis.
 
-**3. **Efetua o pagamento pelo gateway integrado.
+**3.** Visualiza o termo de prestação de serviço e registra o aceite. O sistema grava identidade, data, hora, IP e versão do termo.
 
-**4. **Com o pagamento confirmado, a carteira é ativada, os créditos são creditados e o acesso é liberado automaticamente.
+**4.** Preenche a ficha de anamnese, com respostas autodeclaradas.
 
-**5. **Visualiza o termo de prestação de serviço e registra o aceite. O sistema grava identidade, data, hora, IP e versão do termo. Pode pular e concluir depois.
+**5.** Efetua o pagamento pelo gateway integrado.
 
-**6. **Preenche a ficha de anamnese, com respostas autodeclaradas. Pode pular e concluir depois.
+**6.** Com o pagamento confirmado, a carteira é ativada, os créditos são creditados e o acesso é liberado automaticamente.
 
-**7. **Agenda a primeira aula na grade disponível, ainda dentro do fluxo. Pode pular e agendar depois pelo próprio painel.
+**7.** A aluna agenda a primeira aula na grade disponível, ainda dentro do fluxo de inscrição.
 
-**8. **O sistema envia e-mail de boas-vindas com a credencial de acesso, os dados do pacote e, havendo, a confirmação da aula agendada. Termo ou anamnese pendentes passam a exibir alerta no painel da aluna e no bloco de pendências da administração.
-
-> **Definido com a cliente**
->
-> O pagamento vem antes do termo e da anamnese para que a interessada não abandone o fluxo no meio do preenchimento sem ter concluído a compra. As pendências ficam visíveis e são acompanhadas pela administração, que orienta a aluna a concluí-las.
+**8.** O sistema envia e-mail de boas-vindas com a credencial de acesso, os dados do pacote e a confirmação da aula agendada.
 
 ## 6.2 Aula experimental
 
-**1. **A interessada acessa a página pública de aula experimental.
+**1.** A interessada acessa a página pública de aula experimental.
 
-**2. **Visualiza a grade de horários disponíveis e seleciona a aula desejada.
+**2.** Visualiza a grade de horários disponíveis e seleciona a aula desejada.
 
-**3. **Preenche os dados cadastrais, incluindo CPF, utilizado para o controle de limite por modalidade.
+**3.** Preenche os dados cadastrais, incluindo CPF, utilizado para o controle de limite por modalidade.
 
-**4. **O sistema verifica se já houve aula experimental naquela modalidade para o CPF informado.
+**4.** O sistema verifica se já houve aula experimental naquela modalidade para o CPF informado.
 
-**5. **Efetua o pagamento do valor configurado.
+**5.** Aceita o termo e preenche a ficha de anamnese.
 
-**6. **Confirmado o pagamento, a vaga é reservada e a interessada recebe confirmação por e-mail.
+**6.** Efetua o pagamento do valor configurado.
 
-**7. **Aceita o termo e preenche a ficha de anamnese, com opção de pular e concluir depois. Pendências geram alerta no painel e na administração.
+**7.** Confirmado o pagamento, a vaga é reservada e a interessada recebe confirmação por e-mail.
 
-**8. **Na chamada, a aluna aparece identificada como experimental, sem consumo de créditos.
+**8.** Na chamada, a aluna aparece identificada como experimental, sem consumo de créditos.
 
-**9. **Após a aula, pode adquirir um pacote pelo próprio painel, preservando o cadastro.
+**9.** Após a aula, pode adquirir um pacote pelo próprio painel, preservando o cadastro.
 
 ## 6.3 Cadastro administrativo com bolsa
 
-**1. **A administração inicia novo cadastro de aluna.
+**1.** A administração inicia novo cadastro de aluna.
 
-**2. **Preenche os dados e marca a aluna como bolsista.
+**2.** Preenche os dados e marca a aluna como bolsista.
 
-**3. **Escolhe qual pacote do catálogo será concedido.
+**3.** Escolhe qual pacote do catálogo será concedido.
 
-**4. **O sistema indica que nenhuma cobrança será gerada.
+**4.** O sistema indica que nenhuma cobrança será gerada.
 
-**5. **A administração confirma. O sistema registra a concessão com autor, data, pacote e motivo.
+**5.** A administração confirma. O sistema registra a concessão com autor, data, pacote e motivo.
 
-**6. **A aluna recebe e-mail de primeiro acesso e a carteira é ativada de imediato. Termo e anamnese pendentes geram alerta para a aluna e para a administração.
+**6.** A aluna recebe e-mail de primeiro acesso, e a carteira é ativada após o aceite do termo e o preenchimento da anamnese.
 
-**7. **Ao encerrar a carteira, por consumo ou vencimento, o sistema concede automaticamente uma nova carteira com o mesmo pacote, sem gerar cobrança.
+**7.** Ao encerrar a carteira, por consumo ou vencimento, o sistema concede automaticamente uma nova carteira com o mesmo pacote, sem gerar cobrança.
 
 ## 6.4 Compra de novo pacote
 
-**1. **A aluna acessa o próprio painel e escolhe um pacote.
+**1.** A aluna acessa o próprio painel e escolhe um pacote.
 
-**2. **O sistema exibe a prévia: créditos que serão somados, saldo resultante e nova data de validade.
+**2.** O sistema exibe a prévia: créditos que serão somados, saldo resultante e nova data de validade.
 
-**3. **A aluna efetua o pagamento.
+**3.** A aluna efetua o pagamento.
 
-**4. **Confirmado o pagamento, o sistema aplica a regra correspondente: se a carteira vigente ainda estava ativa, soma os créditos e substitui a validade; se já estava encerrada, cria uma carteira nova.
+**4.** Confirmado o pagamento, o sistema aplica a regra correspondente: se a carteira vigente ainda estava ativa, soma os créditos e substitui a validade; se já estava encerrada, cria uma carteira nova.
 
-**5. **A aluna recebe confirmação por e-mail com créditos, validade e valor pago.
+**5.** A aluna recebe confirmação por e-mail com créditos, validade e valor pago.
 
 ## 6.5 Agendamento e realização da aula regular
 
-**1. **A aluna acessa a grade e visualiza as sessões disponíveis dentro da janela de agendamento.
+**1.** A aluna acessa a grade e visualiza as sessões disponíveis dentro da janela de agendamento.
 
-**2. **Seleciona a sessão. O sistema valida saldo disponível, validade, situação de trancamento e disponibilidade de vaga.
+**2.** Seleciona a sessão. O sistema valida saldo disponível, validade, situação de trancamento e disponibilidade de vaga.
 
-**3. **Confirmado o agendamento, os créditos são reservados e a vaga é ocupada. A aluna recebe confirmação por e-mail.
+**3.** Confirmado o agendamento, os créditos são reservados e a vaga é ocupada. A aluna recebe confirmação por e-mail.
 
-**4. **No dia da aula, a professora acessa suas sessões e abre a lista de presença.
+**4.** No dia da aula, a professora acessa suas sessões e abre a lista de presença.
 
-**5. **As alunas são apresentadas como presentes por padrão; a professora marca apenas as ausências.
+**5.** As alunas são apresentadas como presentes por padrão; a professora marca apenas as ausências.
 
-**6. **A professora finaliza a chamada. Os créditos reservados são convertidos em utilizados e a comissão é gerada.
+**6.** A professora finaliza a chamada. Os créditos reservados são convertidos em utilizados e a comissão é gerada.
 
-**7. **A aula passa a compor o histórico de frequência da aluna.
+**7.** A aula passa a compor o histórico de frequência da aluna.
 
 ## 6.6 Cancelamento pela aluna e reposição
 
-**1. **A aluna acessa suas aulas agendadas e solicita o cancelamento.
+**1.** A aluna acessa suas aulas agendadas e solicita o cancelamento.
 
-**2. **O sistema verifica a antecedência em relação ao horário da aula.
+**2.** O sistema verifica a antecedência em relação ao horário da aula.
 
-**3. **Com antecedência suficiente, informa que os créditos retornam ao saldo disponível e confirma o cancelamento.
+**3.** Com antecedência suficiente, informa que os créditos retornam ao saldo disponível e confirma o cancelamento.
 
-**4. **Abaixo da antecedência mínima, informa que os créditos serão consumidos e oferece o envio de justificativa.
+**4.** Abaixo da antecedência mínima, informa que os créditos serão consumidos e oferece o envio de justificativa.
 
-**5. **Optando pela justificativa, a aluna anexa o comprovante e o registro entra na fila de análise.
+**5.** Optando pela justificativa, a aluna anexa o comprovante e o registro entra na fila de análise.
 
-**6. **A administração analisa e decide. Aprovada, os créditos são estornados. Recusada, o consumo é mantido.
+**6.** A administração analisa e decide. Aprovada, os créditos são estornados. Recusada, o consumo é mantido.
 
-**7. **A aluna é notificada do resultado e, havendo saldo, reagenda dentro da validade.
-
-### 6.6.1 Cancelamento de aula pelo estúdio
-
-**1. **A administração cancela a ocorrência — por exclusão de sessão, exceção de calendário, aprovação de solicitação da professora ou conflito com aula excepcional.
-
-**2. **O sistema devolve os créditos reservados, prorroga a validade das carteiras afetadas e dispara o e-mail às alunas.
-
-**3. **A relação das alunas que estavam agendadas permanece registrada na ocorrência cancelada, com o telefone de cada uma.
-
-**4. **A administração abre essa relação e usa o botão "Enviar mensagem" para avisar cada aluna pelo WhatsApp, enquanto o canal não está integrado ao sistema.
+**7.** A aluna é notificada do resultado e, havendo saldo, reagenda dentro da validade.
 
 ## 6.7 Criação de workshop ou aula particular
 
-**1. **A administração acessa o cadastro de aula excepcional.
+**1.** A administração acessa o cadastro de aula excepcional.
 
-**2. **Escolhe a categoria de aula e informa nome, data, horário e espaço.
+**2.** Escolhe a categoria de aula e informa nome, data, horário e espaço.
 
-**3. **Havendo comissão a pagar, vincula uma ou mais professoras e informa o valor da comissão de cada uma. Não havendo comissão, segue sem vincular professora.
+**3.** Havendo comissão a pagar, vincula uma ou mais professoras e informa o valor da comissão de cada uma. Não havendo comissão, segue sem vincular professora.
 
-**4. **Estando o horário fora do funcionamento do estúdio, o sistema alerta e permite confirmar assim mesmo ou ajustar a data e o horário.
+**4.** Estando o horário fora do funcionamento do studio, o sistema alerta e permite confirmar assim mesmo ou ajustar a data e o horário.
 
-**5. **Havendo sessões regulares no mesmo horário, o sistema informa o conflito e oferece o cancelamento dessas sessões. Existindo alunas agendadas, o cancelamento devolve os créditos, prorroga a validade e dispara notificação.
+**5.** Havendo sessões regulares no mesmo horário, o sistema informa o conflito e oferece o cancelamento dessas sessões. Existindo alunas agendadas, o cancelamento devolve os créditos, prorroga a validade e dispara notificação.
 
-**6. **Criada a aula, a administração aloca as alunas participantes.
+**6.** Criada a aula, a administração aloca as alunas participantes.
 
-**7. **A alocação consome imediatamente os créditos da categoria, ou é registrada sem consumo quando o pagamento ocorre fora do sistema — inclusive para participante sem cadastro, informada apenas com nome e telefone.
+**7.** A alocação consome imediatamente os créditos da categoria, ou é registrada sem consumo quando o pagamento ocorre fora do sistema.
 
-**8. **As alunas alocadas são notificadas e passam a visualizar a aula nas próximas aulas e no histórico.
+**8.** As alunas alocadas são notificadas e passam a visualizar a aula nas próximas aulas e no histórico.
 
-**9. **No dia, a aula possui chamada e aparece nas sessões de cada professora vinculada. Na finalização, cada professora vinculada gera um lançamento de comissão com o valor que lhe foi atribuído.
+**9.** No dia, a aula possui chamada e aparece nas sessões de cada professora vinculada. Na finalização, cada professora vinculada gera um lançamento de comissão com o valor que lhe foi atribuído.
 
 ## 6.8 Trancamento
 
-**1. **A aluna procura a administração informando o motivo do afastamento.
+**1.** A aluna procura a administração informando o motivo do afastamento.
 
-**2. **A administração acessa a carteira e informa data de início, data de término prevista e motivo.
+**2.** A administração acessa a carteira e informa data de início, data de término prevista e motivo.
 
-**3. **O sistema apresenta o pacote, o saldo de créditos, a validade atual e o histórico de trancamentos como apoio à decisão.
+**3.** O sistema apresenta o pacote, o saldo de créditos, a validade atual e o histórico de trancamentos como apoio à decisão.
 
-**4. **Exibe a prévia: saldo congelado, validade atual, validade projetada no retorno e as aulas que serão canceladas.
+**4.** Exibe a prévia: saldo congelado, validade atual, validade projetada no retorno e as aulas que serão canceladas.
 
-**5. **Confirmada a operação, as aulas agendadas no período são canceladas e os créditos reservados devolvidos.
+**5.** Confirmada a operação, as aulas agendadas no período são canceladas e os créditos reservados devolvidos.
 
-**6. **Ao final do período, a validade é prorrogada automaticamente pelo número de dias trancados e o agendamento é liberado.
+**6.** Ao final do período, a validade é prorrogada automaticamente pelo número de dias trancados e o agendamento é liberado.
 
 ## 6.9 Reembolso por arrependimento
 
-**1. **A aluna procura a administração pelos canais de atendimento do estúdio solicitando o cancelamento do pacote. A solicitação não é feita pelo sistema.
+**1.** A aluna procura a administração pelos canais de atendimento do studio solicitando o cancelamento do pacote. A solicitação não é feita pelo sistema.
 
-**2. **A administração acessa a compra na ficha da aluna e inicia a operação de reembolso.
+**2.** A administração acessa a compra na ficha da aluna e inicia a operação de reembolso.
 
-**3. **O sistema verifica o prazo de 7 dias corridos desde a compra e o percentual de créditos utilizados.
+**3.** O sistema verifica o prazo de 7 dias corridos desde a compra e o percentual de créditos utilizados.
 
-**4. **Atendidas as condições, exibe a prévia: valor pago, créditos utilizados, valor descontado e valor líquido a reembolsar.
+**4.** Atendidas as condições, exibe a prévia: valor pago, créditos utilizados, valor descontado e valor líquido a reembolsar.
 
-**5. **A administração confirma. O reembolso é processado pelo gateway na mesma forma de pagamento da compra.
+**5.** A administração confirma. O reembolso é processado pelo gateway na mesma forma de pagamento da compra.
 
-**6. **A carteira é encerrada, os créditos remanescentes são anulados e as aulas futuras agendadas são canceladas.
+**6.** A carteira é encerrada, os créditos remanescentes são anulados e as aulas futuras agendadas são canceladas.
 
-**7. **A aluna é notificada por e-mail do reembolso aplicado, e a operação passa a constar no histórico de compras dela.
+**7.** A aluna é notificada por e-mail do reembolso aplicado, e a operação passa a constar no histórico de compras dela.
 
 ## 6.10 Fluxo de aluna de convênio
 
-**1. **As sessões regulares selecionadas para espelhamento são publicadas nos aplicativos dos convênios, com vagas atualizadas.
+**1.** As sessões regulares selecionadas para espelhamento são publicadas nos aplicativos dos convênios, com vagas atualizadas.
 
-**2. **A aluna de convênio visualiza a grade no aplicativo e reserva a vaga.
+**2.** A aluna de convênio visualiza a grade no aplicativo e reserva a vaga.
 
-**3. **O sistema recebe a solicitação, valida a disponibilidade e confirma ou recusa dentro do prazo exigido.
+**3.** O sistema recebe a solicitação, valida a disponibilidade e confirma ou recusa dentro do prazo exigido.
 
-**4. **Confirmada, a vaga é ocupada na sessão e a ocupação é atualizada em ambos os sistemas.
+**4.** Confirmada, a vaga é ocupada na sessão e a ocupação é atualizada em ambos os sistemas.
 
-**5. **No dia da aula, a aluna realiza o check-in pelo aplicativo do convênio no local.
+**5.** No dia da aula, a aluna realiza o check-in pelo aplicativo do convênio no local.
 
-**6. **O sistema recebe e valida o check-in automaticamente, condição para o repasse financeiro.
+**6.** O sistema recebe e valida o check-in automaticamente, condição para o repasse financeiro.
 
-**7. **Na lista de presença, a aluna aparece identificada como de convênio, com indicação de check-in realizado ou pendente.
+**7.** Na lista de presença, a aluna aparece identificada como de convênio, com indicação de check-in realizado ou pendente.
 
-**8. **O relatório de convênios consolida reservas, check-ins validados, ausências e reservas sem check-in para conferência do repasse.
+**8.** O relatório de convênios consolida reservas, check-ins validados, ausências e reservas sem check-in para conferência do repasse.
 
 ## 6.11 Fechamento de comissão
 
-**1. **Ao longo do mês, cada chamada finalizada gera automaticamente os lançamentos de comissão.
+**1.** Ao longo do mês, cada chamada finalizada gera automaticamente os lançamentos de comissão.
 
-**2. **Ao final do período, a administração acessa o fechamento e visualiza o total acumulado por professora.
+**2.** Ao final do período, a administração acessa o fechamento e visualiza o total acumulado por professora.
 
-**3. **Consulta o detalhamento das aulas que compõem o valor de cada professora, incluindo aulas excepcionais com seus valores próprios.
+**3.** Consulta o detalhamento das aulas que compõem o valor de cada professora, incluindo aulas excepcionais com seus valores próprios.
 
-**4. **Confirmado o fechamento, o período é encerrado e não aceita novos lançamentos.
+**4.** Confirmado o fechamento, o período é encerrado e não aceita novos lançamentos.
 
-**5. **Realizado o pagamento até o quinto dia útil, a administração marca o fechamento como pago, anexando o comprovante se desejar.
+**5.** Realizado o pagamento até o quinto dia útil, a administração marca o fechamento como pago.
 
-**6. **Correções de chamada posteriores ao fechamento geram lançamento de ajuste no período seguinte.
+**6.** Correções de chamada posteriores ao fechamento geram lançamento de ajuste no período seguinte.
 
 # 7. Modelo Conceitual de Dados
 
@@ -793,7 +780,7 @@ Entidades principais e atributos essenciais. O modelo físico será derivado no 
 
 | **Entidade** | **Atributos principais** |
 | --- | --- |
-| Estúdio | Nome, contato, endereço, dias e faixa de horário de funcionamento, fuso. |
+| Studio | Nome, contato, endereço, dias e faixa de horário de funcionamento, fuso. |
 | Parâmetro | Chave, valor, descrição. Janelas de agendamento, antecedência de cancelamento, prazo de correção de chamada, dias de prorrogação, limite e valor da experimental, prazo de justificativa, limiares do status Finalizando, antecedências de aviso. |
 | Modalidade | Nome, capacidade máxima de alunas, situação. |
 | CategoriaAula | Nome, custo em créditos, indicador de aula excepcional, situação. |
@@ -813,18 +800,18 @@ Entidades principais e atributos essenciais. O modelo físico será derivado no 
 | Trancamento | Carteira, data de início, data de término prevista, data de retorno efetivo, dias prorrogados, motivo, autor. |
 | Reembolso | Venda, tipo (arrependimento, legal), data da operação, créditos utilizados, valor descontado, valor reembolsado, documentação, motivo, autor. |
 | Sessão | Modalidade, professora, espaço, dias da semana, horário de início e término, capacidade, data de início, data de término, descrição, espelhamento em convênio, situação. |
-| OcorrênciaSessão | Sessão, data específica, professora efetiva, capacidade efetiva, situação, motivo do cancelamento, relação preservada das alunas agendadas no cancelamento. |
+| OcorrênciaSessão | Sessão, data específica, professora efetiva, capacidade efetiva, situação, motivo do cancelamento. |
 | AulaExcepcional | Categoria de aula, nome, data, horário de início e término, espaço, situação, autor. |
 | ProfessoraDaAula | Aula excepcional, professora, valor da comissão. Vínculo opcional, admitindo mais de uma professora por aula. |
 | Agendamento | Aluna, ocorrência de sessão, origem (portal, administração ou convênio), créditos reservados, data e hora, situação, origem do cancelamento, indicador de experimental. |
-| Alocação | Aula excepcional, aluna ou participante sem cadastro (nome e telefone), créditos consumidos, indicador de consumo dispensado, motivo, autor, data. |
+| Alocação | Aluna, aula excepcional, créditos consumidos, indicador de consumo dispensado, motivo, autor, data. |
 | ExceçãoCalendário | Data, tipo, descrição, autor, data de criação. |
 | Chamada | Ocorrência de sessão ou aula excepcional, professora, data e hora de finalização, situação. |
 | RegistroPresença | Chamada, aluna, situação, indicador de check-in de convênio, data e hora, autor. |
 | Justificativa | Agendamento, aluna, texto, anexo, situação, parecer, autor da análise, data. |
 | SolicitaçãoCancelamento | Sessão, data, professora solicitante, motivo, situação, decisão, professora substituta, autor da decisão, data. |
 | Comissão | Chamada, professora, base de cálculo aplicada, valor, data da aula, período de fechamento, situação. |
-| FechamentoComissão | Período de início e fim, total geral, situação, data de fechamento, data de pagamento, comprovante (opcional), autor. |
+| FechamentoComissão | Período de início e fim, total geral, situação, data de fechamento, data de pagamento, autor. |
 | ConvênioIntegração | Convênio, credenciais, situação da integração, data da última sincronização. |
 | ReservaConvênio | Convênio, identificador externo, aluna, ocorrência de sessão, situação, check-in validado, data e hora do check-in. |
 | Notificação | Destinatário, evento, canal, conteúdo, data de envio, situação do envio. |
@@ -838,7 +825,7 @@ Entidades principais e atributos essenciais. O modelo físico será derivado no 
 | **RNF-02** | Disponibilidade | Sistema disponível em ambiente de produção com hospedagem gerenciada e reinicialização automática em caso de falha. |
 | **RNF-03** | Backup | Rotina automática diária de backup do banco de dados, com retenção mínima de 7 dias e procedimento de restauração verificado. |
 | **RNF-04** | Segurança de acesso | Autenticação por e-mail e senha, senhas armazenadas com algoritmo de hash, sessão com expiração e recuperação de senha por e-mail. |
-| **RNF-05** | Proteção de dados | Tratamento de dados pessoais em conformidade com a LGPD. As respostas da ficha de anamnese constituem dado pessoal sensível e recebem tratamento restrito: acesso limitado aos perfis de administração e professora, registro de cada consulta na trilha de auditoria, registro de consentimento específico no aceite e armazenamento com controle de acesso reforçado. |
+| **RNF-05** | Proteção de dados | Tratamento de dados pessoais em conformidade com a LGPD. As respostas da ficha de anamnese constituem dado pessoal sensível e recebem tratamento restrito: acesso limitado ao perfil de administração, registro de consentimento específico no aceite e armazenamento com controle de acesso reforçado. |
 | **RNF-06** | Auditoria | Trilha de auditoria imutável para operações que alterem carteira, créditos, situação financeira, chamada ou comissão. |
 | **RNF-07** | Integridade de créditos | Operações de venda e de movimentação de créditos executadas de forma transacional, sem possibilidade de duplicidade de cobrança ou de crédito. O saldo é sempre reconstituível a partir do histórico de movimentos. |
 | **RNF-08** | Idempotência | Rotinas automáticas e recebimento de confirmações do gateway são idempotentes, garantindo que reexecuções não gerem créditos ou mensagens duplicadas. |
@@ -846,7 +833,7 @@ Entidades principais e atributos essenciais. O modelo físico será derivado no 
 | **RNF-10** | Tempo de resposta de integração | As respostas às solicitações dos convênios respeitam os prazos exigidos por cada plataforma, com registro de falhas e reprocessamento. |
 | **RNF-11** | Desempenho | Tempo de resposta inferior a 2 segundos nas operações de consulta e agendamento em condições normais de uso. |
 | **RNF-12** | Entrega de e-mail | Serviço de e-mail transacional com autenticação de domínio, monitoramento de entrega e registro de falhas. |
-| **RNF-13** | Fuso horário | Todas as datas e horários tratados no fuso horário local do estúdio, incluindo o cálculo da antecedência de cancelamento e da validade dos pacotes. |
+| **RNF-13** | Fuso horário | Todas as datas e horários tratados no fuso horário local do studio, incluindo o cálculo da antecedência de cancelamento e da validade dos pacotes. |
 | **RNF-14** | Extensibilidade de canal | Camada de notificação desacoplada do canal de envio, permitindo inclusão do WhatsApp na Fase 2 sem alteração das regras de disparo. |
 | **RNF-15** | Ambientes | Ambiente de homologação separado do ambiente de produção, para validação das entregas antes da publicação. |
 | **RNF-16** | Acessibilidade | Contraste adequado, foco de teclado visível e navegação por teclado nas telas de uso frequente. |
@@ -868,7 +855,6 @@ Entidades principais e atributos essenciais. O modelo físico será derivado no 
 | **REL-11** | Aulas excepcionais | Relação de workshops e aulas particulares realizados, com participantes, créditos consumidos e comissão paga. |
 | **REL-12** | Convênios | Reservas, check-ins validados, ausências e reservas sem check-in por período e por convênio, para conferência do repasse. |
 | **REL-13** | Reembolsos | Relação de reembolsos aplicados no período, com aluna, motivo, valor reembolsado e autor da operação. |
-| **REL-14** | Retenção e frequência por professora | Taxa de retenção por turma e por professora e frequência da professora no período, conforme RF-PNL-07. |
 
 # 10. Convênios — Viabilidade Técnica e Dependências
 
@@ -879,33 +865,22 @@ A integração com Wellhub e TotalPass é escopo obrigatório da Fase 1. Este ca
 O Wellhub disponibiliza portal público de documentação técnica para sistemas de gestão parceiros, com três interfaces relevantes ao escopo:
 
 - **Booking API:** permite publicar turmas e horários na plataforma, mantendo a sincronização automática. As reservas realizadas no aplicativo são comunicadas por webhook.
-
 - **Access Control API:** recebe e valida os check-ins realizados no local, condição para o repasse financeiro ao parceiro.
-
 - **Integration Setup API:** mecanismo pelo qual o Wellhub notifica o sistema de gestão quando um parceiro o seleciona como seu sistema.
-
 Características técnicas relevantes:
 
 - Autenticação por token único, fornecido pelo Wellhub, válido para as diferentes interfaces.
-
 - Comunicação por webhook, com assinatura de segurança no cabeçalho, que deve ser verificada pelo sistema receptor.
-
 - Solicitações de reserva devem ser confirmadas ou recusadas em até 15 minutos, sob pena de recusa automática pela plataforma.
-
 - Tempo de resposta esperado de 1 segundo, com retentativas em caso de ausência de resposta.
-
 - Ambiente de testes disponível, separado do ambiente de produção.
 
 ## 10.2 TotalPass
 
-**Integração automática prevista para a Fase 2.** Na Fase 1, as alunas do TotalPass são registradas por contingência manual (RF-CNV-14). O levantamento abaixo fica registrado para a fase seguinte.
-
 O TotalPass não disponibiliza portal público de documentação técnica. A integração é conduzida diretamente pela plataforma, mediante habilitação prévia do sistema de gestão em seu catálogo de sistemas homologados.
 
-- A plataforma opera com dois modos de integração: apenas check-in e agendamento com check-in. O modelo aplicável ao estúdio é o segundo.
-
+- A plataforma opera com dois modos de integração: apenas check-in e agendamento com check-in. O modelo aplicável ao studio é o segundo.
 - A autenticação ocorre por chave de integração obtida pelo próprio parceiro em seu portal, após selecionar o sistema de gestão em lista de sistemas homologados.
-
 - O check-in é validado por geolocalização, em raio aproximado de 150 metros do estabelecimento, com prazo de expiração.
 
 ## 10.3 Dependência crítica de homologação
@@ -919,8 +894,8 @@ O TotalPass não disponibiliza portal público de documentação técnica. A int
 | **Etapa** | **Responsável** | **Observação** |
 | --- | --- | --- |
 | Solicitação de homologação — Wellhub | FGC Digital | Formulário público de solicitação. Prazo de retorno informado como poucos dias para orientação inicial. |
-| Solicitação de homologação — TotalPass | FGC Digital | Contato via canal de atendimento a parceiros. Não há processo público documentado. Iniciada na Fase 1 para não atrasar a Fase 2. |
-| Manutenção da condição de parceiro | Cliente | O estúdio deve permanecer como parceiro ativo em ambas as plataformas. |
+| Solicitação de homologação — TotalPass | FGC Digital | Contato via canal de atendimento a parceiros. Não há processo público documentado. |
+| Manutenção da condição de parceiro | Cliente | O studio deve permanecer como parceiro ativo em ambas as plataformas. |
 | Fornecimento das credenciais do estabelecimento | Cliente | Obtidas nos respectivos portais de parceiro após a homologação do sistema. |
 | Desenvolvimento e testes em homologação | FGC Digital | Condicionado à liberação de credenciais de teste pelas plataformas. |
 | Validação em produção | FGC Digital e Cliente | Execução de reserva e check-in reais antes da migração definitiva. |
@@ -945,49 +920,30 @@ Os itens abaixo ficam registrados como evoluções planejáveis. Não fazem part
 | **EV-08** | Emissão de nota fiscal | Emissão automática de NFS-e a partir das vendas confirmadas. Depende da definição do enquadramento fiscal e do município de emissão. |
 | **EV-09** | Aplicativo móvel | Aplicativo nativo para aluna e professora, mantendo o acesso por navegador para quem preferir não instalar. |
 | **EV-10** | Habilitação de professora por modalidade | Registro das modalidades que cada professora está habilitada a conduzir, com filtro automático na seleção de substituta. |
-| **EV-11** | Indicadores avançados | Análise de retenção por modalidade, previsão de receita, curva de frequência por modalidade e demais indicadores de desempenho além dos entregues em RF-PNL-07. |
+| **EV-11** | Indicadores avançados | Análise de retenção, previsão de receita, curva de frequência por modalidade e indicadores de desempenho por professora. |
 | **EV-12** | Perfis granulares | Permissões por funcionalidade e ocultação de informações financeiras para perfis específicos. |
 | **EV-13** | Múltiplos espaços | Operação com mais de um espaço físico simultâneo, com capacidade e conflito por espaço além da capacidade por modalidade. |
 | **EV-14** | Cobrança recorrente | Comercialização por assinatura com cobrança recorrente automática, alternativa ao modelo de pacotes pré-pagos. |
 | **EV-15** | Solicitação de reembolso pela aluna | Jornada no sistema em que a própria aluna solicita o reembolso, anexa documentação quando for o caso e acompanha o andamento, com fila de análise no painel administrativo. Na Fase 1 o reembolso é operação exclusiva da administração, sem qualquer caminho de solicitação pela aluna. |
-| **EV-16** | Bloqueio de agendamento até o aceite | Impedir o agendamento enquanto o termo não for aceito e a anamnese não for preenchida. Na Fase 1 a pendência gera alerta, sem bloqueio (RF-ALU-08). |
-| **EV-17** | Agendamento livre para professoras | Permitir que professoras agendem aulas regulares sem pacote, com regra de prioridade para as alunas — por exemplo, apenas em sessões que já tenham aluna agendada e com antecedência mínima definida. |
-| **EV-18** | Comissão de aula excepcional por aluna presente | Cálculo automático da comissão em workshop e aula particular a partir da quantidade de participantes, em alternativa ao valor informado no cadastro da aula. |
-| **EV-19** | Link de cadastro pré-autorizado | Link gerado pela administração, com identificador único de uso controlado, que permite à aluna concluir o próprio cadastro já com a condição de bolsista ou com um pacote pré-definido, sem passar pelo fluxo público de venda. |
-| **EV-20** | Pagamento em dinheiro para aula excepcional pelo sistema | Geração de link de pagamento pelo sistema para participante que prefira pagar o valor em reais em vez de consumir créditos, integrando a confirmação à alocação. Na Fase 1 esse pagamento é tratado fora do sistema (RF-AEX-06), podendo a administração usar o link de pagamento do próprio gateway. |
-| **EV-21** | Integração automática com o TotalPass | Espelhamento da grade, recebimento de reservas e validação de check-in do TotalPass, nos mesmos moldes da integração com o Wellhub. Na Fase 1 o TotalPass opera em contingência manual. |
 
 # 12. Premissas, Restrições e Dependências
 
-- **Conectividade:** o estúdio possui conexão de internet estável nos horários de operação. O sistema não terá modo offline na Fase 1.
-
-- **Homologação nos convênios:** a homologação da FGC Digital como sistema de gestão parceiro junto ao Wellhub é pré-requisito para a integração automática da Fase 1. O processo é conduzido pela plataforma, com prazo não controlado pela FGC Digital. A homologação junto ao TotalPass é iniciada na Fase 1 e concluída para a Fase 2.
-
-- **Condição de parceiro:** o estúdio deve permanecer como parceiro ativo de Wellhub e TotalPass e fornecer as credenciais de integração de seu portal de parceiro.
-
+- **Conectividade:** o studio possui conexão de internet estável nos horários de operação. O sistema não terá modo offline na Fase 1.
+- **Homologação nos convênios:** a homologação da FGC Digital como sistema de gestão parceiro junto a Wellhub e TotalPass é pré-requisito para a integração automática. O processo é conduzido pelas plataformas, com prazo não controlado pela FGC Digital.
+- **Condição de parceiro:** o studio deve permanecer como parceiro ativo de Wellhub e TotalPass e fornecer as credenciais de integração de seu portal de parceiro.
 - **Gateway de pagamento:** a contratação de conta no gateway e o cumprimento das exigências cadastrais correspondentes são de responsabilidade da cliente. O processo de verificação de identidade da empresa precisa estar concluído antes de o módulo de vendas entrar em operação.
-
 - **Termo de aceite:** o conteúdo do termo de prestação de serviço será fornecido pela cliente, elaborado com sua assessoria jurídica. As regras de reembolso e de expiração de créditos previstas neste documento devem constar do termo.
-
 - **Anamnese:** o conteúdo da ficha de anamnese será fornecido pela cliente.
-
 - **Configuração inicial:** a cliente fornecerá a relação de modalidades com capacidades, categorias de aula com custo em créditos, pacotes com valores e validades, categorias de professora com valores e a grade vigente.
-
 - **Migração de dados:** a cliente disponibilizará acesso à plataforma atual para levantamento da base de alunas. A migração depende da possibilidade de exportação; não havendo exportação viável, a carga inicial será realizada manualmente.
-
 - **Homologação das entregas:** a cliente disponibilizará tempo para as sessões de validação e homologação de cada entrega.
-
 - **Serviços de terceiros:** hospedagem, e-mail transacional, gateway de pagamento e plataformas de convênio são fornecidos por terceiros. Indisponibilidades desses serviços não caracterizam falha do sistema.
 
 # 13. Pontos em Aberto
 
 Cada item traz uma **sugestão da FGC Digital**, que será adotada caso a cliente não tenha preferência diferente. As sugestões priorizam o equilíbrio entre o valor do recurso e a complexidade de desenvolvimento, e favorecem a parametrização sempre que ela resolve o problema sem multiplicar o esforço.
 
-Os itens marcados como **Definido** foram acordados com a cliente na devolutiva de 28/08/2026 e permanecem aqui apenas para rastreabilidade. Os demais seguem em aberto.
-
 ## PA-01 — Conteúdo da ficha de anamnese
-
-**Situação:** Aberto — a cliente informou que o questionário está pronto e será enviado em Word.
 
 Perguntas que compõem o questionário de saúde preenchido pela aluna no ingresso.
 
@@ -1001,9 +957,7 @@ Perguntas que compõem o questionário de saúde preenchido pela aluna no ingres
 
 ## PA-02 — Recebimento de venda parcelada
 
-**Situação:** Aberto — a cliente prefere receber conforme as parcelas; depende de o gateway escolhido oferecer a opção.
-
-Em vendas parceladas no cartão, o estúdio recebe o valor integral de forma antecipada ou conforme as parcelas?
+Em vendas parceladas no cartão, o studio recebe o valor integral de forma antecipada ou conforme as parcelas?
 
 **Requisito:** RF-VEN-08  ·  **Bloqueia a partir de:** Desenvolvimento do M12
 
@@ -1015,21 +969,17 @@ Em vendas parceladas no cartão, o estúdio recebe o valor integral de forma ant
 
 ## PA-03 — Prazo de processamento do reembolso
 
-**Situação:** Aberto — definir o gateway e levantar o prazo de estorno junto a ele.
-
 Prazo informado à aluna para que o valor reembolsado retorne.
 
 **Requisito:** RF-REE-09  ·  **Bloqueia a partir de:** Desenvolvimento do M12
 
 > **Sugestão da FGC Digital**
 >
-> Recomendamos **não fixar um número no sistema nem no termo** antes de definir o gateway. Definido o gateway, levantamos com ele o prazo de estorno por forma de pagamento e esse passa a ser o prazo informado à aluna. No cartão, costuma seguir o ciclo da fatura; no Pix, a devolução tende a ser imediata.
+> Recomendamos **não fixar um número no sistema nem no termo**, e sim informar que o prazo segue o da operadora do cartão, normalmente entre uma e duas faturas. Para Pix, a devolução costuma ser imediata.
 >
-> Prometer um prazo curto cria expectativa que não depende do estúdio nem do sistema. O texto exibido à aluna fica parametrizável, permitindo ajuste sem alteração de código.
+> Prometer um prazo curto cria expectativa que não depende do studio nem do sistema. O texto exibido à aluna fica parametrizável, permitindo ajuste sem alteração de código.
 
 ## PA-04 — Benefício de conversão da aula experimental
-
-**Situação:** Definido — um crédito adicional no primeiro pacote, adquirido em até 3 dias após a experimental; prazo, tipo e montante parametrizáveis. Ver RF-EXP-08.
 
 Qual benefício é concedido a quem adquire um pacote após realizar a aula experimental, e por quanto tempo ele vale.
 
@@ -1039,11 +989,9 @@ Qual benefício é concedido a quem adquire um pacote após realizar a aula expe
 >
 > Recomendamos **parametrizar as três dimensões**: o prazo de validade do benefício em dias, o tipo (desconto em valor ou crédito adicional) e o montante. Assim a cliente ajusta a promoção sem depender de suporte.
 >
-> Como ponto de partida, sugerimos 3 dias de validade e **um crédito adicional** no primeiro pacote, em vez de desconto no valor. Crédito adicional preserva a receita da venda, é mais simples de comunicar e incentiva o uso do estúdio.
+> Como ponto de partida, sugerimos 3 dias de validade e **um crédito adicional** no primeiro pacote, em vez de desconto no valor. Crédito adicional preserva a receita da venda, é mais simples de comunicar e incentiva o uso do studio.
 
 ## PA-05 — Assinatura do termo a cada compra
-
-**Situação:** Definido — uma assinatura por versão do termo; compras seguintes não exigem novo aceite.
 
 A aluna assina o termo de prestação de serviço uma única vez ou a cada aquisição de pacote?
 
@@ -1057,23 +1005,19 @@ A aluna assina o termo de prestação de serviço uma única vez ou a cada aquis
 
 ## PA-06 — Direito de arrependimento e canal de compra
 
-**Situação:** Definido — prazo de 7 dias em toda compra, independentemente do canal.
-
-O prazo de 7 dias do Código de Defesa do Consumidor aplica-se às compras realizadas presencialmente no estúdio?
+O prazo de 7 dias do Código de Defesa do Consumidor aplica-se às compras realizadas presencialmente no studio?
 
 **Requisito:** RF-REE-01  ·  **Bloqueia a partir de:** Desenvolvimento do M12
 
 > **Sugestão da FGC Digital**
 >
-> O artigo 49 do CDC assegura o arrependimento em 7 dias para contratações realizadas **fora do estabelecimento comercial** — pela internet, por telefone ou a domicílio. Uma compra feita presencialmente no estúdio, a rigor, não está coberta por esse artigo.
+> O artigo 49 do CDC assegura o arrependimento em 7 dias para contratações realizadas **fora do estabelecimento comercial** — pela internet, por telefone ou a domicílio. Uma compra feita presencialmente no studio, a rigor, não está coberta por esse artigo.
 >
 > Recomendamos **aplicar o prazo de 7 dias a todas as compras**, independentemente do canal. A regra fica mais simples de explicar e de operar, elimina discussão no atendimento e representa uma vantagem comercial de baixo custo, já que o reembolso desconta os créditos já utilizados.
 >
 > Se a cliente preferir restringir ao que a lei exige, o sistema pode registrar o canal da venda e aplicar a regra apenas às compras feitas pelo site — mas isso acrescenta uma exceção que precisará ser explicada a cada solicitação.
 
 ## PA-07 — Limite de 50% dos créditos para reembolso
-
-**Situação:** Aberto — aguarda parecer da assessoria jurídica da cliente.
 
 A restrição de reembolso a pacotes com no máximo 50% dos créditos utilizados precisa de validação jurídica.
 
@@ -1089,8 +1033,6 @@ A restrição de reembolso a pacotes com no máximo 50% dos créditos utilizados
 
 ## PA-08 — Expiração de créditos não utilizados
 
-**Situação:** Aberto — aguarda parecer da assessoria jurídica da cliente. As medidas de comunicação e a prorrogação administrativa foram aceitas.
-
 A perda de créditos remanescentes no vencimento do pacote precisa de validação jurídica e de comunicação clara.
 
 **Requisito:** RN-03  ·  **Bloqueia a partir de:** Entrada em produção
@@ -1104,8 +1046,6 @@ A perda de créditos remanescentes no vencimento do pacote precisa de validaçã
 > A regra de expiração precisa constar expressamente do termo de prestação de serviço.
 
 ## PA-09 — Reembolso de pacote com créditos incorporados
-
-**Situação:** Definido — o reembolso considera apenas a compra; créditos anteriores retornam com a validade original. Aula feita após a compra é descontada da compra nova.
 
 Como calcular o reembolso quando a compra incorporou créditos remanescentes de um pacote anterior.
 
@@ -1121,8 +1061,6 @@ Como calcular o reembolso quando a compra incorporou créditos remanescentes de 
 
 ## PA-10 — Renovação antecipada que reduz a validade
 
-**Situação:** Definido — prevalece a validade mais distante entre a vigente e a do novo pacote.
-
 Como proceder quando o novo pacote tem validade menor que o prazo restante da carteira vigente.
 
 **Requisito:** RF-CRE-13  ·  **Bloqueia a partir de:** Desenvolvimento do M3
@@ -1135,11 +1073,9 @@ Como proceder quando o novo pacote tem validade menor que o prazo restante da ca
 >
 > A alternativa é o sistema alertar e pedir confirmação antes de encurtar o prazo. Funciona, mas transfere para a aluna uma decisão que ela não tem por que precisar tomar.
 
-## PA-11 — Dias de prorrogação por cancelamento do estúdio
+## PA-11 — Dias de prorrogação por cancelamento do studio
 
-**Situação:** Definido — prorrogação cumulativa, uma por ocorrência cancelada; referência de 7 dias, parametrizável.
-
-Quantos dias de validade são acrescentados quando o estúdio cancela uma aula.
+Quantos dias de validade são acrescentados quando o studio cancela uma aula.
 
 **Requisito:** RF-CPR-07, RF-EXC-04  ·  **Bloqueia a partir de:** Desenvolvimento do M6
 
@@ -1150,8 +1086,6 @@ Quantos dias de validade são acrescentados quando o estúdio cancela uma aula.
 > Recomendamos que a prorrogação seja **cumulativa e aplicada uma vez por ocorrência cancelada**: dois cancelamentos somam duas prorrogações. É o comportamento que a aluna espera e o mais simples de explicar.
 
 ## PA-12 — Alocação sem consumo de créditos
-
-**Situação:** Definido — motivo obrigatório em lista curta; participante sem cadastro pode ser alocada com nome e telefone.
 
 Registro de participante em workshop cujo pagamento é tratado fora do sistema.
 
@@ -1167,29 +1101,29 @@ Registro de participante em workshop cujo pagamento é tratado fora do sistema.
 
 O projeto será considerado ENTREGUE quando, cumulativamente:
 
-**1. **Todos os requisitos funcionais com prioridade MVP estiverem implementados e disponíveis em ambiente de produção.
+**1.** Todos os requisitos funcionais com prioridade MVP estiverem implementados e disponíveis em ambiente de produção.
 
-**2. **Os fluxos do capítulo 6 forem executados de ponta a ponta em homologação com dados reais, na presença da cliente, sem impedimentos.
+**2.** Os fluxos do capítulo 6 forem executados de ponta a ponta em homologação com dados reais, na presença da cliente, sem impedimentos.
 
-**3. **Os requisitos não funcionais RNF-01 a RNF-16 estiverem atendidos e verificados.
+**3.** Os requisitos não funcionais RNF-01 a RNF-16 estiverem atendidos e verificados.
 
-**4. **A configuração inicial estiver concluída e conferida pela cliente: modalidades com capacidade, categorias de aula com custo em créditos, espaços, horário de funcionamento, parâmetros operacionais, pacotes, categorias de professora e grade vigente.
+**4.** A configuração inicial estiver concluída e conferida pela cliente: modalidades com capacidade, categorias de aula com custo em créditos, espaços, horário de funcionamento, parâmetros operacionais, pacotes, categorias de professora e grade vigente.
 
-**5. **A integração com o Wellhub estiver operacional, ou, não concluída a homologação por fator externo, o módulo estiver entregue em modo de contingência conforme o capítulo 10, com ativação automática posterior sem custo adicional. O TotalPass é atendido em contingência manual nesta fase.
+**5.** A integração com Wellhub e TotalPass estiver operacional, ou, não concluída a homologação por fator externo, o módulo estiver entregue em modo de contingência conforme o capítulo 10, com ativação automática posterior sem custo adicional.
 
-**6. **Os pontos em aberto do capítulo 13 estiverem resolvidos e suas definições implementadas.
+**6.** Os pontos em aberto do capítulo 13 estiverem resolvidos e suas definições implementadas.
 
-**7. **O termo de prestação de serviço definitivo estiver publicado no sistema, contemplando as regras de validade, expiração de créditos e reembolso.
+**7.** O termo de prestação de serviço definitivo estiver publicado no sistema, contemplando as regras de validade, expiração de créditos e reembolso.
 
-**8. **A cliente formalizar o aceite por escrito após período de homologação acordado.
+**8.** A cliente formalizar o aceite por escrito após período de homologação acordado.
 
-*Solicitações que não constem deste documento serão tratadas como novo escopo, sem impacto no aceite do escopo aqui contratado.*
+Solicitações que não constem deste documento serão tratadas como novo escopo, sem impacto no aceite do escopo aqui contratado.
 
 # 15. Glossário
 
 | **Termo** | **Definição** |
 | --- | --- |
-| Pacote | Produto comercializado pelo estúdio, com quantidade de créditos, validade em dias e valor. |
+| Pacote | Produto comercializado pelo studio, com quantidade de créditos, validade em dias e valor. |
 | Crédito | Unidade de consumo. Cada categoria de aula tem um custo definido em créditos. |
 | Carteira | Saldo vivo de créditos de uma aluna, com validade corrente e situação. Nasce na primeira compra e é alimentada pelas compras seguintes. |
 | Crédito disponível | Créditos que ainda podem ser usados em novos agendamentos: totais menos utilizados menos reservados. |
@@ -1215,10 +1149,10 @@ O projeto será considerado ENTREGUE quando, cumulativamente:
 | Fechamento de comissão | Encerramento do período mensal de apuração, consolidando os valores a pagar por professora. |
 | Termo de aceite | Instrumento contratual aceito eletronicamente no sistema, com registro de identidade, data, hora e conteúdo. |
 | Anamnese | Questionário de saúde autodeclarado pela aluna no ingresso, sem validação pela administração. |
-| Exceção de calendário | Data em que o estúdio não opera, com cancelamento automático das sessões. |
+| Exceção de calendário | Data em que o studio não opera, com cancelamento automático das sessões. |
 | Aula experimental | Aula avulsa destinada a interessada sem pacote ativo, limitada a uma por modalidade, cobrada à parte e sem consumo de créditos. |
-| Convênio | Plataforma de benefício corporativo por meio da qual alunas acessam o estúdio, com reserva e check-in realizados no aplicativo do próprio convênio. |
-| Espelhamento | Publicação da grade de horários do estúdio nos aplicativos dos convênios, mantida sincronizada automaticamente. |
-| Check-in | Confirmação de presença realizada pela aluna de convênio no aplicativo, no local e no horário da aula, condição para o repasse financeiro ao estúdio. |
+| Convênio | Plataforma de benefício corporativo por meio da qual alunas acessam o studio, com reserva e check-in realizados no aplicativo do próprio convênio. |
+| Espelhamento | Publicação da grade de horários do studio nos aplicativos dos convênios, mantida sincronizada automaticamente. |
+| Check-in | Confirmação de presença realizada pela aluna de convênio no aplicativo, no local e no horário da aula, condição para o repasse financeiro ao studio. |
 
-*FGC Digital  ·  Escopo Funcional Atualizado  ·  Versão 2.1*
+FGC Digital  ·  Escopo Funcional Atualizado  ·  Versão 2.0

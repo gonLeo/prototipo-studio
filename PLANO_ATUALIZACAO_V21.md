@@ -4,7 +4,7 @@ Documento de trabalho para atualizar o protótipo ao **Escopo Funcional Atualiza
 
 Plano escrito em 21/09/2026, depois da revisão do plano apresentado no chat e das seis respostas registradas na seção 2.
 
-Status: **plano aprovado em 21/09/2026 (com os pressupostos da seção 13 confirmados); execução lote a lote.** O acompanhamento da execução — o que cada lote entregou, decisões tomadas durante o lote e como testar — fica em [PROGRESSO_ATUALIZACAO_V21.md](./PROGRESSO_ATUALIZACAO_V21.md).
+Status: **concluído em 22/09/2026 — Lotes 0 a 6 entregues e validados.** O que cada lote entregou, as decisões tomadas e como testar ficam em [PROGRESSO_ATUALIZACAO_V21.md](./PROGRESSO_ATUALIZACAO_V21.md). `escopo_funcional_contratado.md` já é a v2.1.
 
 Regras que continuam valendo, sem exceção (CLAUDE.md e README): um lote por ciclo, com validação explícita antes do próximo; nunca `git commit`; regra de negócio em `src/hooks/`; acesso a dado só por `src/services/repositorios.ts`; entidade ou campo novo entra em `src/types/domain.ts`, em `src/data/seed.json` e, se apontar para outro registro, em `CHAVES_ESTRANGEIRAS` de `src/services/reset.ts`; carregar uma tela nunca escreve no banco; `useConfirm()` e `useToast()`; kit de UI de `src/components/ui/`.
 

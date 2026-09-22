@@ -1,8 +1,10 @@
-# Protótipo — Sistema de Gestão do Studio
+# Protótipo — Sistema de Gestão do Estúdio
 
-Protótipo funcional navegável do sistema de gestão descrito em `escopo_funcional_contratado.md` (escopo versão 2.0 — modelo de **pacotes de créditos pré-pagos**). Sem backend real: persistência via `json-server` sobre um backfill versionado.
+Protótipo funcional navegável do sistema de gestão descrito em `escopo_funcional_contratado.md` (escopo versão 2.1 — modelo de **pacotes de créditos pré-pagos**). Sem backend real: persistência via `json-server` sobre um backfill versionado.
 
-Migração para o escopo v2.0: plano em [PLANO_ATUALIZACAO_ESCOPO.md](./PLANO_ATUALIZACAO_ESCOPO.md), progresso em [PROGRESSO_ATUALIZACAO.md](./PROGRESSO_ATUALIZACAO.md). Histórico das Fases 0 a 8, construídas sobre o escopo v1.0: [PROGRESSO.md](./PROGRESSO.md).
+Migração v1.0 → v2.0: plano em [PLANO_ATUALIZACAO_ESCOPO.md](./PLANO_ATUALIZACAO_ESCOPO.md), progresso em [PROGRESSO_ATUALIZACAO.md](./PROGRESSO_ATUALIZACAO.md). Migração v2.0 → v2.1: plano em [PLANO_ATUALIZACAO_V21.md](./PLANO_ATUALIZACAO_V21.md), progresso em [PROGRESSO_ATUALIZACAO_V21.md](./PROGRESSO_ATUALIZACAO_V21.md). Histórico das Fases 0 a 8, construídas sobre o escopo v1.0: [PROGRESSO.md](./PROGRESSO.md).
+
+**Grafia:** o escopo v2.1 passou a escrever "estúdio", com acento; o código e as telas continuam com "studio" (decisão D4 da migração v2.1 — troca cosmética, sem valor funcional, não replicada).
 
 ## Rodando localmente
 
@@ -18,10 +20,13 @@ Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://local
 - `src/types/domain.ts` — entidades do modelo conceitual de dados (seção 7 do escopo).
 - `src/services/` — camada de acesso a dados. `criarRepositorio<T>` expõe `listar/buscarPorId/criar/atualizar/remover` sobre REST; componentes nunca chamam `fetch`/`localStorage` diretamente. Trocar por uma API real no futuro não deve exigir mudança nas telas.
 - `src/hooks/` — regras de domínio e sessão (perfis simulados).
-  - **Carregar uma tela nunca escreve no banco.** Criar registro (`Chamada`, `OcorrenciaSessao`…) é efeito de uma ação explícita da usuária, nunca do efeito de carregamento: o React executa efeitos duas vezes em desenvolvimento (StrictMode) e duplicaria o registro. Pelo mesmo motivo, uma ação de escrita deve resolver o registro pela chave de negócio (sessão + data, por exemplo) em vez de confiar num id guardado no estado da tela — que pode estar obsoleto depois de um "Resetar protótipo".
+  - **Carregar uma tela nunca escreve no banco.** Criar registro (`Chamada`, `OcorrenciaSessao`…) é efeito de uma ação explícita da usuária, nunca do efeito de carregamento: o React executa efeitos duas vezes em desenvolvimento (StrictMode) e duplicaria o registro. Pelo mesmo motivo, uma ação de escrita deve resolver o registro pela chave de negócio (sessão + data, por exemplo) em vez de confiar num id guardado no estado da tela — que pode estar obsoleto depois de um "Resetar protótipo". **Única exceção documentada:** a ficha da aluna vista pela professora audita a própria consulta ao carregar (`fichaParaProfessora.ts`, RF-PRE-09) — é o requisito que pede exatamente esse registro.
   - **Cuidado com dependência instável em efeito que carrega dados.** Valor derivado de função que cria objeto novo a cada chamada (ex.: `periodoAtual()`) precisa de `useMemo` antes de entrar nas dependências de um `useCallback`/`useEffect` que faz `setState` — sem isso o carregamento vira laço infinito e o navegador derruba as conexões com `ERR_INSUFFICIENT_RESOURCES`. Prefira dependências primitivas (id, string de data).
 - `src/components/`, `src/pages/` — apresentação.
 - `src/services/notificador.ts` — camada de notificação (M15). **Nenhuma regra grava `Notificacao` direto**: as regras dizem o que comunicar e para quem (`{ tipo: 'aluna' | 'professora' | 'usuario' | 'administracao', id }`), e a camada resolve o destinatário e decide o canal em `canalDoEvento`. Na Fase 1 tudo sai por e-mail; incluir WhatsApp é mudar essa função, sem tocar em regra de disparo (RF-NOT-10). Evento novo entra no catálogo `EVENTOS_NOTIFICACAO` junto com a regra que o dispara — é dele que sai o rótulo do registro de envios.
+  - **O botão "Enviar mensagem" de `src/hooks/alunasAfetadas.ts` (RF-CPR-09) não passa por essa camada.** É um link `wa.me` de clique manual, sempre para o mesmo número de demonstração, com a mensagem pronta no texto — não um canal automático de disparo, e o sistema não registra se foi enviado. Vive em `/administracao/aulas-canceladas`, junto da relação de alunas preservada em cada ocorrência cancelada pelo studio.
+- `src/hooks/fichaParaProfessora.ts` — a ficha reduzida que a professora consulta de qualquer aluna (RF-PRE-09). É a **única tela do protótipo cujo carregamento grava no banco**: a consulta é registrada na auditoria (`consulta_ficha_pela_professora`), porque é o próprio requisito que exige o registro — exceção documentada à regra de que carregar tela nunca escreve.
+- `src/hooks/indicadoresDeProfessoras.ts` — retenção por turma e por professora, e frequência da professora (RF-PNL-07, REL-14), em `/administracao/indicadores-professoras`. Só a administração vê; o painel da professora não muda.
 - `src/services/gatewayPagamento.ts` — integração de pagamento **simulada** (M11). Todo o financeiro (retentativa, multa e juros, inadimplência, regularização) opera sobre o retorno dessas funções, então trocar pelo provedor real (RF-FIN-14, ainda em definição) não deve exigir mudança em regra nem em tela. A simulação é determinística: aprova sempre, exceto nas cobranças marcadas com `simularFalhaGateway`.
 - Integração com os convênios (M13) não tem API no protótipo: as mensagens que viriam dos parceiros (reserva, cancelamento, check-in) são disparadas pela administração em `src/pages/administracao/ConveniosPage.tsx`, sobre as regras de `src/hooks/convenios.ts`. O efeito no studio é idêntico ao da integração real — ocupa vaga, aparece na chamada, entra no relatório de repasse —, e é o mesmo caminho que atende à contingência prevista no escopo (RF-CNV-13).
 - `src/data/seed.json` — backfill versionado. Todo recurso já usado por algum repositório (mesmo que ainda sem tela) precisa existir aqui, nem que seja como array vazio — json-server responde 404 (não lista vazia) para uma chave que não existe no `db.json`, e um `listar()` que estoura 404 quebra qualquer regra de negócio que dependa dele. Botão "Resetar protótipo" na interface restaura este estado a qualquer momento. **Nenhuma data do seed é literal** — são tokens relativos (`@hoje-5`, `@proxima(segunda,quarta)`), resolvidos por `src/data/datasDoSeed.mjs` na carga e no reset; ver a seção "Seed com datas relativas".
@@ -83,7 +88,7 @@ Página pública, fora do `AppShell`, que ensina a reproduzir cada cenário do e
 
 ## Glossário do modelo de créditos
 
-O vocabulário abaixo é o do escopo v2.0 e deve ser usado tal e qual no código e nas telas. O modelo é **pacote de créditos pré-pago com pagamento único** — não existe mensalidade, contrato, ciclo de cobrança nem inadimplência.
+O vocabulário abaixo é o do escopo v2.1 e deve ser usado tal e qual no código e nas telas (com a única exceção deliberada de "studio" sem acento, ver acima). O modelo é **pacote de créditos pré-pago com pagamento único** — não existe mensalidade, contrato, ciclo de cobrança nem inadimplência.
 
 | Termo | O que é |
 | --- | --- |
@@ -100,4 +105,4 @@ O vocabulário abaixo é o do escopo v2.0 e deve ser usado tal e qual no código
 
 ## Fora de escopo deste protótipo
 
-Testes automatizados, autenticação real, banco de dados real, e tudo listado no capítulo "Evoluções Futuras" (EV-01 a EV-15) do documento de escopo.
+Testes automatizados, autenticação real, banco de dados real, e tudo listado no capítulo "Evoluções Futuras" (EV-01 a EV-21) do documento de escopo.

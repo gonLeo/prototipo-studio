@@ -1,5 +1,7 @@
 # Progresso — Atualização para o Escopo v2.0
 
+> **v2.1 absorvida.** O escopo evoluiu para a versão 2.1 (devolutiva da cliente de 28/08/2026), e o protótipo foi atualizado por completo — plano em [PLANO_ATUALIZACAO_V21.md](./PLANO_ATUALIZACAO_V21.md), progresso lote a lote em [PROGRESSO_ATUALIZACAO_V21.md](./PROGRESSO_ATUALIZACAO_V21.md). `escopo_funcional_contratado.md` já é a v2.1; este arquivo continua valendo como registro de como o protótipo chegou à v2.0, primeiro degrau da migração.
+
 Migração do protótipo do escopo v1.0 (contrato com mensalidade recorrente) para o **escopo v2.0** (pacote de créditos pré-pago). O plano completo, com o discovery e as decisões confirmadas, está em [PLANO_ATUALIZACAO_ESCOPO.md](./PLANO_ATUALIZACAO_ESCOPO.md).
 
 O histórico das Fases 0 a 8, que construíram o protótipo sobre o escopo v1.0, continua em [PROGRESSO.md](./PROGRESSO.md).

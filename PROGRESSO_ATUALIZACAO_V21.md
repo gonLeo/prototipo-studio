@@ -13,7 +13,7 @@ Dinâmica: **um lote por ciclo.** O lote só começa com autorização explícit
 - [x] Lote 3 — Professora consulta a ficha; indicadores de professora (itens 3 e 9)
 - [x] Lote 4 — Aula excepcional: participante sem cadastro e convênio à parte (item 4)
 - [x] Lote 5 — Comprovante, prévia do reembolso, TotalPass em contingência, busca por telefone (itens 5, 6, 8, 10)
-- [ ] Lote 6 — Consolidação da documentação (README, CLAUDE.md, PROGRESSO_ATUALIZACAO.md)
+- [x] Lote 6 — Consolidação da documentação (README, CLAUDE.md, PROGRESSO_ATUALIZACAO.md)
 
 ## Decisões fixadas (21/09/2026)
 
@@ -420,12 +420,34 @@ Percorrido no navegador depois de um reset: busca por `9680` (8 alunas) e por `1
 
 ## Lote 6 — Consolidação da documentação
 
-_Não iniciado. README (seed relativo, padrões novos, glossário), CLAUDE.md apontando para a v2.1 como fonte da verdade e para estes dois arquivos, nota em `PROGRESSO_ATUALIZACAO.md` de que a v2.1 foi absorvida, `escopo_funcional_contratado.md` convertido da v2.1 (ou substituído pelo `.txt` de `docs/`, a decidir no lote)._
+**`escopo_funcional_contratado.md` passou a ser a v2.1.** A decisão em aberto do plano — converter o docx ou substituir pelo `.txt` de `docs/` — foi resolvida pela primeira opção: uma conversão completa do `.docx` para o mesmo padrão markdown da v2.0 (títulos por nível, tabelas com cabeçalho e coluna de ID em negrito, caixas de decisão como blockquote), não uma cópia do texto bruto de apoio. É o documento que `CLAUDE.md` chama de fonte única da verdade, e ele precisava continuar legível e navegável como tal.
 
 ### O que foi entregue
 
-_— a preencher —_
+- **`escopo_funcional_contratado.md`** regravado a partir de `docs/Escopo Funcional Atualizado v2.1.docx`, por um conversor próprio (`python-docx`) que percorre o documento na ordem original — parágrafos e tabelas intercalados — e aplica as mesmas convenções da v2.0: `Heading 1/2/3` → `#`/`##`/`###`; parágrafo iniciado por marcador vira item de lista; tabela 1×1 (as caixas "Decisão de interface", "Definido com a cliente", "Sugestão da FGC Digital" etc.) vira blockquote, com o primeiro parágrafo como título em negrito; tabela de dados ganha cabeçalho em negrito, e a primeira coluna das linhas também quando o cabeçalho é "#" ou "ID" (módulos, RN, RF, RNF, REL, EV) — não quando é um nome comum (Ator, Pacote, Status). Negrito e itálico de dentro do texto vêm dos runs do próprio `.docx`, preservados como já estavam.
+- **`escopo_funcional_contratado_v2.0.md`** (novo) — a v2.0 arquivada, com o mesmo aviso de "documento substituído" que a v1 já tinha, resumindo o que a v2.1 trouxe e apontando para este plano e para este progresso.
+- **`CLAUDE.md`** — item 1 da leitura obrigatória passou a apontar para a v2.1; itens 2-4 passaram a citar as duas migrações (v1→v2.0 e v2.0→v2.1) e os arquivos de cada uma; "Nunca avance... sem validar" passou a falar em "etapa ou lote"; o vocabulário do glossário aponta para v2.1; nota nova de que "studio" sem acento é deliberado (D4); capítulo "Evoluções Futuras" corrigido de EV-01–15 para EV-01–21; nota de que PA Aberto/Em definição fica parametrizado, sem comportamento inventado.
+- **`README.md`** — título e primeira linha para "Estúdio" e v2.1; segundo parágrafo passou a citar as duas migrações; nota da grafia "studio"/"estúdio"; bullet do `notificador.ts` ganhou a ressalva de que o botão de WhatsApp (RF-CPR-09) não passa por ele; dois bullets novos para `fichaParaProfessora.ts` (a exceção de escrita ao carregar) e `indicadoresDeProfessoras.ts`; a regra "carregar tela nunca escreve" ganhou o ponteiro para essa exceção; EV-01–15 corrigido para EV-01–21.
+- **`PROGRESSO_ATUALIZACAO.md`** — aviso no topo de que a v2.1 foi absorvida, com os links para o plano e o progresso deste arquivo; o registro das Etapas 1-8 (v1→v2.0) permanece como está, é o primeiro degrau da migração.
+
+### Decisões deste lote
+
+- **Conversão completa, não substituição pelo `.txt`.** O `.txt` de `docs/` foi feito para leitura corrida durante a análise do diff; como documento de referência do projeto, precisava da mesma navegabilidade (títulos, tabelas, negrito nos ids) que a v2.0 já tinha — uma cópia crua teria sido um passo atrás.
+- **A regra de negrito na coluna de ID é por cabeçalho, não por padrão do texto.** Testada contra as ~30 tabelas do documento (módulos, RN, RF, RNF, REL, EV, e as que não bolam a primeira coluna: Ator, Pacote, Status, Campo, Marcação, Etapa) e confere em todas.
+- **Um trecho do `.docx` (a linha "Requisito/Bloqueia a partir de" das caixas PA-09 e PA-10) veio com itálico acidental no documento de origem** — as onze caixas equivalentes das outras PA-xx não têm essa marcação, e a combinação de negrito+itálico sem espaço entre trechos gerava `****` inválido no markdown. Normalizado para o mesmo padrão do resto do documento, e não replicado literalmente: o itálico ali não carrega sentido.
 
 ### Como testar
 
-_— a preencher —_
+1. Abrir `escopo_funcional_contratado.md` e comparar a íntegra com `docs/Escopo Funcional Atualizado v2.1.docx` — capítulos 1 a 15, PA-01 a PA-12.
+2. Conferir os três cenários prometidos e os itens novos: RF-CPR-09, RF-PRE-09, RF-AEX-06/11, RF-COM-09, RF-REE-03/07, RF-PNL-07/REL-14, RF-CNV-14/EV-21, RF-ALU-10 — todos presentes, com o texto batendo com o `.docx`.
+3. `escopo_funcional_contratado_v2.0.md` abre com o aviso de substituído, como `escopo_funcional_contratado_v1.md`.
+4. `CLAUDE.md` e `README.md` citam a v2.1 e os dois arquivos deste lote na ordem de leitura.
+
+### Verificação executada
+
+Conversor escrito e revisado por amostragem em toda a extensão do documento: cabeçalhos (15 `#`, 45 `##`, 13 `###`, batendo com a contagem de estilos do `.docx`), 208 requisitos `RF-` (205 na v2.0 + as três novas: RF-CPR-09, RF-PRE-09, RF-PNL-07), 38 `RN-` nas duas versões (confirma que nenhuma foi renumerada), 12 `PA-`, 21 `EV-`, 14 `REL-`; nenhuma tabela com contagem de colunas inconsistente; nenhum marcador de ênfase malformado (`****` ou contagem ímpar de `*` por linha) depois da correção do itálico acidental; nenhum caractere de mojibake ou marcador de lista (`•`) sobrando. Seções conferidas por leitura: capa e "Papel deste documento", atores, M1/M2 (RF-CFG-06, RF-ALU-04–10), regras de negócio (RN-01–38), modelo de dados (`OcorrênciaSessão`, `Alocação`, `FechamentoComissão` com os campos novos), requisitos não funcionais (RNF-05 com a professora), convênios (10.2 TotalPass, 10.3 dependência crítica), evoluções futuras (EV-16–21) e os doze PA-xx, inclusive o par PA-09/10 corrigido.
+
+Não houve alteração de código neste lote — sem impacto em `tsc`, `vite build` ou `oxlint`.
+
+---
+
