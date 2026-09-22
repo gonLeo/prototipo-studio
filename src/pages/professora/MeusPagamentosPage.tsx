@@ -5,6 +5,7 @@ import {
   comissoesEmAberto,
   dataPrevistaDePagamento,
   detalharComissoes,
+  nomeDoComprovante,
   periodoAtual,
 } from '../../hooks/comissoes';
 import type { LinhaDeComissao } from '../../hooks/comissoes';
@@ -13,7 +14,7 @@ import {
   fechamentoComissaoRepositorio,
   professoraRepositorio,
 } from '../../services/repositorios';
-import type { Comissao, FechamentoComissao } from '../../types/domain';
+import type { FechamentoComissao } from '../../types/domain';
 import { Badge } from '../../components/ui/Badge';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { formatarDataBR, hojeISO, nomeDoMes, ultimoDiaDoMes } from '../../utils/data';
@@ -34,7 +35,8 @@ export function MeusPagamentosPage() {
   const [valorPorAula, setValorPorAula] = useState(0);
   const [doPeriodo, setDoPeriodo] = useState<ComissaoDetalhada[]>([]);
   const [fechamentos, setFechamentos] = useState<FechamentoComissao[]>([]);
-  const [pagas, setPagas] = useState<Comissao[]>([]);
+  const [pagas, setPagas] = useState<LinhaDeComissao[]>([]);
+  const [aberto, setAberto] = useState<string>();
 
   // `periodoAtual()` devolve um objeto novo a cada chamada. Sem memoizar,
   // ele entraria como dependência sempre diferente de `carregar`, que por
@@ -70,7 +72,10 @@ export function MeusPagamentosPage() {
         .sort((a, b) => b.dataAula.localeCompare(a.dataAula)),
     );
 
-    setPagas(comissoes.filter((c) => c.professoraId === minha.id && c.periodoFechamentoId));
+    // RF-COM-08: o detalhamento que a administração confere antes de pagar
+    // é o mesmo de que a professora precisa para conferir o que recebeu.
+    const minhasFechadas = comissoes.filter((c) => c.professoraId === minha.id && c.periodoFechamentoId);
+    setPagas(await detalharComissoes(minhasFechadas));
     setFechamentos(listaFechamentos.sort((a, b) => b.dataInicio.localeCompare(a.dataInicio)));
     setCarregando(false);
   }, [usuario, periodo]);
@@ -84,8 +89,14 @@ export function MeusPagamentosPage() {
   const total = doPeriodo.reduce((soma, comissao) => soma + comissao.valor, 0);
   const fechamentoDoPeriodo = ultimoDiaDoMes(periodo.ano, periodo.mes);
 
+  function aulasDe(fechamento: FechamentoComissao): LinhaDeComissao[] {
+    return pagas
+      .filter((c) => c.periodoFechamentoId === fechamento.id)
+      .sort((a, b) => b.dataAula.localeCompare(a.dataAula));
+  }
+
   function totalDoFechamento(fechamento: FechamentoComissao): number {
-    return pagas.filter((c) => c.periodoFechamentoId === fechamento.id).reduce((soma, c) => soma + c.valor, 0);
+    return aulasDe(fechamento).reduce((soma, c) => soma + c.valor, 0);
   }
 
   return (
@@ -163,26 +174,93 @@ export function MeusPagamentosPage() {
         <p className="mt-2 text-sm text-neutral-500">Nenhum período fechado ainda.</p>
       ) : (
         <ul className="mt-2 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-          {fechamentos.map((fechamento) => (
-            <li key={fechamento.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-ink">
-                  {formatarDataBR(fechamento.dataInicio)} a {formatarDataBR(fechamento.dataFim)}
-                </p>
-                <p className="text-xs text-neutral-500">
-                  {fechamento.dataPagamento
-                    ? `Pago em ${formatarDataBR(fechamento.dataPagamento)}`
-                    : 'Aguardando pagamento'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-ink">{formatarMoeda(totalDoFechamento(fechamento))}</span>
-                <Badge tom={fechamento.situacao === 'pago' ? 'sucesso' : 'aviso'}>
-                  {fechamento.situacao === 'pago' ? 'Pago' : 'Fechado'}
-                </Badge>
-              </div>
-            </li>
-          ))}
+          {fechamentos.map((fechamento) => {
+            const aulasDoFechamento = aulasDe(fechamento);
+            const expandido = aberto === fechamento.id;
+            const comprovante = nomeDoComprovante(fechamento);
+            return (
+              <li key={fechamento.id}>
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">
+                      {formatarDataBR(fechamento.dataInicio)} a {formatarDataBR(fechamento.dataFim)}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {fechamento.dataPagamento
+                        ? `Pago em ${formatarDataBR(fechamento.dataPagamento)}`
+                        : 'Aguardando pagamento'}
+                      {` · ${aulasDoFechamento.length} aula(s)`}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-semibold text-ink">
+                      {formatarMoeda(totalDoFechamento(fechamento))}
+                    </span>
+                    <Badge tom={fechamento.situacao === 'pago' ? 'sucesso' : 'aviso'}>
+                      {fechamento.situacao === 'pago' ? 'Pago' : 'Fechado'}
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={() => setAberto(expandido ? undefined : fechamento.id)}
+                      aria-expanded={expandido}
+                      className="rounded-md px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-primary-50"
+                    >
+                      {expandido ? 'Fechar' : 'Ver aulas'}
+                    </button>
+                  </div>
+                </div>
+
+                {expandido && (
+                  <div className="border-t border-neutral-100 bg-neutral-50 px-4 py-3">
+                    {/* RF-COM-09: o comprovante é opcional. Dizer que ele não
+                        foi anexado evita a dúvida de quem recebeu o dinheiro
+                        e não encontra nada aqui. */}
+                    {fechamento.situacao === 'pago' && (
+                      <p className="text-xs text-neutral-600">
+                        <span className="font-medium text-ink">Comprovante:</span>{' '}
+                        {comprovante ? (
+                          <>
+                            <span className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] ring-1 ring-inset ring-neutral-200">
+                              {comprovante}
+                            </span>{' '}
+                            <span className="text-neutral-500">— anexo simulado no protótipo, sem download.</span>
+                          </>
+                        ) : (
+                          'não anexado pela administração.'
+                        )}
+                      </p>
+                    )}
+
+                    {aulasDoFechamento.length === 0 ? (
+                      <p className="mt-2 text-sm text-neutral-500">Nenhuma aula sua entrou neste fechamento.</p>
+                    ) : (
+                      <ul className="mt-2 divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+                        {aulasDoFechamento.map((aula) => (
+                          <li
+                            key={aula.id}
+                            className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+                          >
+                            <span className="min-w-0">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="whitespace-nowrap font-medium text-ink">
+                                  {formatarDataBR(aula.dataAula)}
+                                </span>
+                                <span className="text-neutral-700">{aula.descricaoAula}</span>
+                                {aula.tipoDeAula === 'excepcional' && <Badge tom="info">Excepcional</Badge>}
+                                {aula.situacao === 'ajuste' && <Badge tom="aviso">Ajuste</Badge>}
+                              </span>
+                              <span className="block text-xs text-neutral-500">{aula.baseDeCalculo}</span>
+                            </span>
+                            <span className="whitespace-nowrap font-medium text-ink">{formatarMoeda(aula.valor)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

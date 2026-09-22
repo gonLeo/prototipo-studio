@@ -418,6 +418,60 @@ Percorrido no navegador depois de um reset: busca por `9680` (8 alunas) e por `1
 
 ---
 
+## Ajustes de UX e correção de bug — área da professora
+
+Pedidos depois da validação do Lote 6, sobre as telas entregues nos Lotes 3 e 5.
+
+### O que foi entregue
+
+**Correção de bug — a busca de alunas da professora não filtrava por nome (RF-ALU-10).**
+
+Digitar um nome em *Professora → Alunas* não filtrava nada: a lista continuava inteira. A causa é sutil e vale registrar, porque é o tipo de erro que volta. A tela comparava os dígitos do termo com os do telefone:
+
+```
+aluna.telefone.replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
+```
+
+Num termo sem dígito nenhum — qualquer busca por nome — `termo.replace(/\D/g,'')` vira string vazia, e **`'...'.includes('')` é sempre `true`**. Toda aluna casava pelo telefone, e o resultado parecia "o filtro por nome não funciona" quando na verdade nada era filtrado. A busca da administração (`alunaCorresponde`, Lote 5) já tinha a guarda `digitos.length > 0`; a da professora, escrita à parte no Lote 3, não.
+
+A correção tira a duplicação que permitiu as duas versões divergirem: **`src/utils/busca.ts`** (novo) concentra a regra em `alunaCorrespondeAoTermo`, com a guarda e o comentário explicando por que ela existe, e as duas telas passam a chamá-la — `useAlunas.ts` e `AlunasDaProfessoraPage.tsx`.
+
+**Próximas aulas com as alunas agendadas, no painel da professora (RF-PNL-04, RF-PRE-09).**
+
+O painel mostrava as aulas de hoje em cartão e a contagem de ocupação, mas não *quem* vinha. Saber o nome antes da aula é o que permite chegar preparada — e, com a ficha da aluna entregue no Lote 3, abrir a anamnese de quem ela não conhece sem caçar o nome na lista.
+
+- `useAgendaDaProfessora` ganhou `AulaDaProfessora.alunas: AlunaAgendada[]` — id, nome, e as marcas `experimental` e `convenio`, as mesmas que a chamada distingue (RF-EXP-06, RF-CNV-10). A relação é montada no mesmo ponto em que a ocupação já era contada; o hook passou a listar alunas e usuárias para resolver os nomes.
+- Tabela nova **"Próximas aulas"** no painel, abaixo das aulas de hoje: quando, aula (com o selo "Substituindo" e a ocupação sobre a capacidade) e a relação de agendadas, **cada nome linkando para a ficha dela**. Cinco por página, ordenada por data — as próximas são as que importam. Aula sem ninguém agendada diz "Ninguém agendada ainda" em vez de ficar vazia.
+
+**Fechamentos anteriores abrem as aulas do período e o comprovante (RF-COM-08, RF-COM-09).**
+
+Em *Meus pagamentos*, o fechamento anterior mostrava só o total e o selo de pago — a professora via quanto recebeu, não pelo quê. Agora cada linha expande:
+
+- **As aulas que compõem o valor**, com data, descrição, base de cálculo e valor, separando aula excepcional (selo "Excepcional") e lançamento de ajuste (selo "Ajuste"). É o mesmo detalhamento que a administração confere antes de pagar (`detalharComissoes`), agora do lado de quem recebe.
+- **O comprovante anexado pela administração**, pelo nome do arquivo, com a ressalva de que é anexo simulado e não tem download. Quando não houve anexo, a tela diz "não anexado pela administração" em vez de omitir — quem recebeu o dinheiro e não encontra nada ali ficaria na dúvida.
+- O cabeçalho da linha passou a trazer a contagem de aulas junto da data de pagamento.
+
+### Decisões destes ajustes
+
+- **A correção foi na origem, não na tela.** Dava para repetir a guarda `digitos.length > 0` no segundo lugar; em vez disso as duas telas passaram a usar a mesma função, que agora carrega no comentário o motivo de ela existir. Duas cópias da mesma regra foi o que produziu o bug.
+- **A tabela de próximas aulas lista também as aulas vazias.** É a agenda dela: esconder as sem ninguém agendada daria a impressão de que a aula não existe. O texto diz explicitamente que ninguém se agendou ainda.
+- **O nome da aluna na tabela é link para a ficha**, não texto. O caminho natural depois de ver quem vem é querer saber o que observar — e a ficha existe exatamente para isso (RF-PRE-09).
+
+### Como testar
+
+1. **Professora → Alunas**: buscar "larissa" devolve uma aluna; "mari", uma; `121.212` (CPF) e `9680` (telefone) continuam funcionando; campo vazio mostra todas.
+2. **Professora → Painel**: abaixo de "Aulas de hoje", a tabela "Próximas aulas" lista as aulas futuras com quem está agendada. Clicar num nome abre a ficha da aluna. A aula de segunda ou quarta às 08:00 traz Larissa e Renata (essa com "· convênio").
+3. **Fechar um período com pagamento**: como administração, em Comissões, "Fechar período" e depois "Registrar pagamento" informando um nome de arquivo.
+4. **Professora → Meus pagamentos**: o fechamento aparece com "N aula(s)" e o botão "Ver aulas". Expandido, mostra o comprovante pelo nome e as aulas que compõem o valor. Repetindo o pagamento sem informar comprovante, a linha diz "não anexado pela administração".
+
+### Verificação executada
+
+Percorrido no navegador: a busca por nome, CPF e telefone na lista da professora (1, 1, 1 e 8 resultados, respectivamente, contra "todas casam" antes da correção); a tabela de próximas aulas no painel, com Larissa e Renata na aula de 23/09 e o selo de convênio; e o ciclo completo de fechamento — período fechado (R$ 140,00), pagamento registrado com `ted-beatriz-setembro-2026.pdf`, e a professora vendo o comprovante e as quatro aulas de POLE INICIANTE que compõem o valor. Dados de teste apagados com um reset ao final.
+
+`tsc -b` sem erro, `vite build` compilando, `oxlint` só com os três avisos preexistentes.
+
+---
+
 ## Lote 6 — Consolidação da documentação
 
 **`escopo_funcional_contratado.md` passou a ser a v2.1.** A decisão em aberto do plano — converter o docx ou substituir pelo `.txt` de `docs/` — foi resolvida pela primeira opção: uma conversão completa do `.docx` para o mesmo padrão markdown da v2.0 (títulos por nível, tabelas com cabeçalho e coluna de ID em negrito, caixas de decisão como blockquote), não uma cópia do texto bruto de apoio. É o documento que `CLAUDE.md` chama de fonte única da verdade, e ele precisava continuar legível e navegável como tal.

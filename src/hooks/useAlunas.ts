@@ -7,6 +7,7 @@ import {
 } from '../services/repositorios';
 import type { Aluna, Carteira, Pacote, SituacaoAluna, Usuario } from '../types/domain';
 import { hojeISO } from '../utils/data';
+import { alunaCorrespondeAoTermo } from '../utils/busca';
 import { lerCarteira, type LeituraDaCarteira, type LimiaresFinalizando } from '../utils/creditos';
 import { limiaresFinalizando } from './carteiraDeCreditos';
 import { pendenciasDasAlunas, SEM_PENDENCIA, type PendenciaDeAceite } from './pendenciasDeAceite';
@@ -65,19 +66,16 @@ export const FILTROS_ALUNA: Array<{ valor: FiltroAluna; rotulo: string }> = [
   { valor: 'bolsistas', rotulo: 'Bolsistas' },
 ];
 
-/**
- * Busca única por nome, CPF ou telefone (RF-ALU-10).
- *
- * CPF e telefone são comparados só pelos dígitos: quem busca digita
- * "65968" ou "12345678900" sem a pontuação que o cadastro guarda.
- */
+/** Busca única por nome, CPF ou telefone (RF-ALU-10). Ver `utils/busca.ts`. */
 export function alunaCorresponde(aluna: AlunaComDetalhes, termo: string): boolean {
-  const digitos = termo.replace(/\D/g, '');
-  return (
-    aluna.usuario.nome.toLowerCase().includes(termo) ||
-    aluna.usuario.email.toLowerCase().includes(termo) ||
-    (digitos.length > 0 &&
-      (aluna.usuario.cpf.replace(/\D/g, '').includes(digitos) || aluna.telefone.replace(/\D/g, '').includes(digitos)))
+  return alunaCorrespondeAoTermo(
+    {
+      nome: aluna.usuario.nome,
+      cpf: aluna.usuario.cpf,
+      telefone: aluna.telefone,
+      email: aluna.usuario.email,
+    },
+    termo,
   );
 }
 

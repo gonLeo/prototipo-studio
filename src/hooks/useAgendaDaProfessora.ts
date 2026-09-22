@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   agendamentoRepositorio,
+  alunaRepositorio,
   chamadaRepositorio,
   espacoRepositorio,
   excecaoCalendarioRepositorio,
@@ -9,6 +10,7 @@ import {
   professoraRepositorio,
   sessaoRepositorio,
   solicitacaoCancelamentoRepositorio,
+  usuarioRepositorio,
 } from '../services/repositorios';
 import type { Professora, Sessao, SolicitacaoCancelamento } from '../types/domain';
 import { hojeISO, somarDias } from '../utils/data';
@@ -25,12 +27,23 @@ export interface AulaExcepcionalDaProfessora extends AulaExcepcionalDetalhada {
   chamadaPendente: boolean;
 }
 
+/** Aluna agendada numa aula, para a professora saber quem esperar. */
+export interface AlunaAgendada {
+  alunaId: string;
+  nome: string;
+  /** RF-EXP-06 / RF-CNV-10: a chamada distingue essas duas, a agenda também. */
+  experimental: boolean;
+  convenio: boolean;
+}
+
 export interface AulaDaProfessora {
   sessao: Sessao;
   data: string;
   nomeModalidade: string;
   nomeEspaco: string | undefined;
   ocupacao: number;
+  /** Quem está agendada, na ordem em que aparece na chamada (RF-PRE-02). */
+  alunas: AlunaAgendada[];
   cancelada: boolean;
   motivoCancelamento: string | undefined;
   /** Preenchido quando a professora está cobrindo a aula de outra pessoa. */
@@ -72,18 +85,31 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
     }
     setCarregando(true);
 
-    const [professoras, sessoes, ocorrencias, agendamentos, modalidades, espacos, excecoes, listaSolicitacoes, chamadas] =
-      await Promise.all([
-        professoraRepositorio.listar(),
-        sessaoRepositorio.listar(),
-        ocorrenciaSessaoRepositorio.listar(),
-        agendamentoRepositorio.listar(),
-        modalidadeRepositorio.listar(),
-        espacoRepositorio.listar(),
-        excecaoCalendarioRepositorio.listar(),
-        solicitacaoCancelamentoRepositorio.listar(),
-        chamadaRepositorio.listar(),
-      ]);
+    const [
+      professoras,
+      sessoes,
+      ocorrencias,
+      agendamentos,
+      modalidades,
+      espacos,
+      excecoes,
+      listaSolicitacoes,
+      chamadas,
+      alunas,
+      usuarios,
+    ] = await Promise.all([
+      professoraRepositorio.listar(),
+      sessaoRepositorio.listar(),
+      ocorrenciaSessaoRepositorio.listar(),
+      agendamentoRepositorio.listar(),
+      modalidadeRepositorio.listar(),
+      espacoRepositorio.listar(),
+      excecaoCalendarioRepositorio.listar(),
+      solicitacaoCancelamentoRepositorio.listar(),
+      chamadaRepositorio.listar(),
+      alunaRepositorio.listar(),
+      usuarioRepositorio.listar(),
+    ]);
 
     const minha = professoras.find((p) => p.usuarioId === usuarioId);
     setProfessora(minha);
@@ -116,11 +142,23 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
         if (professoraEfetivaId !== minha.id) continue;
 
         const chamada = ocorrencia ? chamadas.find((c) => c.ocorrenciaSessaoId === ocorrencia.id) : undefined;
-        const alunasAgendadas = ocorrencia
+        const agendadas = ocorrencia
           ? agendamentos.filter(
               (a) => a.ocorrenciaSessaoId === ocorrencia.id && (a.situacao === 'ativo' || a.situacao === 'realizado'),
-            ).length
-          : 0;
+            )
+          : [];
+        const alunasAgendadas = agendadas.length;
+        const relacaoDeAlunas: AlunaAgendada[] = agendadas
+          .map((agendamento) => {
+            const aluna = alunas.find((x) => x.id === agendamento.alunaId);
+            return {
+              alunaId: agendamento.alunaId,
+              nome: usuarios.find((u) => u.id === aluna?.usuarioId)?.nome ?? 'Aluna removida',
+              experimental: agendamento.experimental,
+              convenio: aluna?.origem === 'convenio',
+            };
+          })
+          .sort((a, b) => a.nome.localeCompare(b.nome));
         const cancelada = excecao !== undefined || ocorrencia?.situacao === 'cancelada';
 
         lista.push({
@@ -129,6 +167,7 @@ export function useAgendaDaProfessora(usuarioId: string | undefined) {
           nomeModalidade: modalidades.find((m) => m.id === sessao.modalidadeId)?.nome ?? 'Modalidade removida',
           nomeEspaco: espacos.find((e) => e.id === sessao.espacoId)?.nome,
           ocupacao: alunasAgendadas,
+          alunas: relacaoDeAlunas,
           cancelada,
           motivoCancelamento: excecao ? excecao.descricao : ocorrencia?.motivoCancelamento,
           substituindo: sessao.professoraId !== minha.id,

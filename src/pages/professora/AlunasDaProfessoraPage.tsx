@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAlunasParaProfessora } from '../../hooks/fichaParaProfessora';
 import { Badge } from '../../components/ui/Badge';
 import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
+import { alunaCorrespondeAoTermo } from '../../utils/busca';
 
 /**
  * Lista de alunas para a professora (RF-PRE-09).
@@ -39,10 +40,7 @@ export function AlunasDaProfessoraPage() {
           chave={(aluna) => aluna.id}
           busca={{
             placeholder: 'Buscar por nome, CPF ou telefone',
-            corresponde: (aluna, termo) =>
-              aluna.nome.toLowerCase().includes(termo) ||
-              aluna.cpf.includes(termo) ||
-              aluna.telefone.replace(/\D/g, '').includes(termo.replace(/\D/g, '')),
+            corresponde: alunaCorrespondeAoTermo,
           }}
           colunas={[
             { chave: 'aluna', rotulo: 'Aluna' },

@@ -9,6 +9,7 @@ import {
   periodoAtual,
 } from '../../hooks/comissoes';
 import { Badge } from '../../components/ui/Badge';
+import { Tabela, LinhaTabela, CelulaTabela } from '../../components/ui/Table';
 import { CartaoDeAula } from '../../components/ui/CartaoDeAula';
 import { formatarDataBR, hojeISO, nomeDoMes, ultimoDiaDoMes } from '../../utils/data';
 import { formatarMoeda } from '../../utils/creditos';
@@ -62,6 +63,8 @@ export function PainelProfessoraPage() {
   }
 
   const aulasDeHoje = aulas.filter((aula) => aula.data === hoje);
+  // As de hoje já aparecem em cartão acima; a tabela olha para frente.
+  const proximasAulas = aulas.filter((aula) => aula.data > hoje && !aula.cancelada);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -166,6 +169,68 @@ export function PainelProfessoraPage() {
           <Badge tom="aviso">Atenção</Badge> Há aula de hoje com solicitação de cancelamento — acompanhe a situação
           na agenda.
         </p>
+      )}
+
+      {/* RF-PNL-04 + RF-PRE-09: saber quem vem antes da aula é o que
+          permite chegar preparada — e abrir a ficha de quem ela não
+          conhece sem caçar o nome na lista de alunas. */}
+      <h2 className="mt-8 text-sm font-semibold text-ink">Próximas aulas</h2>
+      {proximasAulas.length === 0 ? (
+        <p className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500">
+          Nenhuma aula sua nos próximos dias.
+        </p>
+      ) : (
+        <Tabela
+          rotulo="Próximas aulas com alunas agendadas"
+          itens={proximasAulas}
+          chave={(aula) => `${aula.sessao.id}-${aula.data}`}
+          itensPorPagina={5}
+          colunas={[
+            { chave: 'quando', rotulo: 'Quando' },
+            { chave: 'aula', rotulo: 'Aula' },
+            { chave: 'alunas', rotulo: 'Alunas agendadas' },
+          ]}
+          renderLinha={(aula) => (
+            <LinhaTabela key={`${aula.sessao.id}-${aula.data}`}>
+              <CelulaTabela className="whitespace-nowrap">
+                <p className="font-medium text-ink">{formatarDataBR(aula.data)}</p>
+                <p className="text-xs text-neutral-500">
+                  {aula.sessao.horarioInicio}–{aula.sessao.horarioFim}
+                </p>
+              </CelulaTabela>
+              <CelulaTabela>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-ink">{aula.nomeModalidade}</span>
+                  {aula.substituindo && <Badge tom="info">Substituindo</Badge>}
+                </span>
+                <span className="block text-xs text-neutral-500">
+                  {aula.ocupacao}/{aula.sessao.capacidade} vagas ocupadas
+                  {aula.nomeEspaco ? ` · ${aula.nomeEspaco}` : ''}
+                </span>
+              </CelulaTabela>
+              <CelulaTabela>
+                {aula.alunas.length === 0 ? (
+                  <span className="text-sm text-neutral-500">Ninguém agendada ainda</span>
+                ) : (
+                  <ul className="flex flex-col gap-0.5">
+                    {aula.alunas.map((aluna) => (
+                      <li key={aluna.alunaId} className="text-sm">
+                        <Link
+                          to={`/professora/alunas/${aluna.alunaId}`}
+                          className="text-primary-700 hover:text-primary-800 hover:underline"
+                        >
+                          {aluna.nome}
+                        </Link>
+                        {aluna.experimental && <span className="ml-1 text-xs text-primary-700">· experimental</span>}
+                        {aluna.convenio && <span className="ml-1 text-xs text-neutral-500">· convênio</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CelulaTabela>
+            </LinhaTabela>
+          )}
+        />
       )}
     </div>
   );
