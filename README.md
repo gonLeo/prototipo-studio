@@ -15,6 +15,15 @@ npm run dev
 
 Sobe dois processos: Vite (`http://localhost:5173`) e json-server (`http://localhost:4000`, acessado pelo front via proxy `/api`). Na primeira execução, `db.json` é criado a partir do backfill em `src/data/seed.json`, com as datas resolvidas em relação ao dia da carga (ver "Seed com datas relativas").
 
+## Publicando
+
+```bash
+npm run build
+npm start
+```
+
+Um host como o Railway dá uma porta só e nenhum proxy do Vite, então em produção os dois processos viram um: `server.mjs` serve os arquivos de `dist/`, monta o json-server em `/api` (com o prefixo removido, a mesma reescrita do proxy do Vite) e devolve `index.html` nas rotas do BrowserRouter. O prefixo é o que impede o json-server de engolir rotas do próprio app — ele expõe os recursos na raiz. Passo a passo, variáveis (`TZ`, `DB_PATH`) e o que acontece com os dados a cada publicação: [DEPLOY_RAILWAY.md](./DEPLOY_RAILWAY.md).
+
 ## Arquitetura
 
 - `src/types/domain.ts` — entidades do modelo conceitual de dados (seção 7 do escopo).
